@@ -1,0 +1,24 @@
+[project]
+name = "mob-wiki"
+version = "0.1.0"
+description = "Team LLM knowledge base — Git-backed wiki with MCP server and hybrid search"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=2.0",
+    "openai>=1.0",
+    "sqlite-vec>=0.1",
+    "Markdown>=3.5",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+mob-wiki = "server:main"
+
+[tool.setuptools]
+packages = []
