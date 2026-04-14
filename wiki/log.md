@@ -19,3 +19,5 @@ title: Operation Log
 [2026-04-14 15:30] CREATE: concepts/server-layer — mobai-agent HTTP/WS server
 [2026-04-14 15:30] CREATE: syntheses/cloud-deployment-architecture — Distributed deployment analysis
 [2026-04-14 15:30] UPDATE: index.md — Full table of contents (6 entities, 3 concepts, 1 synthesis)
+[2026-04-14 16:30] UPDATE: ALL 10 wiki pages rewritten to reference-grade documentation (2428→4028 lines)
+[2026-04-14 16:30] UPDATE: schema.md — Added Documentation Quality Standard (mandatory completeness rules, product vs technical doc separation, length guidelines)
