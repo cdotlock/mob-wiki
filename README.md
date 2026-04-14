@@ -17,10 +17,10 @@ pip install -e .
 ### 第 2 步：注册 MCP Server
 
 ```bash
-claude mcp add mob-wiki -- python ~/mob-wiki/server.py
+claude mcp add -s user mob-wiki -- python ~/mob-wiki/server.py
 ```
 
-这一步把 wiki 注册到 Claude Code。之后每次对话 Claude 会自动启动 server，对话结束自动关闭。不需要手动挂后台进程。
+`-s user` 将 wiki 注册为全局 MCP，在任何目录启动 Claude Code 都能使用 wiki 工具。之后每次对话 Claude 会自动启动 server，对话结束自动关闭。不需要手动挂后台进程。
 
 ### 第 3 步：追加全局规则
 
