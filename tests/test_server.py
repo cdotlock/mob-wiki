@@ -255,3 +255,34 @@ def test_wiki_rebuild_index(wiki_server):
     """wiki_rebuild_index should return counts."""
     result = wiki_server.wiki_rebuild_index()
     assert result["pages_indexed"] >= 2
+
+
+# -- Tests: HTTP viewer smoke tests -----------------------------------------
+
+import pytest
+
+try:
+    from starlette.testclient import TestClient
+    from server import _http_app
+
+    _HTTP_AVAILABLE = _http_app is not None
+except ImportError:
+    _HTTP_AVAILABLE = False
+
+
+@pytest.mark.skipif(not _HTTP_AVAILABLE, reason="starlette/http_app not available")
+def test_http_index():
+    """HTTP index should render wiki index as HTML."""
+    client = TestClient(_http_app)
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "Mob-Wiki" in resp.text or "Index" in resp.text
+
+
+@pytest.mark.skipif(not _HTTP_AVAILABLE, reason="starlette/http_app not available")
+def test_http_search_empty():
+    """HTTP search without query should show search form."""
+    client = TestClient(_http_app)
+    resp = client.get("/search")
+    assert resp.status_code == 200
+    assert "Search" in resp.text
