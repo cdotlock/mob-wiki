@@ -15,19 +15,10 @@ from indexer import WikiIndexer
 class WikiServer:
     """Pure-logic layer for all wiki operations."""
 
-    def __init__(
-        self,
-        wiki_root: str | Path,
-        db_path: str | Path,
-        embedding_enabled: bool = True,
-    ):
+    def __init__(self, wiki_root: str | Path, db_path: str | Path):
         self.wiki_root = Path(wiki_root)
         self.db_path = Path(db_path)
-        self.indexer = WikiIndexer(
-            db_path=self.db_path,
-            wiki_root=self.wiki_root,
-            embedding_enabled=embedding_enabled,
-        )
+        self.indexer = WikiIndexer(db_path=self.db_path, wiki_root=self.wiki_root)
 
     # -- Query tools --------------------------------------------------------
 
@@ -239,11 +230,7 @@ def _get_server() -> WikiServer:
         db_dir = Path(wiki_root) / "db"
         db_dir.mkdir(parents=True, exist_ok=True)
         db_path = db_dir / "wiki.db"
-        _wiki_server = WikiServer(
-            wiki_root=wiki_root,
-            db_path=db_path,
-            embedding_enabled=True,
-        )
+        _wiki_server = WikiServer(wiki_root=wiki_root, db_path=db_path)
     return _wiki_server
 
 
@@ -473,10 +460,7 @@ def main() -> None:
     # Ensure server is initialised and index is built
     srv = _get_server()
     stats = srv.wiki_rebuild_index()
-    print(
-        f"Index built: {stats['pages_indexed']} pages, "
-        f"{stats['embeddings_generated']} embeddings"
-    )
+    print(f"Index built: {stats['pages_indexed']} pages")
 
     # Start HTTP viewer in background thread (optional)
     if _HAS_HTTP and _http_app is not None:

@@ -79,11 +79,7 @@ def indexer(tmp_wiki):
     db_path = tmp_wiki / "db" / "wiki.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    idx = WikiIndexer(
-        db_path=db_path,
-        wiki_root=tmp_wiki,
-        embedding_enabled=False,
-    )
+    idx = WikiIndexer(db_path=db_path, wiki_root=tmp_wiki)
     idx.build_index()
     yield idx
     idx.close()
@@ -97,7 +93,6 @@ def test_build_index(indexer):
     # The fixture already called build_index; re-run to check the return value.
     stats = indexer.build_index()
     assert stats["pages_indexed"] == 2
-    assert stats["embeddings_generated"] == 0  # embeddings disabled
 
 
 def test_fts_search(indexer):

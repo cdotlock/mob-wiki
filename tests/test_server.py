@@ -114,11 +114,7 @@ def wiki_server(tmp_path):
     db_dir.mkdir()
     db_path = db_dir / "wiki.db"
 
-    srv = WikiServer(
-        wiki_root=tmp_path,
-        db_path=db_path,
-        embedding_enabled=False,
-    )
+    srv = WikiServer(wiki_root=tmp_path, db_path=db_path)
     srv.wiki_rebuild_index()
     yield srv
     srv.close()
