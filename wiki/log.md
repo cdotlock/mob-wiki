@@ -21,3 +21,6 @@ title: Operation Log
 [2026-04-14 15:30] UPDATE: index.md — Full table of contents (6 entities, 3 concepts, 1 synthesis)
 [2026-04-14 16:30] UPDATE: ALL 10 wiki pages rewritten to reference-grade documentation (2428→4028 lines)
 [2026-04-14 16:30] UPDATE: schema.md — Added Documentation Quality Standard (mandatory completeness rules, product vs technical doc separation, length guidelines)
+[2026-04-15 18:00] CREATE: entities/moonshort-script — MSS interpreter entity (architecture, CLI, JSON output, file structure, system relationships)
+[2026-04-15 18:00] CREATE: concepts/mss-format — MoonShort Script format specification (complete syntax, all directives, Remix compatibility)
+[2026-04-15 18:00] UPDATE: index.md — Added moonshort-script entity and mss-format concept
