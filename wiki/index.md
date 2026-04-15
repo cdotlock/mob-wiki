@@ -7,12 +7,17 @@ updated: 2026-04-15
 
 Welcome to the team knowledge base.
 
+## Plan
+
+- [[plan]] — 团队行动计划（持续维护，所有人可更新进度）
+
 ## Concepts
 
 - [[concepts/cli-gateway-protocol]] — Unified HTTP protocol for remote CLI command execution
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
 - [[concepts/mss-format]] — MoonShort Script (MSS) 脚本标记语言完整规范
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access
+- [[concepts/unfolded-visual-novel]] — Unfolded 风格互动视觉小说展示形态与素材管线
 
 ## Entities
 
@@ -27,3 +32,5 @@ Welcome to the team knowledge base.
 ## Syntheses
 
 - [[syntheses/cloud-deployment-architecture]] — How Moonshort transitions from local to distributed cloud deployment
+- [[syntheses/platform-onboarding-guide]] — MobAI 平台全景指南（游戏设计、数值系统、技术架构）
+- [[syntheses/product-strategy-decisions]] — 产品战略决策记录（为什么这样做而不是那样做）

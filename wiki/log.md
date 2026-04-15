@@ -24,3 +24,9 @@ title: Operation Log
 [2026-04-15 18:00] CREATE: entities/moonshort-script — MSS interpreter entity (architecture, CLI, JSON output, file structure, system relationships)
 [2026-04-15 18:00] CREATE: concepts/mss-format — MoonShort Script format specification (complete syntax, all directives, Remix compatibility)
 [2026-04-15 18:00] UPDATE: index.md — Added moonshort-script entity and mss-format concept
+[2026-04-15 19:00] INGEST: 4 raw source documents (product strategy, onboarding guide, unfolded presentation, strategy)
+[2026-04-15 19:00] CREATE: syntheses/product-strategy-decisions — 产品战略决策记录（AI Native、D20+Reroll、双Feed、CCR传播）
+[2026-04-15 19:00] CREATE: syntheses/platform-onboarding-guide — MobAI 平台全景指南（玩家旅程、数值系统、技术架构）
+[2026-04-15 19:00] CREATE: concepts/unfolded-visual-novel — Unfolded 风格展示形态（画布分层、叙事容器、素材管线）
+[2026-04-15 19:00] CREATE: plan.md — 团队行动计划（持续维护，产品/技术/运营三线）
+[2026-04-15 19:00] UPDATE: index.md — Added plan, 2 syntheses, 1 concept (total: 7 entities, 5 concepts, 3 syntheses, 1 plan)
