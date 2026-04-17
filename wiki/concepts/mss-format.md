@@ -109,8 +109,27 @@ YOU: He hasn't called me that in eight years.
 | 指令 | 说明 |
 |------|------|
 | `@affection <char> +/-N` | 好感度 |
-| `@signal <event>` | 事件 + 持久布尔标记 |
+| `@signal <kind> <event>` | 事件信号。`kind=mark` = 持久布尔标记（可被 `@if (NAME)` 查询）；`kind=achievement` = 触发已声明的成就 |
 | `@butterfly "<desc>"` | 蝴蝶效应记录 |
+| `@achievement <id> { name/rarity/description/when }` | 成就声明（集顶层） |
+
+**Signal kind 二分**：旧的 `@signal EVENT`（无 kind）已禁用。`mark` 用于剧情状态（flag），`achievement` 用于外发通知（不可 `@if` 查询）。JSON 输出中每个 signal 步骤都带 `"kind"` 字段。
+
+**Achievement 成就块**（字段对齐 [cdotlock/story-achievement-generator](https://github.com/cdotlock/story-achievement-generator) skill 输出）：
+
+```
+@achievement HIGH_HEEL_DOUBLE_KILL {
+  name: "【高跟鞋双杀】"
+  rarity: epic
+  description: "用高跟鞋当武器，一次是即兴，两次是签名招式。"
+  when: (HIGH_HEEL_EP05 && HIGH_HEEL_EP24)
+}
+```
+
+- `rarity` 必须为 `uncommon` / `rare` / `epic` / `legendary`——**禁用 `common`**
+- `when` 使用与 `@if` 完全相同的结构化条件 AST，通常引用若干 `mark`（跨集 arc）
+- 两种触发路径：**声明式**（引擎监听 marks，满足 `when` 即解锁，推荐）/ **命令式**（`@signal achievement <id>` 直接触发，跳过 `when` 求值）
+- 每集 `@achievement` ID 不可重复；JSON 顶层输出 `achievements` 数组（无成就时为 `[]`）
 
 ### 流程控制
 ```
