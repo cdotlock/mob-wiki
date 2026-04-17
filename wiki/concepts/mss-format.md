@@ -3,7 +3,7 @@ title: MoonShort Script (MSS) 格式规范
 tags: [mss, script-format, visual-novel, specification]
 sources: []
 created: 2026-04-15
-updated: 2026-04-16
+updated: 2026-04-17
 ---
 
 MoonShort Script（MSS）是 MobAI 互动视觉小说的脚本标记语言。一个 `.md` 文件描述一集的全部内容——场景、角色、对话、音频、D20 检定、小游戏、分支路由——由 Go 解释器编译为 JSON 供前端播放器消费。
@@ -50,12 +50,15 @@ YOU: He hasn't called me that in eight years.
 | 指令 | 说明 |
 |------|------|
 | `@episode <key> "<title>" { }` | 集定义（根块） |
-| `@gate { }` | 路由声明（集尾部，必须有） |
+| `@gate { }` | 路由声明（集尾部，与 `@ending` 二选一） |
+| `@ending <type>` | 终结标记（`complete` / `to_be_continued` / `bad_ending`，与 `@gate` 二选一） |
 | `@if (<condition>): @next <target>` | Gate 条件路由 |
 | `@else @if (<condition>): @next <target>` | Gate 链式条件 |
 | `@else: @next <target>` | Gate 兜底路线 |
 | `@label <name>` / `@goto <name>` | 集内跳转（慎用） |
 | `@pause for N` | 等待 N 次点击 |
+
+**终结规则**：每集必须以 `@gate` 或 `@ending` 二者之一结尾。两者互斥——有 gate 表示继续路由，有 ending 表示全剧终/待续/坏结局。既无 gate 也无 ending 在 validator 阶段报 `MISSING_TERMINAL`。
 
 ### 视觉
 | 指令 | 说明 |
@@ -120,15 +123,17 @@ YOU: He hasn't called me that in eight years.
 }
 ```
 
-**条件类型（5 种）**：
+**条件类型（5 种，全部编译为结构化 AST——后端消费 JSON 时直接遍历，无需再次解析表达式字符串）**：
 
-| 类型 | 语法 | 示例 |
-|------|------|------|
-| flag | `SIGNAL_NAME` | `@if (EP01_COMPLETE) { }` |
-| comparison | `value op number` | `@if (affection.easton >= 5) { }` |
-| compound | `expr && expr` | `@if (san <= 20 \|\| FAILED_TWICE) { }` |
-| choice | `OPTION.result` | `@if (A.fail) { }` — result: success/fail/any |
-| influence | `influence "desc"` 或 `"desc"` | `@if (influence "player showed empathy") { }` |
+| 类型 | 语法 | AST 输出 |
+|------|------|--------|
+| flag | `SIGNAL_NAME` | `{type:"flag", name}` |
+| comparison | `affection.<char> op N` / `<name> op N` | `{type:"comparison", left:{kind,char/name}, op, right}` |
+| compound | `<expr> && <expr>` / `<expr> \|\| <expr>` | `{type:"compound", op, left, right}`（递归嵌套） |
+| choice | `OPTION.result` | `{type:"choice", option, result}` — result: success/fail/any |
+| influence | `influence "desc"` 或 `"desc"` | `{type:"influence", description}` |
+
+比较右侧必须是整数字面量。`left.kind` 为 `"affection"`（附带 `char`）或 `"value"`（附带 `name`）。复合条件的 `left`/`right` 是递归条件对象，不是字符串。
 
 ## Gate 路由
 
@@ -140,7 +145,26 @@ YOU: He hasn't called me that in eight years.
 }
 ```
 
-Gate 必须位于 `@episode` 块尾部。所有 5 种条件类型均可在 gate 中使用。JSON 输出为嵌套 if/else 链。
+Gate 必须位于 `@episode` 块尾部。所有 5 种条件类型均可在 gate 中使用。JSON 输出为嵌套 if/else 链，条件字段为完全结构化 AST。
+
+## Ending 终结
+
+```
+@episode main/bad/001:02 "Bad End" {
+  NARRATOR: She never came home.
+  @ending bad_ending
+}
+```
+
+三种 ending 类型：
+
+| type | 含义 |
+|------|------|
+| `complete` | 全剧终（主线大结局、所有 Happy End） |
+| `to_be_continued` | 待续（本章/本季完，下一章未写） |
+| `bad_ending` | 坏结局（玩家失败、角色死亡、关系破裂） |
+
+JSON 输出中 `ending` 与 `gate` 字段恒存在，终结集 `gate: null`，路由集 `ending: null`。
 
 ## 命名与寻址
 
