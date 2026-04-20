@@ -3,10 +3,10 @@ title: MoonShort Script (MSS) 格式规范
 tags: [mss, script-format, visual-novel, specification]
 sources: []
 created: 2026-04-15
-updated: 2026-04-17
+updated: 2026-04-20
 ---
 
-MoonShort Script（MSS）是 MobAI 互动视觉小说的脚本标记语言。一个 `.md` 文件描述一集的全部内容——场景、角色、对话、音频、D20 检定、小游戏、分支路由——由 Go 解释器编译为 JSON 供前端播放器消费。
+MoonShort Script（MSS）是 MobAI 互动视觉小说的脚本标记语言。一个 `.md` 文件描述一集的全部内容——场景、角色、对话、音频、D20 检定、小游戏、分支路由——由 Go 解释器编译为 JSON 供前端播放器消费。当前版本：**v2.4**。
 
 解释器实体信息见 [[entities/moonshort-script]]。
 
@@ -69,11 +69,17 @@ YOU: He hasn't called me that in eight years.
 | `@<char> move to <pos>` | 角色移位 |
 | `@<char> bubble <type>` | 气泡动画 |
 | `@bg set <name> [trans]` | 切背景 |
-| `@cg show <name> [trans] { }` | CG 展示块 |
+| `@cg show <name> [trans] { duration: ... content: "..." ... }` | CG 展示块，`duration` + `content` 必填（v2.4） |
 
 **位置**：`left` `center` `right` `left_far` `right_far`
 **过渡**：`fade` `cut` `slow` `dissolve`（不写 = 默认）
 **气泡**：`anger` `sweat` `heart` `question` `exclaim` `idea` `music` `doom` `ellipsis`
+
+**CG 字段（v2.4 新增且必填）**：CG 下游由 agent-forge 渲染为短视频，script 必须带镜头 + 情节描述：
+
+- `duration:` — 档位 `low` / `medium` / `high`（不写秒数）
+- `content:` — 英文连续叙述，讲清楚镜头怎么走、画面强调什么
+- 字段之后是 body 节点（对白/叙事等），CG 放映期间播放
 
 ### 对话
 | 语法 | 说明 |
@@ -100,36 +106,47 @@ YOU: He hasn't called me that in eight years.
 ### 游戏机制
 | 指令 | 说明 |
 |------|------|
-| `@minigame <id> <ATTR> { @on <ratings> { } }` | 小游戏 |
+| `@minigame <id> <ATTR> "<description>" { }` | 小游戏（description 必填；body 用 `@if (rating.X)` 分支） |
 | `@choice { @option ... }` | 选择块 |
-| `@option <ID> brave "<text>" { check {} @on success {} @on fail {} }` | 勇敢选项 |
+| `@option <ID> brave "<text>" { check {} @if (check.success) {} @else {} }` | 勇敢选项（check 分支用 `@if (check.success)` 树，v2.4） |
 | `@option <ID> safe "<text>" { }` | 安全选项 |
+
+**v2.4 改动**：
+- `@on` 关键字彻底移除。brave option 用 `@if (check.success) { } @else { }`；minigame 用 `@if (rating.<grade>) { } @else @if (...) { }`
+- `check.success` / `check.fail` 是 brave option 体内合法的 context-local 条件，`rating.<grade>` 是 minigame 体内合法
+- `@minigame` 第三位参数是英文短描述（必填），给下游视觉管线用
 
 ### 状态变更
 | 指令 | 说明 |
 |------|------|
 | `@affection <char> +/-N` | 好感度 |
-| `@signal <kind> <event>` | 事件信号。`kind=mark` = 持久布尔标记（可被 `@if (NAME)` 查询）；`kind=achievement` = 触发已声明的成就 |
+| `@signal <kind> <event>` | 事件信号。当前仅 `kind=mark` 实现（持久布尔标记，可被 `@if (NAME)` 查询）。kind 词元保留以便未来扩展 |
 | `@butterfly "<desc>"` | 蝴蝶效应记录 |
-| `@achievement <id> { name/rarity/description/when }` | 成就声明（集顶层） |
+| `@achievement <id> { name / rarity / description }` | 成就**声明块**（集顶层，v2.4 移除 `when`） |
+| `@achievement <id>` | 成就**触发**（裸指令，通常包裹在 `@if (...) { @achievement <id> }` 里） |
 
-**Signal kind 二分**：旧的 `@signal EVENT`（无 kind）已禁用。`mark` 用于剧情状态（flag），`achievement` 用于外发通知（不可 `@if` 查询）。JSON 输出中每个 signal 步骤都带 `"kind"` 字段。
+**Signal kind**：`@signal <kind> <event>` 语法中 kind 必写。v2.4 只实现 `mark` 一种——用于持久布尔标记，通过 `@if (NAME)` 查询。**成就触发不再是 signal kind**，改用独立的 `@achievement <id>` 裸指令。JSON 输出中每个 signal 步骤都带 `"kind":"mark"` 字段；未知 kind 引擎应向前兼容（忽略 + 日志）。
 
-**Achievement 成就块**（字段对齐 [cdotlock/story-achievement-generator](https://github.com/cdotlock/story-achievement-generator) skill 输出）：
+**Achievement 声明 + 触发（v2.4 拆分）**（字段对齐 [cdotlock/story-achievement-generator](https://github.com/cdotlock/story-achievement-generator) skill 输出）：
 
 ```
+// 声明——挂在 episode 顶层，只讲元数据
 @achievement HIGH_HEEL_DOUBLE_KILL {
-  name: "【高跟鞋双杀】"
+  name: "Heel Twice Over"
   rarity: epic
-  description: "用高跟鞋当武器，一次是即兴，两次是签名招式。"
-  when: (HIGH_HEEL_EP05 && HIGH_HEEL_EP24)
+  description: "Once is improvisation. Twice is a signature move."
+}
+
+// 触发——挂在剧情某个点，引擎收到后走成就系统
+@if (HIGH_HEEL_EP05 && HIGH_HEEL_EP24) {
+  @achievement HIGH_HEEL_DOUBLE_KILL
 }
 ```
 
 - `rarity` 必须为 `uncommon` / `rare` / `epic` / `legendary`——**禁用 `common`**
-- `when` 使用与 `@if` 完全相同的结构化条件 AST，通常引用若干 `mark`（跨集 arc）
-- 两种触发路径：**声明式**（引擎监听 marks，满足 `when` 即解锁，推荐）/ **命令式**（`@signal achievement <id>` 直接触发，跳过 `when` 求值）
-- 每集 `@achievement` ID 不可重复；JSON 顶层输出 `achievements` 数组（无成就时为 `[]`）
+- 声明只含 `name` / `rarity` / `description` 三个字段——v2.4 移除 `when`。触发时机由脚本里的 `@achievement <id>` 裸指令决定（通常包裹在 `@if` 里做条件守卫）
+- 引擎侧简化：不再需要 mark watcher + 自动 when 求值，被动响应 `{"type":"achievement","id":X}` step 即可
+- 每集 `@achievement` ID 不可重复；JSON 顶层 `achievements` 数组（无成就时为 `[]`）；触发 step JSON 形态：`{"type":"achievement","id":"HIGH_HEEL_DOUBLE_KILL"}`
 
 ### 流程控制
 ```
@@ -142,17 +159,23 @@ YOU: He hasn't called me that in eight years.
 }
 ```
 
-**条件类型（5 种，全部编译为结构化 AST——后端消费 JSON 时直接遍历，无需再次解析表达式字符串）**：
+**条件类型（v2.4 共 7 种，全部编译为结构化 AST——后端消费 JSON 时直接遍历，无需再次解析表达式字符串）**：
 
-| 类型 | 语法 | AST 输出 |
-|------|------|--------|
-| flag | `SIGNAL_NAME` | `{type:"flag", name}` |
-| comparison | `affection.<char> op N` / `<name> op N` | `{type:"comparison", left:{kind,char/name}, op, right}` |
-| compound | `<expr> && <expr>` / `<expr> \|\| <expr>` | `{type:"compound", op, left, right}`（递归嵌套） |
-| choice | `OPTION.result` | `{type:"choice", option, result}` — result: success/fail/any |
-| influence | `influence "desc"` 或 `"desc"` | `{type:"influence", description}` |
+| 类型 | 语法 | AST 输出 | 作用域 |
+|------|------|--------|-------|
+| flag | `SIGNAL_NAME` | `{type:"flag", name}` | 任意 |
+| comparison | `affection.<char> op N` / `<name> op N` | `{type:"comparison", left:{kind,char/name}, op, right}` | 任意 |
+| compound | `<expr> && <expr>` / `<expr> \|\| <expr>` | `{type:"compound", op, left, right}`（递归嵌套） | 任意 |
+| choice | `OPTION.result` | `{type:"choice", option, result}` — result: success/fail/any | 任意（回顾性） |
+| influence | `influence "desc"` 或 `"desc"` | `{type:"influence", description}` | 任意 |
+| check | `check.success` / `check.fail` | `{type:"check", result}` | **仅 brave option 体内** |
+| rating | `rating.<grade>` | `{type:"rating", grade}` | **仅 `@minigame` 体内** |
 
 比较右侧必须是整数字面量。`left.kind` 为 `"affection"`（附带 `char`）或 `"value"`（附带 `name`）。复合条件的 `left`/`right` 是递归条件对象，不是字符串。
+
+**check vs choice 区别**：`check.success` 回答"当前这个 brave option 的检定成了吗"（context-local），`A.success` 回答"玩家在选项 A 上历史上选过且成了吗"（回顾性）。两者在 JSON AST 里是完全不同的类型。
+
+**context-local 作用域**：`check` / `rating` 条件只在各自作用域内有效；作用域外求值运行时恒为 false（不是语法错）——作者写错位置是剧情 bug，validator 不做检查。
 
 ## Gate 路由
 
