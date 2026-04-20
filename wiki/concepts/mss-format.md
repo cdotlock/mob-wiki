@@ -6,7 +6,7 @@ created: 2026-04-15
 updated: 2026-04-20
 ---
 
-MoonShort Script（MSS）是 MobAI 互动视觉小说的脚本标记语言。一个 `.md` 文件描述一集的全部内容——场景、角色、对话、音频、D20 检定、小游戏、分支路由——由 Go 解释器编译为 JSON 供前端播放器消费。当前版本：**v2.4**。
+MoonShort Script（MSS）是 MobAI 互动视觉小说的脚本标记语言。一个 `.md` 文件描述一集的全部内容——场景、角色、对话、音频、D20 检定、小游戏、分支路由——由 Go 解释器编译为 JSON 供前端播放器消费。
 
 解释器实体信息见 [[entities/moonshort-script]]。
 
@@ -69,13 +69,13 @@ YOU: He hasn't called me that in eight years.
 | `@<char> move to <pos>` | 角色移位 |
 | `@<char> bubble <type>` | 气泡动画 |
 | `@bg set <name> [trans]` | 切背景 |
-| `@cg show <name> [trans] { duration: ... content: "..." ... }` | CG 展示块，`duration` + `content` 必填（v2.4） |
+| `@cg show <name> [trans] { duration: ... content: "..." ... }` | CG 展示块，`duration` + `content` 必填 |
 
 **位置**：`left` `center` `right` `left_far` `right_far`
 **过渡**：`fade` `cut` `slow` `dissolve`（不写 = 默认）
 **气泡**：`anger` `sweat` `heart` `question` `exclaim` `idea` `music` `doom` `ellipsis`
 
-**CG 字段（v2.4 新增且必填）**：CG 下游由 agent-forge 渲染为短视频，script 必须带镜头 + 情节描述：
+**CG 字段（必填）**：CG 下游由 agent-forge 渲染为短视频，script 必须带镜头 + 情节描述：
 
 - `duration:` — 档位 `low` / `medium` / `high`（不写秒数）
 - `content:` — 英文连续叙述，讲清楚镜头怎么走、画面强调什么
@@ -108,11 +108,10 @@ YOU: He hasn't called me that in eight years.
 |------|------|
 | `@minigame <id> <ATTR> "<description>" { }` | 小游戏（description 必填；body 用 `@if (rating.X)` 分支） |
 | `@choice { @option ... }` | 选择块 |
-| `@option <ID> brave "<text>" { check {} @if (check.success) {} @else {} }` | 勇敢选项（check 分支用 `@if (check.success)` 树，v2.4） |
+| `@option <ID> brave "<text>" { check {} @if (check.success) {} @else {} }` | 勇敢选项（check 分支用 `@if (check.success)` 树） |
 | `@option <ID> safe "<text>" { }` | 安全选项 |
 
-**v2.4 改动**：
-- `@on` 关键字彻底移除。brave option 用 `@if (check.success) { } @else { }`；minigame 用 `@if (rating.<grade>) { } @else @if (...) { }`
+- brave option 的成功/失败分支用 `@if (check.success) { } @else { }`；minigame 的评级分支用 `@if (rating.<grade>) { } @else @if (...) { }`
 - `check.success` / `check.fail` 是 brave option 体内合法的 context-local 条件，`rating.<grade>` 是 minigame 体内合法
 - `@minigame` 第三位参数是英文短描述（必填），给下游视觉管线用
 
@@ -122,31 +121,26 @@ YOU: He hasn't called me that in eight years.
 | `@affection <char> +/-N` | 好感度 |
 | `@signal <kind> <event>` | 事件信号。当前仅 `kind=mark` 实现（持久布尔标记，可被 `@if (NAME)` 查询）。kind 词元保留以便未来扩展 |
 | `@butterfly "<desc>"` | 蝴蝶效应记录 |
-| `@achievement <id> { name / rarity / description }` | 成就**声明块**（集顶层，v2.4 移除 `when`） |
-| `@achievement <id>` | 成就**触发**（裸指令，通常包裹在 `@if (...) { @achievement <id> }` 里） |
+| `@achievement <id> { name / rarity / description }` | 成就解锁（块内携带完整元数据，执行到该节点就是解锁时机） |
 
-**Signal kind**：`@signal <kind> <event>` 语法中 kind 必写。v2.4 只实现 `mark` 一种——用于持久布尔标记，通过 `@if (NAME)` 查询。**成就触发不再是 signal kind**，改用独立的 `@achievement <id>` 裸指令。JSON 输出中每个 signal 步骤都带 `"kind":"mark"` 字段；未知 kind 引擎应向前兼容（忽略 + 日志）。
+**Signal kind**：`@signal <kind> <event>` 语法中 kind 必写。当前只实现 `mark`——用于持久布尔标记，通过 `@if (NAME)` 查询。JSON 输出中每个 signal 步骤都带 `"kind":"mark"` 字段；未知 kind 引擎应向前兼容（忽略 + 日志）。
 
-**Achievement 声明 + 触发（v2.4 拆分）**（字段对齐 [cdotlock/story-achievement-generator](https://github.com/cdotlock/story-achievement-generator) skill 输出）：
+**Achievement**：一条指令、一种形态——`@achievement <id> { ... }` 块既是元数据也是触发点。条件触发用外层 `@if` 包：
 
 ```
-// 声明——挂在 episode 顶层，只讲元数据
-@achievement HIGH_HEEL_DOUBLE_KILL {
-  name: "Heel Twice Over"
-  rarity: epic
-  description: "Once is improvisation. Twice is a signature move."
-}
-
-// 触发——挂在剧情某个点，引擎收到后走成就系统
 @if (HIGH_HEEL_EP05 && HIGH_HEEL_EP24) {
-  @achievement HIGH_HEEL_DOUBLE_KILL
+  @achievement HIGH_HEEL_DOUBLE_KILL {
+    name: "Heel Twice Over"
+    rarity: epic
+    description: "Once is improvisation. Twice is a signature move."
+  }
 }
 ```
 
 - `rarity` 必须为 `uncommon` / `rare` / `epic` / `legendary`——**禁用 `common`**
-- 声明只含 `name` / `rarity` / `description` 三个字段——v2.4 移除 `when`。触发时机由脚本里的 `@achievement <id>` 裸指令决定（通常包裹在 `@if` 里做条件守卫）
-- 引擎侧简化：不再需要 mark watcher + 自动 when 求值，被动响应 `{"type":"achievement","id":X}` step 即可
-- 每集 `@achievement` ID 不可重复；JSON 顶层 `achievements` 数组（无成就时为 `[]`）；触发 step JSON 形态：`{"type":"achievement","id":"HIGH_HEEL_DOUBLE_KILL"}`
+- 三个字段 `name` / `rarity` / `description` 都必填；裸 `@achievement <id>` 无块是 parse error
+- 同一 id 从多个剧情点触发是合法的——引擎按 id 在 unlock 时去重
+- JSON 输出形态：`{"type":"achievement","id":"...","name":"...","rarity":"...","description":"..."}`（step 自带元数据，JSON 顶层**不**再有独立的 `achievements` 数组）
 
 ### 流程控制
 ```
@@ -159,7 +153,7 @@ YOU: He hasn't called me that in eight years.
 }
 ```
 
-**条件类型（v2.4 共 7 种，全部编译为结构化 AST——后端消费 JSON 时直接遍历，无需再次解析表达式字符串）**：
+**条件类型（共 7 种，全部编译为结构化 AST——后端消费 JSON 时直接遍历，无需再次解析表达式字符串）**：
 
 | 类型 | 语法 | AST 输出 | 作用域 |
 |------|------|--------|-------|
