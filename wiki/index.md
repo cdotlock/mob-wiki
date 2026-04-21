@@ -44,3 +44,4 @@ Welcome to the team knowledge base.
 - [[syntheses/cloud-deployment-architecture]] — How Moonshort transitions from local to distributed cloud deployment
 - [[syntheses/platform-onboarding-guide]] — MobAI 平台全景指南（游戏设计、数值系统、技术架构）
 - [[syntheses/product-strategy-decisions]] — 产品战略决策记录（为什么这样做而不是那样做）
+- [[syntheses/render-time-silent-drop-failure-class]] — VN Pipeline v4.1-v4.5 同构族（branch-architect + episode-writer 的"schema 正确 + render 丢规则"反复 bug 及四件套沉淀模式，含 v4.4/v4.5 结构对偶：first-contact vs last-contact agency）
