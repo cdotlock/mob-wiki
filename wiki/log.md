@@ -35,3 +35,4 @@ title: Operation Log
 [2026-04-23 22:50] UPDATE: index.md — Added concepts/novel-game-config (total: 7 entities, 6 concepts, 3 syntheses, 1 plan)
 [2026-04-24 00:00] INGEST: 2026-04-23-signal-int-backend-design.md
 [2026-04-24 00:00] CREATE: concepts/signal-int-backend — MSS @signal int 后台支持（schema/eval/executor/admin 面板）
+[2026-04-24 00:30] UPDATE: concepts/signal-int-backend — drop admin panel / cheat endpoint sections (reverted in backend); rewrite as "zero HTTP entrypoint" principle with pivot record

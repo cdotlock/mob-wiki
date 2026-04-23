@@ -8,7 +8,17 @@ updated: 2026-04-24
 
 # Backend Support for MSS `@signal int`
 
-`@signal int` 是 MSS（MoonShort Script）在 2026-04-23 引入的第二种 `kind`——让剧本作者可以自由命名跨集持久的整数变量（计数器 / 阈值），例如"被 Easton 拒绝 3 次走 bad end"、"N 选 M 触发隐藏剧情"。本页描述 moonshort-backend 如何加载、持久化、求值、并通过管理面板维护这些变量。
+`@signal int` 是 MSS（MoonShort Script）在 2026-04-23 引入的第二种 `kind`——让剧本作者可以自由命名跨集持久的整数变量（计数器 / 阈值），例如"被 Easton 拒绝 3 次走 bad end"、"N 选 M 触发隐藏剧情"。本页描述 moonshort-backend 如何加载、持久化、求值这些作者变量。
+
+## 核心设计原则：零人工介入
+
+`@signal int` 是**纯脚本驱动机制**：
+
+- **唯一写入路径**：MSS 指令经 walker → signal-executor → `writeInt`
+- **唯一读取路径**：玩家推进到 `@if (name cmp N)` 时 `evalComparison` 从 `ctx.userInts` 取值
+- **排查手段**：Postgres 直查 + `writeInt` 的保留名 warn 日志
+
+后台**不暴露任何 HTTP 入口**去修改或读取作者变量（既不做 admin panel，也不做 cheat endpoint）。开 HTTP 入口会把 intSignals 框架成"被管理状态"，破坏"作者指令 → 引擎存 → @if 读"的契约。QA 想测阈值分支应该改脚本 fixture 或临时调 op 值，而不是开后门。
 
 MSS 侧实现细节（lexer / parser / validator / emitter）见 [[concepts/mss-format]]；本页聚焦后台侧的契约与实现。
 
@@ -253,68 +263,17 @@ const nextSessionState: SessionRow = {
 
 `+/-` 操作**不幂等**——每次 replay 都会再累加。复用已有"synthetic replay 抑制 state effect 下发"通道（最近 commit `fix(play): suppress checkpoint enqueue during synthetic replay`），确保 replay 时不触发 writeInt。`=` 天然幂等，无论 replay 多少次结果一致。
 
-## 管理面板 `/admin/sessions`
 
-### 列表页
+## 为什么不做 admin / cheat 入口
 
-`GET /api/admin/sessions?novelId=&userId=&status=&q=&limit=` —— admin cookie 鉴权。
+2026-04-24 期间曾短暂落地了 `/admin/sessions` 面板 + `POST /api/admin/cheat/set-int-signal` + `GET /api/admin/cheat/status` 的 `intSignals` 回显，随后整体 revert（backend commits `833c2e8` / `4379be9` / `596aa02`），重新立为"零 HTTP 入口"原则。理由：
 
-筛选参数：
-- `novelId`：按小说过滤。
-- `userId`：按玩家过滤。
-- `status`：白名单 `Active / Paused / Dead / Complete / to_be_continued`；非白名单值被忽略。
-- `q`：`id` / `saveName` 模糊搜索（不区分大小写）。
-- `limit`：默认 50，最大 200。
+- **契约本质**：`@signal int` 的行为是"作者写 MSS 指令 → 引擎在玩家推进时执行 → `@if` 读取"，整条链路零人工介入是设计属性，不是遗漏。
+- **admin panel 的心理模型错位**：呈现成"可查看 / 可编辑的 session 状态"会让 admin / 客服误以为应该盯着这些值 + 按需调整——可 intSignals 不是被管理状态，是剧本执行的中间产物。错误心理模型比没 UI 更糟。
+- **cheat endpoint 是伪装的后门**：看起来只给 QA 跳阈值，实际是"任何 int 变量可被外部直接覆盖"的口子，和脚本驱动原则冲突。QA 想测分支应该改脚本 fixture 或临时调 op 值，不该开这个口。
+- **mark signals 连带问题**：顺手做的 mark 编辑接口更危险——marks 绑定 Path A 成就重评，直接 PATCH 数组不跑 Path A 会造成状态不一致。
 
-返回每行：`id / userId / novelId / novelTitle / saveName / status / currentEpisodeId / language / startedAt / lastActiveAt`。按 `lastActiveAt desc` 排序。
-
-UI：`app/admin/sessions/page.tsx`——顶部搜索 + 状态下拉 + novelId 输入；卡片展示 saveName、小说标题、当前集、status chip、相对时间（"5m 前"）。
-
-### 详情页
-
-`GET /api/admin/sessions/[id]` —— 返回 session 的完整内部状态：identity（user/novel/语言/时间戳）、position（cursor/episode）、numerics（SAN+max/4 个 checking/xp/level）、state（affection/signals/intSignals/butterflies/choiceHistory/resolvedInfluences），附带 `gameConfig` 和 `attributes`（通过 `attrsFromSession` 按 mssKey 重建）。
-
-UI：`app/admin/sessions/[id]/page.tsx`——6 张 card：
-
-1. **Identity**（只读）：user / novel / 语言 / cursor / 时间戳。支持复制 id。
-2. **游戏数值**（只读）：按 `gameConfig.variables.continuous.label` 和每个 `checking.label` 展示 `mssKey` 和当前值。改值走 cheat endpoint `set-attr`。
-3. **作者变量 (@signal int)**（可编辑）——**核心管理面**：
-   - 每个变量一行：`name = value`，hover 显示 `-1 / +1 / 改 / 删除` 按钮。
-   - 底部表单：输入 `name` + `value` 新增。客户端校验 snake_case + 引擎保留名。
-   - 所有写入调 `PATCH /api/admin/sessions/[id]/int-signal` `{ op: "set" | "delete", name, value? }`。
-4. **Mark signals**（可编辑）：chip 列表（点击删除需确认）+ 底部新增表单。调 `PATCH /api/admin/sessions/[id]/signal` `{ op: "add" | "remove", event }`。`add` 幂等（重复 add 相同 event 返回成功但不变）。
-5. **Affection**（只读）：chip 列表展示 `character: value`。
-6. **最近选择**（只读）：展示 `choiceHistory` 最后 10 条，含 `episodeId / optionId / result(success|fail|null)`。
-
-### 鉴权
-
-两套鉴权并存，**不互相替代**：
-
-- `/api/admin/sessions/*` —— `requireAdmin` cookie（password-based），面板专用。
-- `/api/admin/cheat/*` —— `guardCheat` Bearer token（env-gated），命令行 / 脚本 / CI 用。
-
-两者的数据逻辑（保留名防御、幂等规则）在 `int-signal-service.ts` / 两套 endpoint 里各自实现，内部一致。未来可抽共享 helper。
-
-### 写入范围取舍
-
-管理面板**只开两种写入**：
-
-- **intSignals（set/delete）**：用户核心诉求，配备完整 CRUD UI。
-- **mark signals（add/remove）**：顺手做，代码量接近零。
-
-**不开**的写入（继续留在 cheat endpoint）：
-- SAN / attributes 改值（`set-attr`）——误改直接破坏游戏平衡。
-- 跳 cursor（`jump-cursor`）——需要理解剧本结构，命令行更安全。
-- 解锁成就（`unlock-achievement`）——需要知道 achievementKey，面板里无 autocomplete。
-- 清 influence cache（`clear-influence-cache`）——调试特定场景用。
-
-这个取舍来自"简单、优美、高效"原则：管理面板聚焦最高频需求，低频操作留命令行。
-
-## Cheat endpoint
-
-`POST /api/admin/cheat/set-int-signal` —— Bearer-token 路径版本。Body `{ sessionId, name, value }`，直接覆盖 `session.intSignals[name]`（等效 `op="="`）。保留名检测与 admin endpoint 完全一致（从 `session.novel.gameConfig` 派生 reserved 集合）。
-
-`GET /api/admin/cheat/status` 的返回体新增 `intSignals` 字段，供命令行检视当前值。
+排查时的做法：Postgres 直查 `Session.intSignals`，以及利用 `writeInt` 保留名撞击时 console 里留的 warn 行。
 
 ## 测试覆盖
 
@@ -324,17 +283,14 @@ UI：`app/admin/sessions/[id]/page.tsx`——6 张 card：
 | `__tests__/core/condition-signal-int.test.ts` | evalComparison engine-vs-user 派发；混合 ctx；负值；保留名 engine 严格 + user 宽松 | 8 |
 | `__tests__/services/achievement/int-signal-service.test.ts` | writeInt `=/+/-`；首次从 0 起步；累加；保留名 warn-skip；evalCtx 同步 | 10 |
 | `__tests__/integration/signal-int-e2e.test.ts` | schema → walker → writeInt → condition 全链路；跨批次 cohesion | 7 |
-| `__tests__/api/admin/cheat/set-int-signal.test.ts` | cheat endpoint 成功 / 覆盖 / 负值 / 保留名 / session 不存在 / 非法形态 | 8 |
-| `__tests__/api/admin/sessions.test.ts` | admin 4 endpoints 的 happy/error paths | 19 |
 
-合计 67 新测试；backend 总测 207 passed / 3 skipped。
+合计 40 新测试；backend 总测 180 passed / 3 skipped。
 
 ## 已知非目标 / 未来扩展
 
 - **Novel-scan 白名单**：如果要杜绝作者读变量 typo 静默返 0，需扩展 `novel-config-scan-service` 收集每本小说用到的 `@signal int` 名字集合并在 condition eval 里校验。当前未实现。
 - **Path A 覆盖 int**：int 变化触发的成就目前靠下一次 mark / ending 重评。如果实测需要更低延迟，需引入 `reevaluateAfterInt` 或类似钩子。
 - **`@signal float` / `@signal string`**：MSS spec 留白但未实现；当前剧情机制不需要。
-- **Admin UI 低频写入**：SAN / cursor / achievement 等改值目前只在 cheat endpoint，未来如果 QA / 运营有高频诉求可迁移到面板，但需要重新评估误操作代价。
 
 ## 相关页面
 
