@@ -30,3 +30,6 @@ title: Operation Log
 [2026-04-15 19:00] CREATE: concepts/unfolded-visual-novel — Unfolded 风格展示形态（画布分层、叙事容器、素材管线）
 [2026-04-15 19:00] CREATE: plan.md — 团队行动计划（持续维护，产品/技术/运营三线）
 [2026-04-15 19:00] UPDATE: index.md — Added plan, 2 syntheses, 1 concept (total: 7 entities, 5 concepts, 3 syntheses, 1 plan)
+[2026-04-23 22:50] INGEST: raw/2026-04-23-novel-game-config-design.md (per-novel attribute system design, 5-phase migration landed on moonshort-backend main)
+[2026-04-23 22:50] CREATE: concepts/novel-game-config — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
+[2026-04-23 22:50] UPDATE: index.md — Added concepts/novel-game-config (total: 7 entities, 6 concepts, 3 syntheses, 1 plan)

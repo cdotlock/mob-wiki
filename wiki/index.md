@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-04-15
+updated: 2026-04-23
 ---
 
 # Mob-Wiki Index
@@ -16,6 +16,7 @@ Welcome to the team knowledge base.
 - [[concepts/cli-gateway-protocol]] — Unified HTTP protocol for remote CLI command execution
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
 - [[concepts/mss-format]] — MoonShort Script (MSS) 脚本标记语言完整规范
+- [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access
 - [[concepts/unfolded-visual-novel]] — Unfolded 风格互动视觉小说展示形态与素材管线
 
