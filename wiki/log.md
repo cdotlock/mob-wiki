@@ -33,3 +33,5 @@ title: Operation Log
 [2026-04-23 22:50] INGEST: raw/2026-04-23-novel-game-config-design.md (per-novel attribute system design, 5-phase migration landed on moonshort-backend main)
 [2026-04-23 22:50] CREATE: concepts/novel-game-config — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
 [2026-04-23 22:50] UPDATE: index.md — Added concepts/novel-game-config (total: 7 entities, 6 concepts, 3 syntheses, 1 plan)
+[2026-04-24 00:00] INGEST: 2026-04-23-signal-int-backend-design.md
+[2026-04-24 00:00] CREATE: concepts/signal-int-backend — MSS @signal int 后台支持（schema/eval/executor/admin 面板）
