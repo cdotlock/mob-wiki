@@ -1,9 +1,9 @@
 ---
 title: Moonshort Backend
 tags: [nextjs, game-engine, prisma, postgresql, stripe, interactive-fiction]
-sources: [raw/2026-04-14-mobai-agent-memory.md, raw/2026-04-14-cli-gateway-server-layer-design.md]
+sources: [raw/2026-04-14-mobai-agent-memory.md, raw/2026-04-14-cli-gateway-server-layer-design.md, docs/superpowers/specs/2026-04-24-remix-anywhere-design.md]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-25
 ---
 
 Next.js full-stack application serving as the game engine, story delivery platform, and admin dashboard for Moonshort interactive fiction games. Handles player state management, story node delivery from upstream, D20 dice combat, economy systems, survival mechanics, minigames, achievements, payments via Stripe, remix/branching via LLM, and NPC character chat. The primary backend that [[entities/moonshort-client]] connects to for all gameplay operations.
@@ -72,15 +72,18 @@ All API responses follow the envelope format:
 
 ### Remix Routes (`/api/remix/*`)
 
+**Remix Anywhere system (2026-04-24, active)** — 详见 [[concepts/remix-anywhere]]
+
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/remix/create` | Create a new remix session. Uses LLM to generate an alternative story branch from the current position. |
-| `GET` | `/api/remix/sessions` | List all remix sessions for the player |
-| `GET` | `/api/remix/sessions/:id` | Get remix session details with generated content |
-| `POST` | `/api/remix/publish` | Publish a remix branch as a community story |
-| `POST` | `/api/remix/enter-branch` | Enter a remix branch (switch player to the alternate storyline) |
-| `POST` | `/api/remix/exit-branch` | Exit a remix branch and return to the main storyline |
-| `GET` | `/api/remix/wild-list` | List published community remix branches ("wild" branches) |
+| `POST` | `/api/remix/submit` | 玩家长按对白或点角色立绘后提交 ≤50 字意图。Prescreen LLM 判 OOC + 选属性 + 发 DC；服务器预投骰决定胜负 |
+| `POST` | `/api/remix/commit` | 玩家确认后 finalize remix；短轮询 sync2 LLM 产出的 `InsertPatch`，扣 20 gems 并写入 `SessionPatch`；失败则 `failedRemixPoints` 永久锁定 |
+| `POST` | `/api/remix/drain-forward-plans` | 兜底：redispatch 卡住的 forward-plan 任务（玩家态限 remixId 范围，admin 态全局 drain） |
+| `GET`  | `/api/remix/session-patches` | `?sessionId&episodeId` → 该玩家该集累积的 `InsertPatch[]` |
+| `GET`  | `/api/remix/forward-plan-status` | `?remixId` → 3 个 forward-plan 任务的状态（queued/running/completed/failed） |
+
+**Legacy Drama Remix 相关端点**（M7 时期，冻结特性开发，仅 bug 修复）涉及
+`app/api/sessions/:id/drama-remixes/*` 下的整集生成工作流，走 dramatizer 上游。Drama Remix 和 Remix Anywhere 数据层互不干扰（outbox topic 命名空间分离：`drama-remix.*` / `assets-remix.*` vs `remix.sync2` / `remix.forward_plan`），但新功能应全部走 Remix Anywhere。
 
 ### Character Chat Routes (`/api/character-chat/*` and `/api/ccr/*`)
 
