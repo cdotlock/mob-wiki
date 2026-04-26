@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-04-25
+updated: 2026-04-27
 ---
 
 # Mob-Wiki Index
@@ -20,6 +20,7 @@ Welcome to the team knowledge base.
 - [[concepts/remix-anywhere]] — 玩家长按对白 → D20+DC → LLM 生成 InsertPatch 插入剧情（含 forward planner 跨集回响）
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access
 - [[concepts/signal-int-backend]] — Backend 如何加载、持久化、求值、管理 MSS 的 `@signal int` 作者变量
+- [[concepts/stable-step-id]] — 内容寻址 cursor：每个 MSS step 编译期带稳定 ID，splice/replace 对 cursor 透明
 - [[concepts/unfolded-visual-novel]] — Unfolded 风格互动视觉小说展示形态与素材管线
 
 ## Entities

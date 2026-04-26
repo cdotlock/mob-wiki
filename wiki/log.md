@@ -36,3 +36,6 @@ title: Operation Log
 [2026-04-24 00:00] INGEST: 2026-04-23-signal-int-backend-design.md
 [2026-04-24 00:00] CREATE: concepts/signal-int-backend — MSS @signal int 后台支持（schema/eval/executor/admin 面板）
 [2026-04-24 00:30] UPDATE: concepts/signal-int-backend — drop admin panel / cheat endpoint sections (reverted in backend); rewrite as "zero HTTP entrypoint" principle with pivot record
+[2026-04-27 02:00] INGEST: docs/superpowers/specs/2026-04-26-stable-step-id-design.md (one-shot cutover完成 across moonshort-script + moonshort-backend; dev DB migrated; 11/11 sessions walk via smoke)
+[2026-04-27 02:00] CREATE: concepts/stable-step-id — 内容寻址 cursor design + ID format + AchievementStep.id 改名 + migration approach
+[2026-04-27 02:00] UPDATE: index.md — registered concepts/stable-step-id (total: 7 entities, 9 concepts, 3 syntheses, 1 plan)

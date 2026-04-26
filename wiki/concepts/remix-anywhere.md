@@ -271,10 +271,12 @@ save-service.loadEpisodeFromSession(session)
   return { record, episode: patched, labelIndex }
 ```
 
-`applyPatches` 的 anchor 解析是 cursor-path 级（不是 MSS step.id —— MSS 没有 id 字段）：
-- `anchor.stepId = "5"` → 顶层第 5 步之后插入
-- `anchor.stepId = "5.then.3"` → 解析首段 `5` 作为顶层索引（嵌套位置 `then.3` 被丢弃，spec §7 规定 splice 仅在顶层操作）
-- 无效 anchor → 跳过 + `logEvent("warn", "remix.orphaned_patch")`
+`applyPatches` 的 anchor 解析按稳定 step ID（[[concepts/stable-step-id]] 2026-04-27 上线后）：
+- `anchor.stepId = "0021_dlg"` → 在 episode steps 中按 ID 查找该 step，在它之后插入
+- 嵌套定位（如 patch 在 choice option body 中）由 anchor 自身的 ID 路径表达：`anchor.stepId = "0021p0001p0001_char"`（patch on patch）等
+- 无效 anchor → 跳过 + `logEvent("warn", "remix.orphaned_patch")`（fail-fast：lookup miss 不再被错位掩盖）
+
+Patch payload 走两段 schema：LLM 写入的是 `IncomingPatchSchema`（id-less），apply-patches 在每次 apply 时用 `<anchorSeq>p<patchSeq>p<stepIdx>_<tag>` 格式确定性 mint 一次 → 输出符合 `InsertPatchSchema`。Patch step IDs 永不持久化在 `SessionPatch.patches[].steps[]` 上，每次 apply 重新 mint，避免 wire shape 与 runtime shape 互相污染。
 
 ## 用户心流（前端 state machine）
 
