@@ -3,7 +3,7 @@ title: MoonShort Script (MSS) 格式规范
 tags: [mss, script-format, visual-novel, specification]
 sources: []
 created: 2026-04-15
-updated: 2026-04-20
+updated: 2026-04-27
 ---
 
 MoonShort Script（MSS）是 MobAI 互动视觉小说的脚本标记语言。一个 `.md` 文件描述一集的全部内容——场景、角色、对话、音频、D20 检定、小游戏、分支路由——由 Go 解释器编译为 JSON 供前端播放器消费。
@@ -88,6 +88,92 @@ YOU: He hasn't called me that in eight years.
 | `CHARACTER [look]: text` | 对白 + 换表情 |
 | `NARRATOR: text` | 旁白 |
 | `YOU: text` | 内心独白 |
+
+### 角色键一致性（speaker ↔ asset key 1:1）
+
+**核心原则**：`<NAME>:` 说话人标签必须等于 `uppercase(asset_key)`，asset_key 来自 `mapping.json` `assets.characters`。MSS 解释器靠**大小写不敏感的单 token 相等**把 `MAURICIO:` 匹配到 `@mauricio`，所以标签必须是单一 `[A-Z_]+` token——**不能有点、空格、敬称**。
+
+| 错误 | 正确 | 原因 |
+|------|------|------|
+| `MRS. KING:` | `MRS_KING:` | `.` 和空格让 parser 把 `MRS.` 当成第一个 token，触发 `INVALID_TRANSITION`。asset_key 是 `mrs_king`。 |
+| `MR. THOMAS:` | `MR_THOMAS:` | 同上 |
+| `DR JONES:` | `DR_JONES:` | 内部空格违反 `[A-Z_]+`。asset_key 是 `dr_jones`。 |
+
+**前端显示名 ≠ 标签**：屏幕上看到的 "Mrs. King" 由引擎从角色 profile 读取（character.display_name 或 i18n 表），与脚本里的 `MRS_KING:` 标签是两回事。脚本只关心键，不关心呈现。
+
+**`@<char>` 同样规则**：`@<char> show|look|hide|bubble` 里的 char 必须存在于 `mapping.json` `assets.characters`。如果某个剧情节拍需要无立绘的角色（楼下喊人的妈、路过的群演、电话那头的声音），**不要发明 `@mama_reyes`**。三选一：
+
+1. `@sfx play <name>` — 如果有匹配音效（如 `mama_calls_dinner`）
+2. 纯 `NARRATOR:` 一行旁白（"楼下妈妈喊吃饭"）
+3. `@<onscreen_char> bubble exclaim` — 反应方的气泡，不是说话方的缺位立绘
+
+**审计 recipe**（写完一集跑这个，确保零 orphan）：
+
+```bash
+# 1. 列所有说话人标签
+awk '/^[[:space:]]*[A-Z][A-Z_. ]*:[[:space:]]/ {match($0,/^[[:space:]]*[A-Z][A-Z_. ]*:/); print substr($0,RSTART,RLENGTH)}' ep_NN.md | sort -u
+
+# 2. 列所有 @<char> 引用
+grep -oE '@[a-z_]+ (show|look|hide|bubble)' ep_NN.md | awk '{print $1}' | sort -u
+
+# 3. 取 mapping.json 的合法字符键
+jq -r '.assets.characters | keys[]' mss-build/mapping.json | sort
+
+# 三个集合相交：所有说话人标签的小写形式必须 ⊆ 字符键集合（除 NARRATOR/YOU），所有 @<char> 必须 ⊆ 字符键集合。
+```
+
+**真实 bug 史**（沉淀于 2026-04-27 no-rules VN-cut trial）：
+
+- `MRS. KING:` 在 EP3 出现 8 次 → MSS parser INVALID_TRANSITION → JSON 输出里 0 条 mrs_king dialogue → 前端跳过整段华夫饼厨房戏。修复：sed 替换为 `MRS_KING:`，重新编译，8 条 dialogue 节点全部 emit。
+- `@mama_reyes bubble exclaim / @mama_reyes hide` 在 EP1 结尾出现 → mapping.json 里没有 mama_reyes 字符键 → 编译时静默忽略（或渲染时抓不到 PNG 报 404）。修复：替换为 `@sfx play mama_calls_dinner`（mapping.json 里已有的 sfx）。
+
+### 角色入场必须显式（`@bg set` 清空 → 必须 `@<char> show`）
+
+**核心原则**：MSS 玩家引擎在每次 `bg` step 都做硬清舞台 — 三个角色槽 `charLeft / charCenter / charRight` 一并归零。`@<char> look <pose>` 在角色不在台上时是 **no-op**（不会自动 show）。「单可见槽」渲染规则又让 active speaker 的槽优先显示，找不到 speaker 才退化到「最近 epoch」槽。三条规则叠起来，得到一条强约束：
+
+> **每个 scene 里凡是要说话的角色，都必须在该 scene 里被 `@<char> show <look> at <pos>` 过一次，然后才能讲第一句台词。**
+
+不遵守这条规则的可见症状：bubble 标签写着说话人 A，画面上的立绘却是 B（A 从未在本场景被 `show`，引擎退化到 B 这个最近被 `show` 的槽）。
+
+**正确写法**：
+
+```mss
+@bg set school_parking_lot dissolve   # 清空所有 3 个槽
+@malia show red_lipstick_armored_senior at center   # ✓ 协议人入场
+@josie show half_smile_smug at left                 # ✓ 对手入场
+NARRATOR: Josie 靠在铁丝网边等着。
+JOSIE: 九月份穿高领。我最好的朋友,懦夫一个。
+MALIA: 我最好的朋友,暴露狂一个。   # ✓ 已经在台上,bubble + sprite 同步
+```
+
+**错误写法**：
+
+```mss
+@bg set school_parking_lot dissolve   # 清空
+@josie show half_smile_smug at left   # Josie 入场
+@malia look red_lipstick_armored_senior   # ✗ malia 不在台上,no-op
+JOSIE: ...
+MALIA: 我最好的朋友,暴露狂一个。   # ✗ bubble 说 malia,画面上只有 josie
+```
+
+**`@<char> look` 的真正用途**：在已经 `show` 过的角色身上**改表情**。比如 `MALIA` 已经在台上的 `red_lipstick_armored_senior` 立绘，剧情中她皱了一下眉，可以 `@malia look red_lipstick_half_cracked_after_school` 切到另一张同角色立绘。它不能代替 `@<char> show`。
+
+**协议人不豁免**：哪怕脚本里 MC 是 protagonist（no-rules 里是 `@malia`），写作直觉上"她当然在场"，引擎也照样需要每个 scene 都 `@malia show ... at <pos>`。
+
+**审计 recipe**：
+
+```bash
+# 跑自动 fixer 的 dry-run,列出所有 offstage speaker + orphan look
+python3 tools/fix_offstage_speakers.py            # 只打印计划
+python3 tools/fix_offstage_speakers.py --apply    # 自动在每个 @bg set 之后插入缺失的 @<char> show
+```
+
+fixer 算法：每个 scene（`@bg set` 分隔），收集 (a) 所有有 `<CHAR>: ...` dialogue 的角色，(b) 所有有 `@<char> look` 但前面没 `@<char> show` 的角色。两类都要补一行 `@<char> show <last_known_look> at <pos>`，位置启发：每个角色有偏好槽（malia=center / easton=left / mauricio=left / josie=left / mark=left / ...），冲突时退到空槽。
+
+**真实 bug 史**：
+
+- 2026-04-27：no-rules-vn-zh EP1 s04 parking lot 看到「bubble: malia / sprite: josie」错配。挖到根因：脚本只 `@josie show ... at left` 然后 `@malia look ...`（orphan）。引擎把 josie 当成 fallback。修复：在 `@bg set` 后立刻补 `@malia show red_lipstick_armored_senior at center`，josie 仍在 left。zh EP1-3 共 30 个 orphan look + 186 个 offstage dialogue 一次性扫清。
+- 同 bug 同时存在于 en EP1-3（结构相同的脚本）。后续按 user 指示决定是否修。
 
 ### 音频
 | 指令 | 说明 |
