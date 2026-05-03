@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-04-27
+updated: 2026-05-03
 ---
 
 # Mob-Wiki Index
@@ -14,6 +14,7 @@ Welcome to the team knowledge base.
 ## Concepts
 
 - [[concepts/cli-gateway-protocol]] — Unified HTTP protocol for remote CLI command execution
+- [[concepts/dreaming-universe]] — 玩家画像触发的共享 Dream 支线宇宙：Episode graph + assignment-gated overlay + Python dream-agent
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
 - [[concepts/mss-format]] — MoonShort Script (MSS) 脚本标记语言完整规范
 - [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
@@ -28,10 +29,13 @@ Welcome to the team knowledge base.
 - [[entities/agent-forge]] — Next.js video production platform with 48 MCP tools
 - [[entities/cli-gateway]] — Lightweight HTTP microservice for remote CLI execution (deployed per-service)
 - [[entities/dramatizer]] — Go binary for novel-to-screenplay conversion (15-stage LLM pipeline)
+- [[entities/dramatizer-mss]] — Novels-to-Moonscript skill workflow for MSS writing, route planning, and visual asset production
+- [[entities/mob-sandbox-ops]] — Self-hosted Daytona/OpenHands/Claude Code sandbox platform and operator runbook
 - [[entities/mobai-agent]] — Master AI agent orchestrator for the Moonshort platform
 - [[entities/moonshort-backend]] — Next.js game engine, admin dashboard, 85+ API routes
 - [[entities/moonshort-client]] — Cocos Creator game frontend with headless testing
 - [[entities/moonshort-script]] — MSS interpreter: Go binary compiling .md scripts to player-ready JSON
+- [[entities/video-agent-claude-wangbo]] — Claude Code video shot prompt workflow with Seedance gateway, OSS validation, and ablation-backed skill package
 
 ## Syntheses
 

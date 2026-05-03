@@ -39,3 +39,9 @@ title: Operation Log
 [2026-04-27 02:00] INGEST: docs/superpowers/specs/2026-04-26-stable-step-id-design.md (one-shot cutover完成 across moonshort-script + moonshort-backend; dev DB migrated; 11/11 sessions walk via smoke)
 [2026-04-27 02:00] CREATE: concepts/stable-step-id — 内容寻址 cursor design + ID format + AchievementStep.id 改名 + migration approach
 [2026-04-27 02:00] UPDATE: index.md — registered concepts/stable-step-id (total: 7 entities, 9 concepts, 3 syntheses, 1 plan)
+[2026-05-03 16:03] CREATE: entities/video-agent-claude-wangbo — 视频分镜 prompt skill、Seedance gateway、OSS URL 验证、消融实验结论
+[2026-05-03 16:03] CREATE: concepts/dreaming-universe — Dream 共享支线宇宙、Episode graph + entry overlay、Python dream-agent 当前架构
+[2026-05-03 16:03] CREATE: entities/dramatizer-mss — novels-to-moonscript 技能流水线、MSS 写作、Sprite Canonical C' 与 wardrobe canonicalization
+[2026-05-03 16:03] UPDATE: entities/moonshort-backend — add Dreaming Universe backend services, internal APIs, env vars, and current persistence gap
+[2026-05-03 16:03] UPDATE: entities/mob-sandbox-ops — sync TUI/OpenHands/operator lessons and replace plaintext-secret runbook style with .env references
+[2026-05-03 16:03] UPDATE: index.md — register Dreaming Universe, Dramatizer-MSS, mob-sandbox ops, and video agent pages

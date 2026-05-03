@@ -3,10 +3,10 @@ title: Moonshort Backend
 tags: [nextjs, game-engine, prisma, postgresql, stripe, interactive-fiction]
 sources: [raw/2026-04-14-mobai-agent-memory.md, raw/2026-04-14-cli-gateway-server-layer-design.md, docs/superpowers/specs/2026-04-24-remix-anywhere-design.md]
 created: 2026-04-14
-updated: 2026-04-25
+updated: 2026-05-03
 ---
 
-Next.js full-stack application serving as the game engine, story delivery platform, and admin dashboard for Moonshort interactive fiction games. Handles player state management, story node delivery from upstream, D20 dice combat, economy systems, survival mechanics, minigames, achievements, payments via Stripe, remix/branching via LLM, and NPC character chat. The primary backend that [[entities/moonshort-client]] connects to for all gameplay operations.
+Next.js full-stack application serving as the game engine, story delivery platform, admin dashboard, Remix runtime, and Dreaming Universe backend for Moonshort interactive fiction games. Handles player state management, story node delivery from upstream, D20 dice combat, economy systems, survival mechanics, minigames, achievements, payments via Stripe, remix/branching via LLM, Dream production/recommendation plumbing, and NPC character chat. The primary backend that [[entities/moonshort-client]] connects to for all gameplay operations.
 
 ## Tech Stack
 
@@ -84,6 +84,52 @@ All API responses follow the envelope format:
 
 **Legacy Drama Remix 相关端点**（M7 时期，冻结特性开发，仅 bug 修复）涉及
 `app/api/sessions/:id/drama-remixes/*` 下的整集生成工作流，走 dramatizer 上游。Drama Remix 和 Remix Anywhere 数据层互不干扰（outbox topic 命名空间分离：`drama-remix.*` / `assets-remix.*` vs `remix.sync2` / `remix.forward_plan`），但新功能应全部走 Remix Anywhere。
+
+### Dreaming Universe Routes and Services
+
+**Dreaming Universe system (2026-05-02, active development)** — 详见 [[concepts/dreaming-universe]].
+
+Dreaming Universe turns accumulated player remix and play signals into complete hidden episode branches called Dreams. The backend owns player-path safety, episode storage, queue dispatch, internal APIs, admin inspection, metrics, and the TypeScript client that calls the Python `dream-agent` service. The system deliberately keeps generated Dream bodies as normal `Episode` rows and exposes them through assignment-gated source episode overlays.
+
+Current backend components:
+
+| Component | Path | Responsibility |
+|---|---|---|
+| Dream service DB schema | `services/dream/prisma/schema.prisma` | Owns `Dream`, `DreamAssignment`, `DreamEvent`, `UserNovelProfile`, `DreamProductionJob`, and `DreamPreheatCache`. |
+| Production repository | `services/dream/production/` | Reads and updates Dream production jobs, metrics, and job artifacts. |
+| Queue dispatch | `app/services/queue-processor-service.ts` | Handles `dream.production.agent-loop`; requires `DREAM_PRODUCTION_BACKEND=python` after the Node agent retirement. |
+| Python client | `app/upstream/dream-agent-client.ts` | Calls `POST /jobs/run` on `services/dream-agent`; uses a long-lived undici Agent so long LLM runs do not hit a 5-minute default abort. |
+| Internal API client for agent | `services/dream-agent/src/dream_agent/backend_client.py` | Python-side client for backend internal endpoints. |
+| Preheat workflow | `app/services/dream-preheat/` | Builds and caches source context bundles for large novels. |
+| Player Dream UI | `app/(player)/play/[sessionId]/components/DreamEntryCard.tsx`, `DreamCompletionCard.tsx`, `DreamBadge.tsx` | Shows Dream entry/completion surfaces inside gameplay. |
+| Collection UI | `app/(player)/me/dreams/page.tsx` | Shows a player's Dream collection. |
+| Admin UI | `app/admin/dreams/*` | Lists jobs, shows job details/checkpoints, debug tools, manual production forms, and metrics. |
+
+Internal Dream APIs:
+
+| Method | Path | Caller | Description |
+|---|---|---|---|
+| `GET` | `/api/internal/dream-production-jobs/:jobId` | Python `JobRunner` | Fetch DreamProductionJob identity, status, stage, checkpoint fields, and profile snapshot. |
+| `POST` | `/api/internal/dream-production-jobs/:jobId/progress` | Python heartbeat/finalizer | Update `stage` and selected JSON artifacts such as manager decisions, entry patch, and hard-gate reports. |
+| `GET` | `/api/internal/user-novel-profiles/:userId/:novelId` | Planner specialist | Read `UserNovelProfile` plus latest producer profile snapshot. |
+| `GET` | `/api/internal/novels/:novelId/episodes` | Preheat / agent tools | List source episodes, excluding Dream branches. |
+| `GET` | `/api/internal/novels/:novelId/episodes/:episodeId/source` | Planner and entry-patch tools | Read compiled source episode JSON and metadata. |
+| `POST` | `/api/internal/preview-overlay-apply` | Entry-patch specialist | Apply `DreamEntryOperation[]` in memory and report applied/skipped operations. |
+| `POST` | `/api/internal/compile-mss` | Writer specialist | Compile MSS source into EpisodeJSON and content hash without writing DB. |
+| `POST` | `/api/internal/preheat-bundle/:novelId` | Preheat client | Build or fetch cached source context bundle. |
+
+Python `dream-agent` integration:
+
+| Variable | Side | Purpose |
+|---|---|---|
+| `DREAM_PRODUCTION_BACKEND=python` | backend | Forces BullMQ Dream production jobs to use the Python service; the old Node in-process agent was retired. |
+| `DREAM_AGENT_URL` | backend | Base URL for the FastAPI service, default `http://localhost:8765`. |
+| `DREAM_AGENT_BEARER` | backend + Python | Bearer token for backend -> dream-agent calls. |
+| `DREAM_AGENT_RPC_TIMEOUT_MS` | backend | Long RPC timeout; default was raised for multi-minute LLM runs. |
+| `BACKEND_INTERNAL_URL` | Python | Backend base URL for internal APIs. |
+| `BACKEND_INTERNAL_BEARER` | Python | Bearer token used by dream-agent -> backend calls; in dev it matches `CHEAT_TOKEN`. |
+
+The current implementation has an important limitation: the Python controller keeps many artifacts in memory (`planner_output_json`, `writer_drafts_json`, `reviewer_reports_json`, `mss_files`) and the backend `/progress` endpoint only persists selected fields. This means job inspection is improving, but durable checkpoint persistence is not yet complete.
 
 ### Character Chat Routes (`/api/character-chat/*` and `/api/ccr/*`)
 

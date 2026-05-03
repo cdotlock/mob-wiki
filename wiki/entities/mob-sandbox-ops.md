@@ -1,297 +1,267 @@
 ---
-title: Vultr 服务器 + Porkbun 域名 运维手册
-tags: [ops, vultr, porkbun, dns, runbook, mob-sandbox]
+title: Mob Sandbox Ops
+tags: [ops, sandbox, daytona, openhands, vultr]
+sources: []
 created: 2026-04-30
+updated: 2026-05-03
 ---
 
-# Vultr 服务器 + Porkbun 域名 运维手册
+Mob Sandbox is a self-hosted AI coding sandbox platform built around Daytona, Traefik, OpenHands, and a pair of Go CLIs. It gives operators a way to start/stop the backing VPS, create isolated Daytona sandboxes, connect through SSH or Claude Code, expose preview URLs, and onboard additional operators without sharing cloud provider API keys.
 
-给 coding agent 用的完整操作手册。所有操作通过 API 完成，不需要登录 Web 界面。
+## Repository Identity
 
----
+| Field | Value |
+|---|---|
+| Repository path | `/Users/Clock/mob-sandbox` |
+| Remote | `https://github.com/cdotlock/mob-sandbox.git` |
+| Main branch | `main` |
+| Server CLI | `cmd/mob-server` |
+| Client CLI | `cmd/mob` |
+| Server stack | Daytona, Traefik, OpenHands, Guardian |
+| Power-control stack | Cloudflare Worker + Vultr API + SSH-signature auth |
+| Domain mode | Supports DNS, TLS, preview URLs, and permanent subdomain routes |
+| IP mode | Supports bare-IP operation with SSH port forwarding |
 
-## 凭证
+The repository was created from an April 2026 self-hosted coding-agent PoC. The May 2026 changes made the client experience more usable: remote Claude Code sessions, automatic sandbox start before connection, an interactive TUI, transient readiness retries, and OpenHands default port `3100`.
 
-所有凭证在 `/Users/Clock/sandbox-test/.env` 中：
+## Security Model
 
+Do not store cloud provider credentials or LLM tokens in markdown. Early runbook history contained plaintext Vultr and Porkbun keys; the repository's current runbook explicitly says those keys must be rotated and replaced through local `.env` values. The wiki should only document variable names and command shapes.
+
+Required local secret fields:
+
+```text
+VULTR_API_KEY=<your-vultr-api-key>
+PORKBUN_API_KEY=<your-porkbun-api-key>
+PORKBUN_SECRET_KEY=<your-porkbun-secret-key>
+VM_ID=<vultr-instance-uuid>
+VM_IP=<vps-public-ip>
+DOMAIN=<sandbox-domain>
+VULTR_SSH_KEY_ID=<uploaded-vultr-ssh-key-id>
 ```
-VULTR_API_KEY=45ZBJDE3OTVQ6KZT4GTQPXRXUJTYLGA3YSEA
-PORKBUN_API_KEY=pk1_6f97d72bf1a58de15954489d1bf2f22b7c03e4f05f546152da487449eb7570bb
-PORKBUN_SECRET_KEY=sk1_2e3cd94597e934ce8b2946e396eeb35c3f41ad687d7c55d6918fcb961ef6e4e0
-```
 
-当前实例信息：
-- VM_ID: `bbea8db7-4e34-4054-b6c2-6717eb3de436`
-- VM_IP: `45.32.25.73`
-- 域名: `mobai.beauty`
-- SSH key: `~/.ssh/poc_ed25519`
-- SSH 连接: `ssh -o KexAlgorithms=curve25519-sha256 -i ~/.ssh/poc_ed25519 root@45.32.25.73`
-
----
-
-## 1. Vultr 服务器操作
-
-### API 基础
+Load them with:
 
 ```bash
-VULTR_KEY="45ZBJDE3OTVQ6KZT4GTQPXRXUJTYLGA3YSEA"
-VULTR_API="https://api.vultr.com/v2"
+set -a && source .env && set +a
 ```
 
-所有请求带 header: `Authorization: Bearer $VULTR_KEY`
+The operator's private SSH key stays local. The default examples use `~/.ssh/poc_ed25519`, but the platform is designed so each operator can use their own keypair.
 
-### 1.1 查看当前服务器状态
+## Architecture
+
+```text
+developer laptop
+  mob CLI
+    -> HTTPS control API
+    -> Daytona API
+    -> SSH gateway / port forward
+    -> Cloudflare Worker power API
+
+Ubuntu server
+  mob-server daemon
+    -> Daytona services
+    -> Traefik TLS/router
+    -> OpenHands
+    -> Guardian health/repair loop
+```
+
+The server stack is deployed by `mob-server init`. The client stack is configured by `mob init`. After client configuration, running `mob` opens the Bubble Tea dashboard by default.
+
+## Server CLI
+
+`mob-server` runs on the VPS and manages deployment, server status, Daytona API keys, operator SSH keys, and daemon lifecycle.
+
+| Command | Purpose |
+|---|---|
+| `mob-server init --domain example.com --dns-provider porkbun --dns-token xxx --llm-key sk-xxx` | Initialize the server in domain mode with DNS and LLM configuration. |
+| `mob-server init --ssh-host <host> --ssh-key <path>` | Initialize or bootstrap against a specific SSH host/key flow. |
+| `mob-server status` | Print server/platform status. |
+| `mob-server key create <name>` | Create a Daytona API key. |
+| `mob-server key list` | List Daytona API keys. |
+| `mob-server key revoke <name>` | Revoke a Daytona API key. |
+| `mob-server operator add <name> -f <pubkey>` | Add an SSH operator public key. |
+| `mob-server operator list` | List operators. |
+| `mob-server operator revoke <name>` | Revoke an operator. |
+| `mob-server operator worker-config` | Print Cloudflare Worker authorization JSON for configured operators. |
+| `mob-server daemon` | Start the long-running server daemon. |
+
+The server embeds compose templates and a sandbox Dockerfile through Go `embed`, so packaged binaries can deploy without separately copying all template files.
+
+## Client CLI
+
+`mob` runs on the developer laptop. With no subcommand it opens the interactive TUI.
+
+| Command | Purpose |
+|---|---|
+| `mob` | Open the interactive dashboard. |
+| `mob tui` | Explicitly open the dashboard. |
+| `mob init` | Configure client connection, API key, SSH settings, OpenHands URL, and control URL. |
+| `mob create` | Create a new Daytona sandbox. |
+| `mob ps` | List sandboxes. |
+| `mob ssh [id]` | SSH into a sandbox; if no ID is given, create or choose one. |
+| `mob claude [id]` | Start Claude Code inside a sandbox. |
+| `mob rm <id>` | Delete a sandbox. |
+| `mob forward <id> <port>` | Forward a sandbox port to localhost over SSH. |
+| `mob url <id> <port>` | Generate a temporary preview URL in domain mode. |
+| `mob expose <id> <port> [name]` | Create a durable subdomain route in domain mode. |
+| `mob openhands` | Open OpenHands in the browser. |
+| `mob power init` | Configure power-control Worker URL and operator identity. |
+| `mob power start` | Start the VPS through the Worker. |
+| `mob power stop` | Stop the VPS through the Worker. |
+| `mob power reboot` | Reboot the VPS through the Worker. |
+| `mob power status` | Query VPS power status through the Worker. |
+
+The TUI supports sandbox refresh, sandbox creation, SSH/Claude Code entry, localhost tunnel management, preview URL generation, permanent route creation, deletion, OpenHands launch, and VPS power actions from one dashboard. SSH and Claude Code temporarily take over the terminal; exiting the remote session returns to the dashboard.
+
+## OpenHands Port Convention
+
+OpenHands now defaults to port `3100`. The config constant is:
+
+```text
+DefaultOpenHandsPort = 3100
+```
+
+Client initialization sets the OpenHands URL differently by mode:
+
+| Mode | OpenHands URL |
+|---|---|
+| Domain mode | `https://openhands.<domain>` |
+| IP mode | `http://<host>:3100` by default |
+
+The May 2026 history includes a commit titled `Default OpenHands to port 3100`, updating Makefile defaults, config defaults, and CLI design docs.
+
+## Sandbox Runtime
+
+Each sandbox image includes:
+
+| Tool | Purpose |
+|---|---|
+| Claude Code 2.1.123 | Primary coding-agent runtime inside the sandbox. |
+| Python 3.11 | Python development and scripting. |
+| Node.js 22 | JavaScript/TypeScript development. |
+| ttyd | Web terminal support. |
+| Git, curl, wget | Baseline development utilities. |
+
+Claude Code credentials should be injected at sandbox creation time or through root-only runtime files. Do not bake LLM auth tokens into images, registries, or git-tracked files.
+
+## Port Exposure
+
+| Exposure mode | Command | Works in | Use case |
+|---|---|---|---|
+| SSH tunnel | `mob forward <id> <port>` | Domain and IP mode | Private local preview. |
+| Preview URL | `mob url <id> <port>` | Domain mode | Temporary shareable preview. |
+| Permanent subdomain | `mob expose <id> <port> [name]` | Domain mode | Long-running public route. |
+
+Traefik handles the domain-mode routing. The May 2026 fix for malformed upstream URLs in `mob expose` corrected control-server route generation.
+
+## Power Control
+
+Direct operators should prefer `mob power` instead of holding the Vultr API key. The Cloudflare Worker receives signed requests from an operator key, verifies the operator against `AUTHORIZED_PUBKEYS`, and then calls the Vultr API.
+
+Operator onboarding flow:
+
+1. Operator creates a local keypair with `ssh-keygen -t ed25519`.
+2. Operator sends the public key to an admin.
+3. Admin runs `mob-server operator add <name> -f <name>.pub`.
+4. Admin copies the generated JSON into `infra/power-worker/wrangler.toml` under `AUTHORIZED_PUBKEYS`.
+5. Admin deploys the Worker from `infra/power-worker` with `npx wrangler deploy`.
+6. Operator runs `mob power init`.
+7. Operator tests `mob power status`.
+
+Revocation requires both `mob-server operator revoke <name>` and removing that operator from Worker config before redeploying the Worker.
+
+## Daytona Operations Lessons
+
+The 2026-05-02 ops notes record several reusable Daytona lessons:
+
+| Area | Lesson |
+|---|---|
+| Health order | Debug from the outside inward: SSH, Docker, Daytona health, `mob ps`, then create/delete sandbox. |
+| Snapshot endpoint | Daytona v0.171 uses `POST /api/snapshots` and `GET /api/snapshots/{id}`; older singular paths 404. |
+| Snapshot name | Use `mob-sandbox:1.0` so the client can create sandboxes by snapshot name. |
+| Quotas | Fresh organizations may have per-sandbox limits at zero; update organization and region quota rows. |
+| API key schema | Current Daytona keys need `keyHash`, `keyPrefix`, and `keySuffix`. Cleartext keys stay local. |
+| API restart | Restart `daytona-api` after fixing quota rows so checks reload. |
+
+## DNS And TLS Lessons
+
+| Area | Lesson |
+|---|---|
+| Porkbun DNS-01 | Traefik v3.3 with Porkbun DNS-01 can fail ACME record creation due provider response decoding. |
+| HTTP-01 | Simpler for explicit hosts such as `daytona.<domain>` and `openhands.<domain>`. |
+| Wildcards | HTTP-01 does not issue wildcard certificates; wildcard previews need DNS-01 or explicit host routing. |
+| HostRegexp YAML | Quote HostRegexp rules containing backslashes with single quotes. |
+| DNS deletion | Do not delete DNS records unless the operator explicitly approves. Prefer adding/changing routes first. |
+
+Required domain records in Porkbun for domain mode:
 
 ```bash
-curl -sf "$VULTR_API/instances/bbea8db7-4e34-4054-b6c2-6717eb3de436" \
-  -H "Authorization: Bearer $VULTR_KEY" \
-  | python3 -c "
-import sys,json
-d = json.load(sys.stdin)['instance']
-print(f'Status: {d[\"status\"]}  Power: {d[\"power_status\"]}  IP: {d[\"main_ip\"]}')"
+pb_create ""              "${VM_IP}"   # ${DOMAIN}
+pb_create "*"             "${VM_IP}"   # *.${DOMAIN}
+pb_create "daytona"       "${VM_IP}"   # daytona.${DOMAIN}
+pb_create "openhands"     "${VM_IP}"   # openhands.${DOMAIN}
+pb_create "*.proxy"       "${VM_IP}"   # *.proxy.${DOMAIN}
+pb_create "*.node.proxy"  "${VM_IP}"   # *.node.proxy.${DOMAIN}
 ```
 
-- `power_status: running` = 开机中
-- `power_status: stopped` = 已关机（不计算费用，但保留磁盘和 IP）
+Porkbun wildcard syntax is `*.node.proxy`, not `node.proxy.*`.
 
-### 1.2 开机
+## SSH And Claude Code Lessons
+
+| Area | Lesson |
+|---|---|
+| KEX option | Vultr SSH examples use `-o KexAlgorithms=curve25519-sha256`; keep it in scripts that require it. |
+| Claude location | Launch Claude Code inside the Daytona sandbox, not locally. |
+| Environment injection | `mob create`, `mob ssh`, and `mob claude` inject configured Claude Code env into new sandboxes. |
+| PATH safety | Sandbox env injection can override image PATH; keep Node and Claude reachable through `/usr/local/bin` symlinks. |
+| Claude command | `mob claude` should call `/usr/local/bin/claude` to avoid PATH surprises. |
+| Terminal raw mode | TUI and remote sessions need raw mode and terminal size propagation for arrow keys and resize behavior. |
+| Token diagnostics | Verify token presence by length or prefix-only checks; never print full auth tokens. |
+
+## Verification
+
+Baseline repository verification:
 
 ```bash
-curl -sf -X POST "$VULTR_API/instances/bbea8db7-4e34-4054-b6c2-6717eb3de436/start" \
-  -H "Authorization: Bearer $VULTR_KEY"
+go test ./...
 ```
 
-开机后需要等 30-60 秒 SSH 才可用。Docker 服务会自动启动（systemd），但沙盒平台的 compose stack 可能需要手动拉起：
+Platform smoke verification:
 
 ```bash
-ssh -o KexAlgorithms=curve25519-sha256 -i ~/.ssh/poc_ed25519 root@45.32.25.73 \
-  "cd /opt/poc && docker compose -f docker-compose.traefik.yml up -d && \
-   docker compose -f docker-compose.daytona.yml up -d && \
-   docker compose -f docker-compose.openhands.yml up -d"
+./bin/mob ps
+./bin/mob create
+./bin/mob claude <sandbox-id>
 ```
 
-### 1.3 关机
+Inside a sandbox:
 
 ```bash
-curl -sf -X POST "$VULTR_API/instances/bbea8db7-4e34-4054-b6c2-6717eb3de436/halt" \
-  -H "Authorization: Bearer $VULTR_KEY"
+/usr/local/bin/claude --version
+printf '%s\n' "$ANTHROPIC_BASE_URL"
+printf '%s\n' "${#ANTHROPIC_AUTH_TOKEN}"
 ```
 
-关机保留 IP 和磁盘数据。下次开机一切还在。
-
-### 1.4 重启
+For DNS:
 
 ```bash
-curl -sf -X POST "$VULTR_API/instances/bbea8db7-4e34-4054-b6c2-6717eb3de436/reboot" \
-  -H "Authorization: Bearer $VULTR_KEY"
+dig +short daytona.${DOMAIN} @8.8.8.8
+dig +short openhands.${DOMAIN} @8.8.8.8
+dig +short test.node.proxy.${DOMAIN} @8.8.8.8
 ```
 
-### 1.5 创建新服务器
+## Relationship To Other Pages
 
-如果需要从零开一台新的：
+Mob Sandbox provides the remote development substrate for agents that work on [[entities/moonshort-backend]], [[entities/dramatizer-mss]], [[entities/video-agent-claude-wangbo]], and other Moonshort repositories. It is operational infrastructure, not content production logic.
 
-```bash
-# 列出可用机房（推荐 nrt = Tokyo）
-curl -sf "$VULTR_API/regions" -H "Authorization: Bearer $VULTR_KEY" \
-  | python3 -c "import sys,json; [print(f'{r[\"id\"]:6} {r[\"city\"]}') for r in json.load(sys.stdin)['regions']]"
+## Sources
 
-# 列出可用机型
-curl -sf "$VULTR_API/plans" -H "Authorization: Bearer $VULTR_KEY" \
-  | python3 -c "
-import sys,json
-for p in json.load(sys.stdin)['plans']:
-    if p['type'] == 'vc2' and p['vcpu_count'] >= 4 and p['ram'] >= 8192:
-        print(f'{p[\"id\"]:20} {p[\"vcpu_count\"]}C/{p[\"ram\"]//1024}G \${p[\"monthly_cost\"]}/mo')"
+This page was reconstructed from the local repository at `/Users/Clock/mob-sandbox`, especially:
 
-# 列出已上传的 SSH key
-curl -sf "$VULTR_API/ssh-keys" -H "Authorization: Bearer $VULTR_KEY" \
-  | python3 -c "import sys,json; [print(f'{k[\"id\"]}  {k[\"name\"]}') for k in json.load(sys.stdin)['ssh_keys']]"
-
-# 创建实例
-curl -sf -X POST "$VULTR_API/instances" \
-  -H "Authorization: Bearer $VULTR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "region": "nrt",
-    "plan": "vc2-4c-8gb",
-    "os_id": 2284,
-    "label": "mob-sandbox",
-    "sshkey_id": ["3e3461ec-091d-4284-9498-fc01463f2c68"],
-    "backups": "disabled"
-  }'
-```
-
-- `os_id: 2284` = Ubuntu 24.04 LTS（用 `GET /v2/os` 查最新 ID）
-- 创建后 1-2 分钟拿到 IP，5 分钟 SSH 可用
-- 记下返回的 `id` 和 `main_ip`
-
-### 1.6 上传新 SSH key
-
-```bash
-PUB_KEY=$(cat ~/.ssh/poc_ed25519.pub)
-curl -sf -X POST "$VULTR_API/ssh-keys" \
-  -H "Authorization: Bearer $VULTR_KEY" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"mob-deploy\",\"ssh_key\":\"$PUB_KEY\"}"
-```
-
-### 1.7 销毁服务器（不可逆！）
-
-```bash
-curl -sf -X DELETE "$VULTR_API/instances/bbea8db7-4e34-4054-b6c2-6717eb3de436" \
-  -H "Authorization: Bearer $VULTR_KEY"
-```
-
----
-
-## 2. Porkbun 域名操作
-
-### API 基础
-
-```bash
-PB_KEY="pk1_6f97d72bf1a58de15954489d1bf2f22b7c03e4f05f546152da487449eb7570bb"
-PB_SECRET="sk1_2e3cd94597e934ce8b2946e396eeb35c3f41ad687d7c55d6918fcb961ef6e4e0"
-DOMAIN="mobai.beauty"
-PB_API="https://api.porkbun.com/api/json/v3"
-```
-
-所有请求用 POST，body 里带 apikey + secretapikey。
-
-### 2.1 列出当前 DNS 记录
-
-```bash
-curl -sf -X POST "$PB_API/dns/retrieve/$DOMAIN" \
-  -H "Content-Type: application/json" \
-  -d "{\"apikey\":\"$PB_KEY\",\"secretapikey\":\"$PB_SECRET\"}" \
-  | python3 -c "
-import sys,json
-for r in json.load(sys.stdin).get('records',[]):
-    print(f'{r[\"id\"]:>12}  {r[\"type\"]:5}  {r[\"name\"]:40}  {r[\"content\"]}')"
-```
-
-### 2.2 创建 A 记录
-
-```bash
-pb_create() {
-  local name="$1" ip="$2"
-  curl -sf -X POST "$PB_API/dns/create/$DOMAIN" \
-    -H "Content-Type: application/json" \
-    -d "{\"apikey\":\"$PB_KEY\",\"secretapikey\":\"$PB_SECRET\",\"name\":\"$name\",\"type\":\"A\",\"content\":\"$ip\",\"ttl\":\"300\"}"
-}
-```
-
-mob-sandbox 平台所需的完整 DNS 记录（把 `$IP` 换成服务器 IP）：
-
-```bash
-IP="45.32.25.73"
-pb_create ""              "$IP"   # mobai.beauty
-pb_create "*"             "$IP"   # *.mobai.beauty
-pb_create "daytona"       "$IP"   # daytona.mobai.beauty
-pb_create "openhands"     "$IP"   # openhands.mobai.beauty
-pb_create "*.proxy"       "$IP"   # *.proxy.mobai.beauty
-pb_create "*.node.proxy"  "$IP"   # *.node.proxy.mobai.beauty — Daytona 预览 URL
-```
-
-**注意：** Porkbun 泛域名 name 格式是 `*.node.proxy`（不是 `node.proxy.*`）。
-
-### 2.3 删除 DNS 记录
-
-```bash
-# 需要记录的 ID（从 retrieve 接口拿）
-RECORD_ID="123456789"
-curl -sf -X POST "$PB_API/dns/delete/$DOMAIN/$RECORD_ID" \
-  -H "Content-Type: application/json" \
-  -d "{\"apikey\":\"$PB_KEY\",\"secretapikey\":\"$PB_SECRET\"}"
-```
-
-### 2.4 修改 DNS 记录（IP 变了的时候）
-
-如果换了服务器 IP，需要更新所有 A 记录：
-
-```bash
-NEW_IP="1.2.3.4"
-# 先 retrieve 拿到所有记录 ID，然后逐个修改
-curl -sf -X POST "$PB_API/dns/editByNameType/$DOMAIN/A" \
-  -H "Content-Type: application/json" \
-  -d "{\"apikey\":\"$PB_KEY\",\"secretapikey\":\"$PB_SECRET\",\"content\":\"$NEW_IP\",\"ttl\":\"300\"}"
-```
-
-或者更简单：删掉所有旧记录，重建新的（用 `poc/setup-dns.sh` 就是这个逻辑）。
-
-### 2.5 验证 DNS 生效
-
-```bash
-dig +short daytona.mobai.beauty @8.8.8.8
-dig +short openhands.mobai.beauty @8.8.8.8
-dig +short test.node.proxy.mobai.beauty @8.8.8.8
-```
-
-Porkbun TTL 300 秒，实际生效通常 1-2 分钟。
-
----
-
-## 3. SSH 连接注意事项
-
-Vultr 的 SSH 有一个必须注意的坑：
-
-```bash
-# 必须指定 KEX 算法，否则 connection refused
-ssh -o KexAlgorithms=curve25519-sha256 \
-    -o StrictHostKeyChecking=no \
-    -i ~/.ssh/poc_ed25519 \
-    root@45.32.25.73
-```
-
-这个 `-o KexAlgorithms=curve25519-sha256` 在所有 SSH/SCP 操作中都必须带上。
-
-### SCP 文件到服务器
-
-```bash
-scp -o KexAlgorithms=curve25519-sha256 \
-    -o StrictHostKeyChecking=no \
-    -i ~/.ssh/poc_ed25519 \
-    localfile root@45.32.25.73:/remote/path
-```
-
----
-
-## 4. 典型操作流程
-
-### 4.1 日常：开机 → 验证 → 使用 → 关机
-
-```bash
-# 1. 开机
-curl -sf -X POST "$VULTR_API/instances/$VM_ID/start" -H "Authorization: Bearer $VULTR_KEY"
-
-# 2. 等 60 秒，验证 SSH
-sleep 60
-ssh -o KexAlgorithms=curve25519-sha256 -i ~/.ssh/poc_ed25519 root@45.32.25.73 "mob-server status"
-
-# 3. 如果 compose stack 没自动起来
-ssh ... "cd /opt/poc && docker compose -f docker-compose.traefik.yml up -d && docker compose -f docker-compose.daytona.yml up -d && docker compose -f docker-compose.openhands.yml up -d"
-
-# 4. 用完后关机
-curl -sf -X POST "$VULTR_API/instances/$VM_ID/halt" -H "Authorization: Bearer $VULTR_KEY"
-```
-
-### 4.2 换域名 / 换服务器 IP
-
-1. 在 Porkbun 更新 DNS 记录指向新 IP（§2.4）
-2. 等 DNS 生效（dig 验证）
-3. SSH 到服务器，修改 compose 文件中的域名/IP
-4. 重启 Traefik + Daytona stack
-
-### 4.3 从零部署到新服务器
-
-1. 创建 Vultr 实例（§1.5），拿到 IP
-2. 配置 Porkbun DNS 指向新 IP（§2.2）
-3. SSH 到新服务器，运行 `mob-server init`（或手动 `deploy.sh`）
-4. 验证：`mob init` → `mob ssh` → `claude --version`
-
----
-
-## 5. 费用参考
-
-- Vultr vc2-4c-8gb: $48/月（运行时按小时计费，关机不收计算费但收存储费 ~$6/月）
-- Porkbun mobai.beauty 域名: ~$10/年
-- Let's Encrypt TLS: 免费
+- `README.md`
+- `docs/ops-vultr-porkbun-runbook.md`
+- `docs/operator-onboarding.md`
+- `docs/ops-lessons-2026-05-02.md`
+- `docs/mob-cli-design-spec.md`
+- Git history from 2026-04-30 through 2026-05-03
