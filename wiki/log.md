@@ -47,3 +47,4 @@ title: Operation Log
 [2026-05-03 16:03] UPDATE: index.md — register Dreaming Universe, Dramatizer-MSS, mob-sandbox ops, and video agent pages
 [2026-05-04 20:45] CREATE: entities/mob-mini-agent — smolagents fork with Mob embedded function-call runtime, subagents, skills, context assembly, LiteLLM, MCP, and FastAPI adapters
 [2026-05-04 20:45] UPDATE: index.md — registered mob-mini-agent entity
+[2026-05-04 20:55] UPDATE: entities/mob-mini-agent — add default build/plan/explore/general agent profiles as customizable reference cases and update source line count

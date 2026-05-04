@@ -36,7 +36,7 @@ mob-mini-agent       Mob 增量提交
 
 | 范围 | 行数 |
 | --- | ---: |
-| `src/mobmini/*.py` | 1211 |
+| `src/mobmini/*.py` | 1345 |
 
 复算命令：
 
@@ -50,15 +50,37 @@ wc -l src/mobmini/*.py
 
 `build_toolcalling_agent()` 基于上游 `ToolCallingAgent`，加入 Mob 默认纪律：
 
+- 内置 4 种默认 agent profile。
 - `AgentSpec`：声明 agent 名称、描述、指令和最大 step。
 - skills catalog / auto-loaded skill 注入。
 - termination suffix：要求模型完成任务时通过 `final_answer` 返回。
 - `extract_final_answer()`：统一处理 `RunResult`、`AgentText`、JSON string 和普通值。
 - function-call 参数 coercion：当模型把 object / array 参数错误编码成 JSON string 时自动解码。
 
+默认内置 agent 是薄层 profile，也是给使用者参考的标准 case；它们不是硬编码运行策略。宿主应用可以直接用，
+也可以基于 `AgentSpec` 覆盖 instructions、tools、skills、model、max_steps 等字段。
+
+默认 profile：
+
+| 名称 | 类型 | 权限模型 | 用途 |
+| --- | --- | --- | --- |
+| `build` | 主 agent | read / edit / execute | 默认实施 agent，可编辑、可执行、可验证。 |
+| `plan` | 主 agent | read | 只读分析 agent，用于方案、评审、拆解和风险判断。 |
+| `explore` | subagent | read | 只读代码搜索 subagent，适合并行探索局部问题。 |
+| `general` | subagent | read / execute | 通用多步任务 subagent，用于有边界的辅助工作。 |
+
+代码入口：
+
+- `DEFAULT_MAIN_AGENTS`
+- `DEFAULT_SUBAGENTS`
+- `get_default_agent(name)`
+- `default_agent_spec(name, **overrides)`
+- `default_agent_specs(role)`
+
 相关文件：
 
 - `src/mobmini/agents.py`
+- `src/mobmini/default_agents.py`
 - `src/mobmini/runtime.py`
 - `src/mobmini/tools.py`
 
