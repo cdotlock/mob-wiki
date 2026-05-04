@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-05-03
+updated: 2026-05-04
 ---
 
 # Mob-Wiki Index
@@ -30,6 +30,7 @@ Welcome to the team knowledge base.
 - [[entities/cli-gateway]] — Lightweight HTTP microservice for remote CLI execution (deployed per-service)
 - [[entities/dramatizer]] — Go binary for novel-to-screenplay conversion (15-stage LLM pipeline)
 - [[entities/dramatizer-mss]] — Novels-to-Moonscript skill workflow for MSS writing, route planning, and visual asset production
+- [[entities/mob-mini-agent]] — Lightweight embedded Python mini-agent framework built on smolagents with subagents, skills, context assembly, LiteLLM, MCP, and FastAPI adapters
 - [[entities/mob-sandbox-ops]] — Self-hosted Daytona/OpenHands/Claude Code sandbox platform and operator runbook
 - [[entities/mobai-agent]] — Master AI agent orchestrator for the Moonshort platform
 - [[entities/moonshort-backend]] — Next.js game engine, admin dashboard, 85+ API routes

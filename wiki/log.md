@@ -45,3 +45,5 @@ title: Operation Log
 [2026-05-03 16:03] UPDATE: entities/moonshort-backend — add Dreaming Universe backend services, internal APIs, env vars, and current persistence gap
 [2026-05-03 16:03] UPDATE: entities/mob-sandbox-ops — sync TUI/OpenHands/operator lessons and replace plaintext-secret runbook style with .env references
 [2026-05-03 16:03] UPDATE: index.md — register Dreaming Universe, Dramatizer-MSS, mob-sandbox ops, and video agent pages
+[2026-05-04 20:45] CREATE: entities/mob-mini-agent — smolagents fork with Mob embedded function-call runtime, subagents, skills, context assembly, LiteLLM, MCP, and FastAPI adapters
+[2026-05-04 20:45] UPDATE: index.md — registered mob-mini-agent entity
