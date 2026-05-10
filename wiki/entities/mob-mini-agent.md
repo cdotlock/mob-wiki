@@ -3,7 +3,7 @@ title: mob-mini-agent
 tags: [agent, smolagents, python, function-call, subagent, skills, mcp, litellm, fastapi]
 sources: [https://github.com/cdotlock/mob-mini-agent, /Users/Clock/moonshort/mob-mini-agent/README.md, /Users/Clock/moonshort/backend/services/dream-agent]
 created: 2026-05-04
-updated: 2026-05-04
+updated: 2026-05-10
 ---
 
 `mob-mini-agent` 是 Mob 的轻量嵌入式 mini-agent 框架。它基于 Hugging Face `smolagents`，保留上游小核心，并在旁边新增 `mobmini` 层，把 [[concepts/dreaming-universe]] / `dream-agent` 中验证过的 function-call agent 经验沉淀成通用基建。
@@ -36,7 +36,7 @@ mob-mini-agent       Mob 增量提交
 
 | 范围 | 行数 |
 | --- | ---: |
-| `src/mobmini/*.py` | 1345 |
+| `src/mobmini/*.py` | 1908 |
 
 复算命令：
 
@@ -54,8 +54,9 @@ wc -l src/mobmini/*.py
 - `AgentSpec`：声明 agent 名称、描述、指令和最大 step。
 - skills catalog / auto-loaded skill 注入。
 - termination suffix：要求模型完成任务时通过 `final_answer` 返回。
-- `extract_final_answer()`：统一处理 `RunResult`、`AgentText`、JSON string 和普通值。
+- `extract_final_answer()`：统一处理 `RunResult`、`AgentText`、JSON string 和普通值，也兼容多层转义 JSON 和 Python repr dict。
 - function-call 参数 coercion：当模型把 object / array 参数错误编码成 JSON string 时自动解码。
+- provider error normalization：把 DeepSeek / OpenAI / Anthropic 的 context overflow 信号归一成 `ContextOverflowError`，方便宿主做 compact + retry。
 
 默认内置 agent 是薄层 profile，也是给使用者参考的标准 case；它们不是硬编码运行策略。宿主应用可以直接用，
 也可以基于 `AgentSpec` 覆盖 instructions、tools、skills、model、max_steps 等字段。
@@ -94,6 +95,7 @@ wc -l src/mobmini/*.py
 `ManagedSpecialistTool` 提供：
 
 - 通过 `ContextAssembler` 构造 task body。
+- `context_provider`：由 wrapper 从宿主状态 hydrate context，避免让 manager LLM 搬运大 payload。
 - normalize specialist 的 `final_answer`。
 - `resume_hook`：已有产物时 short-circuit，避免重复消耗模型。
 - `checkpoint_hook`：成功后由宿主应用保存结果。
@@ -122,7 +124,8 @@ skills/
 
 - YAML-like frontmatter。
 - skill catalog 渲染。
-- `auto_load` skill 注入。
+- `auto_load` 全局 skill 注入。
+- `auto_load_for: [...]` 按 agent 名称定向注入。
 - `lookup_skill` tool。
 - `lookup_skill_resource` tool。
 - resource 路径逃逸保护。
@@ -141,15 +144,27 @@ skills/
 - pinned block。
 - 简单 max-character window。
 
-`CompactContextPolicy` 用于长上下文：
+`CompactContextPolicy` 用于“调用前”的长上下文：
 
 - pinned context 保留。
 - 最近若干轮原样保留。
 - 更旧历史生成 anchored compact prompt。
 - compact 输出固定结构：Objective、Constraints、Completed Work、Current State、Important References、Open Threads、Next Steps。
 
+`MemoryCompactor` 用于“运行中”的 smolagents memory：
+
+- 大 tool observation 可先 prune 成占位符。
+- 达到阈值后把旧 steps 压缩成一个 `TaskStep` summary。
+- 保留最近 tail steps 原文，避免下一步失去连续性。
+- 可接入 `step_callbacks`，每步自动 prune / threshold compact。
+- 可通过 `force_after_tool_names` 在 specialist / subagent tool 完成后立即 compact。
+- provider 报 context overflow 时，可 compact 后重试一次。
+
+这是从 `dream-agent` compact 机制抽象出的通用薄层，不包含 controller、artifact checkpoint、dream 专用 section，也不强制某一种业务状态模型。
+
 相关文件：
 
+- `src/mobmini/compaction.py`
 - `src/mobmini/context.py`
 
 ### Provider 与 adapter
