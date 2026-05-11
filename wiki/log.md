@@ -49,3 +49,6 @@ title: Operation Log
 [2026-05-04 20:45] UPDATE: index.md — registered mob-mini-agent entity
 [2026-05-04 20:55] UPDATE: entities/mob-mini-agent — add default build/plan/explore/general agent profiles as customizable reference cases and update source line count
 [2026-05-10 20:30] UPDATE: entities/mob-mini-agent — document runtime hardening, agent-targeted skill autoload, memory compaction, and update source line count
+[2026-05-11 14:31] INGEST: raw/2026-05-11-assets-produce-local-videoctl-cleanup.md (assets-produce local videoctl integration, reference folder cleanup, prompt-only knowledge pack)
+[2026-05-11 14:31] CREATE: entities/assets-produce — agent-native asset production platform with local novel-to-video knowledge and opencode videoctl
+[2026-05-11 14:31] UPDATE: index.md — registered assets-produce entity

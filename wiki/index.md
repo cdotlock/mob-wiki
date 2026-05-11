@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-05-04
+updated: 2026-05-11
 ---
 
 # Mob-Wiki Index
@@ -27,6 +27,7 @@ Welcome to the team knowledge base.
 ## Entities
 
 - [[entities/agent-forge]] — Next.js video production platform with 48 MCP tools
+- [[entities/assets-produce]] — Agent-native asset production platform with local prompt workflow knowledge and opencode `videoctl`
 - [[entities/cli-gateway]] — Lightweight HTTP microservice for remote CLI execution (deployed per-service)
 - [[entities/dramatizer]] — Go binary for novel-to-screenplay conversion (15-stage LLM pipeline)
 - [[entities/dramatizer-mss]] — Novels-to-Moonscript skill workflow for MSS writing, route planning, and visual asset production

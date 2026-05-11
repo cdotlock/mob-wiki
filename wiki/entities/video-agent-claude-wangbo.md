@@ -1,9 +1,9 @@
 ---
 title: Video Agent Claude Wangbo
 tags: [video, agent, seedance, oss, skill]
-sources: []
+sources: [raw/2026-05-11-assets-produce-local-videoctl-cleanup.md]
 created: 2026-05-03
-updated: 2026-05-03
+updated: 2026-05-11
 ---
 
 Video Agent Claude Wangbo is the repository for the short-drama shot prompt production workflow used to turn Moonshort episode scripts into Seedance-ready video generation prompts. It is not a general Agent-Forge replacement; it is a focused Claude Code skill package plus a `works/` workspace convention, OSS validation scripts, gateway payload tooling, and an ablation record showing why the new skill package replaced the legacy workflow.
@@ -168,6 +168,8 @@ The important 2026-05-02 to 2026-05-03 changes are:
 
 This page complements [[entities/agent-forge]]. Agent-Forge is the broader video production platform and MCP/API surface. Video Agent Claude Wangbo is a narrower, file-based Claude Code production skill focused on shot-level prompt authoring and controlled Seedance gateway calls.
 
+As of 2026-05-11, [[entities/assets-produce]] is the active consolidation target for this workflow. Assets-Produce absorbed the useful shot-prompt lessons into `knowledge/novel-to-video/`, replaced shell-driven prompt workflow checks with the local opencode `videoctl` tool, and removed its copied `video-agent-test/agent-skills/` tree from the active repository. Video Agent Claude Wangbo remains the historical source of the prompt craft and Seedance lessons; Assets-Produce is where those lessons are being made agent-native and launchable.
+
 It also depends on [[entities/dramatizer-mss]] and [[entities/moonshort-script]] for upstream narrative structure. The better the MSS and episode JSON encode scene continuity, character identity, and choice context, the less the video agent has to infer during Step 1.
 
 ## Sources
@@ -179,3 +181,4 @@ This page was reconstructed from the local repository at `/Users/Clock/video-age
 - `agent-skills/video-episode-generation/scripts/build_gateway_payload.py`
 - `ablation/ABLATION_REPORT.md`
 - Git history from 2026-04-29 through 2026-05-03
+- [Assets-Produce local videoctl cleanup](../raw/2026-05-11-assets-produce-local-videoctl-cleanup.md)
