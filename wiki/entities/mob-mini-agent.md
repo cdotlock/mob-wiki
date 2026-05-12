@@ -1,82 +1,207 @@
 ---
 title: mob-mini-agent
-tags: [agent, smolagents, python, function-call, subagent, skills, mcp, litellm, fastapi]
+tags: [agent, pi, smolagents, foundation, runtime]
 sources: [https://github.com/cdotlock/mob-mini-agent, /Users/Clock/moonshort/mob-mini-agent/README.md, /Users/Clock/moonshort/backend/services/dream-agent]
 created: 2026-05-04
-updated: 2026-05-10
+updated: 2026-05-12
 ---
 
-`mob-mini-agent` 是 Mob 的轻量嵌入式 mini-agent 框架。它基于 Hugging Face `smolagents`，保留上游小核心，并在旁边新增 `mobmini` 层，把 [[concepts/dreaming-universe]] / `dream-agent` 中验证过的 function-call agent 经验沉淀成通用基建。
+`mob-mini-agent` 是 Mob / Moonshort 的通用 Agent 底座项目。它从公开项目 fork 起步，但目标不是复制上游产品，也不是把某个业务 agent 服务整包搬进来；它的职责是把我们在真实生产 agent 中验证过的小型 runtime 升级、上下文纪律、skills 机制、观测方式和 provider 适配沉淀成可复用基础设施。
 
-## 定位
+2026-05-12 起，`smolagent` tag 标记最后一个以 Python `smolagents` 为正式底座的版本。该 tag 之后，仓库进入 Pi agent core 迁移线：旧 Python 兼容层仍保留，新的 TypeScript 底座集中在 `pi/`，并通过 `@moonshort/mob-agent-foundation` 承接正式版 `backend/services/dream-agent` 中可通用化的生产经验。
 
-`mob-mini-agent` 不是完整编排平台，而是可嵌入到任意 Python 服务里的 agent kernel。它更接近 OpenCode / Claude Code 式的最小 agent 运行层：模型负责 function call，框架负责工具表面、上下文、skills、subagent 和少量 runtime 纪律。
+## 项目定位
 
-核心取向：
+`mob-mini-agent` 是公司级 Agent foundation，而不是业务 agent 本体。
 
-- 默认走 provider-native function call。
-- subagent 是普通 tool，而不是独立调度系统。
-- skills 由本地 `SKILL.md` 管理。
-- task context 由代码装配，不把状态拼接逻辑散在 prompt 里。
-- provider 接入以 LiteLLM 为主。
-- FastAPI / MCP / observability 都是薄 adapter，不成为硬依赖。
+它应该提供：
 
-## 与上游 smolagents 的关系
+- agent loop 底座：provider-native function call、tool execution、streaming event、session / harness。
+- 通用上下文管理：代码装配 context、事实锚点、compact、strip-before-compact、overflow retry。
+- 通用 runtime 纪律：terminal emit tool、按角色 thinking/model routing、max token 显式配置、retry circuit breaker。
+- 可复用能力系统：`SKILL.md` discovery、autoload、lookup、resource path guard。
+- 轻量 adapter：LiteLLM / MCP / HTTP server / structured logs，只做薄封装，不成为平台级编排器。
 
-仓库保留上游 `src/smolagents` 作为底座。Git 历史被整理成一个压缩后的上游基线加 Mob 增量：
+它不应该提供：
 
-```text
-original-smolagents  原版 smolagents 基线
-mob-mini-agent       Mob 增量提交
-```
+- Dream Agent 的故事生产 controller。
+- 业务 checkpoint / job runner / backend client。
+- `coding-agent` / TUI / Web UI 这样的应用层产品。
+- Langfuse、数据库、队列、生产部署的强绑定。
+- 任何硬编码业务状态机。
 
-`original-smolagents` tag 标记原版基线。Mob 自己新增的框架代码集中在 `src/mobmini`。
+这个边界很重要：`backend/services/dream-agent` 是生产业务服务；`mob-mini-agent` 只吸收其中跨业务复用的组件和经验。
 
-当前 Mob 框架源码规模，不含 README、元数据和 tests：
+## Git 和迁移边界
 
-| 范围 | 行数 |
-| --- | ---: |
-| `src/mobmini/*.py` | 1908 |
+关键历史标记：
 
-复算命令：
+| 标记 / 提交 | 含义 |
+| --- | --- |
+| `original-smolagents` | 压缩后的 Hugging Face `smolagents` 上游基线。 |
+| `smolagent` | 最后一个以 smolagents 为正式底座的本地版本。 |
+| `chore: mark pi framework migration start` | Pi 迁移线起点空提交。 |
+| `feat(pi): import pi runtime baseline` | 初始迁入 Pi 源码基线。 |
+| `chore(pi): trim workspace to core packages` | 纠偏：删除应用层包，只保留 core `ai` / `agent`。 |
 
-```bash
-wc -l src/mobmini/*.py
-```
+旧 Python 兼容层仍在：
 
-## 新增能力
+- `src/smolagents`：上游 fork 保留区。
+- `src/mobmini`：Mob Python 兼容层，提供旧版 agent profiles、skills、context assembly、LiteLLM、MCP、FastAPI adapter。
+
+新 TypeScript 底座在：
+
+- `pi/packages/ai`
+- `pi/packages/agent`
+- `pi/packages/foundation`
+
+## Pi 工作区
+
+`pi/` 是当前 TypeScript runtime 工作区。它不是 Pi monorepo 镜像，而是收敛后的基础包集合。
+
+### `@earendil-works/pi-ai`
+
+路径：`pi/packages/ai`
+
+职责：
+
+- 统一多 provider LLM API。
+- 标准化模型元数据、provider stream options、thinking level、usage 和 tool call message 格式。
+- 提供 OpenAI、Anthropic、Google、Bedrock、Mistral、DeepSeek、OpenRouter 等 provider adapter。
+- 为 `pi-agent-core` 提供底层 `streamSimple()` 与 message / tool 类型。
+
+在 foundation 中的定位：provider substrate。业务服务不应绕过它直接写 provider SDK glue，除非是新增 provider adapter。
+
+### `@earendil-works/pi-agent-core`
+
+路径：`pi/packages/agent`
+
+职责：
+
+- `Agent`：有状态 agent wrapper，持有 system prompt、model、thinking level、tools、messages、streaming state。
+- `agent-loop`：处理 prompt、continue、assistant stream、tool execution、turn lifecycle。
+- tool execution：支持 sequential / parallel，支持 `beforeToolCall`、`afterToolCall`、`terminate`。
+- harness：session、skills、prompt templates、execution env、system prompt formatting、context transform hooks。
+- session storage：JSONL / memory storage，支持 tree entry、message entry、compaction entry、branch summary entry。
+
+本包暴露的缺口：session storage 使用 `uuid`，因此 `uuid` 必须是 `pi-agent-core` 的直接 dependency，不能依赖上层应用间接带入。
+
+### `@moonshort/mob-agent-foundation`
+
+路径：`pi/packages/foundation`
+
+职责：把正式版 `backend/services/dream-agent` 的生产经验抽象成 domain-neutral utility。它不包含 Dream-specific controller、prompt、skills、MSS、backend HTTP client 或 job runner。
+
+当前组件：
+
+| 模块 | 来源经验 | 通用能力 |
+| --- | --- | --- |
+| `facts-anchor.ts` | Pass 6 persisted-artifacts anchor | 每轮从权威状态重新注入事实，避免 LLM compact 丢失 ids / counts / hashes / errors。 |
+| `final-answer.ts` | Pass 5 `emit_final` tool | 用 typed terminal tool 结束任务，避免 thinking 占满 token 后没有 text final answer。 |
+| `compaction.ts` | Pass 8 compact circuit + strip anchor | prune 大 tool result、compact 旧 history、strip re-injected anchors、连续失败后开 circuit。 |
+| `observability.ts` | Pass 8 JSONL trace | 结构化 `logEvent` / `logMetric` / `logTrace`，可写 per-run JSONL trace file。 |
+| `runtime-overrides.ts` | Pass 4/5 streamFn maxTokens + thinking override | 用 closure slot 给单次调用覆盖 maxTokens / thinking，不 fork core。 |
+| `role-routing.ts` | Pass 5 per-role thinking / fast tier | 让创作、评审、修复、格式化等角色按策略选择 model tier 和 thinking level。 |
+| `repr-parser.ts` | specialist payload compatibility | 把 Python repr 风格 dict/list 转成 JSON，兼容旧 specialist 输出。 |
+| `messages.ts` | compactor / anchor helper | 统一从 AgentMessage 提取 role、text 和估算 token。 |
+
+配套文档：
+
+- `pi/packages/foundation/docs/agent-foundation-practices.md`
+
+## 从正式版 Dream Agent 抽出的关键实践
+
+这些实践来自 `/Users/Clock/moonshort/backend/services/dream-agent/LESSONS-LEARNED.md` 和对应实现代码。
+
+### 1. Facts Anchor 优先于 lossy summary
+
+长寿 agent 的上下文 compaction 不能承担“事实存储”职责。LLM summary 会逐轮损耗 episode id、hash、verdict、预算、错误次数等枚举事实。
+
+正确模式：
+
+1. 业务层从权威状态生成 facts snapshot。
+2. runtime 把 snapshot 渲染成固定结构的 anchor message。
+3. compact 前 strip 掉旧 anchor。
+4. compact 后重新 prepend 最新 anchor。
+5. agent 从 facts 决策下一步，但 framework 不硬编码决策。
+
+这保留了 agent 自主性：framework 注入事实，不注入“下一步应该调用哪个工具”。
+
+### 2. Terminal emit 必须是 tool
+
+thinking-enabled provider 可能输出大量 reasoning，导致 text channel 没有足够 token 承载最终 JSON。Dream Agent 的修复是恢复 `final_answer` / `emit_final` 工具语义。
+
+通用规则：
+
+- 终态必须通过 typed tool call 表达。
+- tool result 带 `terminate: true`，让 agent loop 停止自动 follow-up。
+- terminal payload 应包含 `status`、`error`、`artifacts`。
+- 不解析自由文本 JSON 作为主路径。
+
+### 3. maxTokens 显式配置
+
+provider 默认 `max_tokens` 不是可靠工程边界。对 DeepSeek v4 这样的长 thinking 模型，默认值可能导致 thinking 把输出预算耗尽。
+
+通用规则：
+
+- 在 runtime 层显式传 `maxTokens`。
+- 把 maxTokens 当 cap，不当 cost control。
+- 需要局部关闭 thinking 时，通过 streamFn closure slot 做 per-call override。
+
+### 4. State machine 是 invariant，不是业务流程 gate
+
+Dream Agent 生产问题说明，过严的 backend 状态迁移会造成 agent liveness 问题。状态机应该禁止 backward / terminal-to-active 这类 invariant 破坏，但不应强制业务必须按某个固定顺序调用 tool。
+
+通用规则：
+
+- “不能从 done 回 active”属于状态机。
+- “写完才能评审”属于 domain runtime 或 tool precondition。
+- workflow ordering 应作为 facts + tool error 暴露给 agent，让 agent 自主修正。
+
+### 5. Observability 是 agent runtime 的核心功能
+
+长寿 agent 的 stdout 不够调试。需要每轮、每个 tool call、每次 compact、每次 circuit 状态、最终 run summary 都有结构化 JSON。
+
+通用规则：
+
+- 逻辑单位一条 JSON event。
+- per-run JSONL trace file 用于本地和 on-call。
+- trace 信息也应能进入 facts anchor，让 agent 自己看到 recent errors 和 stuck warning。
+
+### 6. Role routing 不应一刀切
+
+创作、规划、评审、修复、格式化不是同一种模型任务。Dream Agent 中 `mss_repair` 用 high thinking 的成本和延迟都不合理，切到 fast tier / thinking off 后明显改善。
+
+通用规则：
+
+- creative roles 可以 high / xhigh。
+- review roles 可以 high。
+- repair / syntax / formatting roles 默认 fast + off。
+- routing 是 policy，不是业务服务里的硬编码分支。
+
+### 7. Compact retry 要有 circuit breaker
+
+summary LLM 失败后原样返回上下文会在下一轮继续触发 compact，形成自我 DoS。Foundation compactor 保留连续失败计数，超过阈值后开 circuit，并把状态暴露给上层。
+
+通用规则：
+
+- 所有上游 LLM retry loop 都要有阈值。
+- circuit state 必须可观测。
+- circuit state 应能作为 facts 告知 agent。
+
+## Python 兼容层
+
+Python 层仍然存在，主要用于旧调用方和轻量嵌入式场景。
 
 ### Function-call-first core
 
-`build_toolcalling_agent()` 基于上游 `ToolCallingAgent`，加入 Mob 默认纪律：
+`build_toolcalling_agent()` 基于上游 `ToolCallingAgent`，额外处理：
 
-- 内置 4 种默认 agent profile。
-- `AgentSpec`：声明 agent 名称、描述、指令和最大 step。
-- skills catalog / auto-loaded skill 注入。
-- termination suffix：要求模型完成任务时通过 `final_answer` 返回。
-- `extract_final_answer()`：统一处理 `RunResult`、`AgentText`、JSON string 和普通值，也兼容多层转义 JSON 和 Python repr dict。
-- function-call 参数 coercion：当模型把 object / array 参数错误编码成 JSON string 时自动解码。
-- provider error normalization：把 DeepSeek / OpenAI / Anthropic 的 context overflow 信号归一成 `ContextOverflowError`，方便宿主做 compact + retry。
-
-默认内置 agent 是薄层 profile，也是给使用者参考的标准 case；它们不是硬编码运行策略。宿主应用可以直接用，
-也可以基于 `AgentSpec` 覆盖 instructions、tools、skills、model、max_steps 等字段。
-
-默认 profile：
-
-| 名称 | 类型 | 权限模型 | 用途 |
-| --- | --- | --- | --- |
-| `build` | 主 agent | read / edit / execute | 默认实施 agent，可编辑、可执行、可验证。 |
-| `plan` | 主 agent | read | 只读分析 agent，用于方案、评审、拆解和风险判断。 |
-| `explore` | subagent | read | 只读代码搜索 subagent，适合并行探索局部问题。 |
-| `general` | subagent | read / execute | 通用多步任务 subagent，用于有边界的辅助工作。 |
-
-代码入口：
-
-- `DEFAULT_MAIN_AGENTS`
-- `DEFAULT_SUBAGENTS`
-- `get_default_agent(name)`
-- `default_agent_spec(name, **overrides)`
-- `default_agent_specs(role)`
+- `AgentSpec`：声明 agent 名称、描述、instructions、tools、skills、max steps。
+- 默认 build / plan / explore / general agent profile。
+- `final_answer` termination suffix。
+- function-call 参数 coercion：object / array 被模型错误编码成 JSON string 时自动解码。
+- `extract_final_answer()`：统一解开 `RunResult`、`AgentText`、JSON string、Python repr dict。
 
 相关文件：
 
@@ -85,47 +210,12 @@ wc -l src/mobmini/*.py
 - `src/mobmini/runtime.py`
 - `src/mobmini/tools.py`
 
-### Subagent 与 managed specialist
-
-框架提供两层委托模式：
-
-- `AgentRegistry` + `TaskTool`：父 agent 用 `task(agent, task, context)` 委托给子 agent。
-- `ManagedSpecialistTool`：从 `dream-agent` 的 planner / writer / reviewer wrapper 抽象出的通用 specialist tool。
-
-`ManagedSpecialistTool` 提供：
-
-- 通过 `ContextAssembler` 构造 task body。
-- `context_provider`：由 wrapper 从宿主状态 hydrate context，避免让 manager LLM 搬运大 payload。
-- normalize specialist 的 `final_answer`。
-- `resume_hook`：已有产物时 short-circuit，避免重复消耗模型。
-- `checkpoint_hook`：成功后由宿主应用保存结果。
-- start / skip / complete / error 的结构化 metric。
-
-它保留了 `dream-agent` 中有效的 wrapper discipline，但不绑定 DB、lease、production job state 或 checkpoint client。
-
-相关文件：
-
-- `src/mobmini/agents.py`
-- `src/mobmini/specialists.py`
-- `src/mobmini/observability.py`
-
 ### Skills
 
-`SkillRegistry` 从包含 `SKILL.md` 的本地目录加载技能：
+`SkillRegistry` 支持本地 `SKILL.md`：
 
-```text
-skills/
-  docs-writer/
-    SKILL.md
-    examples.md
-```
-
-支持：
-
-- YAML-like frontmatter。
-- skill catalog 渲染。
-- `auto_load` 全局 skill 注入。
-- `auto_load_for: [...]` 按 agent 名称定向注入。
+- `auto_load` 全局注入。
+- `auto_load_for` 按 agent 名称注入。
 - `lookup_skill` tool。
 - `lookup_skill_resource` tool。
 - resource 路径逃逸保护。
@@ -134,104 +224,45 @@ skills/
 
 - `src/mobmini/skills.py`
 
-### Context assembly 与 compact
+### Context 与 compact
 
-`ContextAssembler` 用代码生成每次 agent / specialist 的 task body，避免把上下文装配逻辑写散：
+Python 层已有：
 
-- text block。
-- JSON block。
-- priority 排序。
-- pinned block。
-- 简单 max-character window。
+- `ContextAssembler`：text / JSON block、priority、pinned、max chars。
+- `CompactContextPolicy`：调用前压缩旧上下文。
+- `MemoryCompactor`：运行中 prune / compact smolagents memory steps。
+- context overflow retry hook。
 
-`CompactContextPolicy` 用于“调用前”的长上下文：
+这些能力未来应向 Pi foundation 的 facts anchor / compaction policy 对齐。
 
-- pinned context 保留。
-- 最近若干轮原样保留。
-- 更旧历史生成 anchored compact prompt。
-- compact 输出固定结构：Objective、Constraints、Completed Work、Current State、Important References、Open Threads、Next Steps。
+## 当前开发命令
 
-`MemoryCompactor` 用于“运行中”的 smolagents memory：
+Python 兼容层：
 
-- 大 tool observation 可先 prune 成占位符。
-- 达到阈值后把旧 steps 压缩成一个 `TaskStep` summary。
-- 保留最近 tail steps 原文，避免下一步失去连续性。
-- 可接入 `step_callbacks`，每步自动 prune / threshold compact。
-- 可通过 `force_after_tool_names` 在 specialist / subagent tool 完成后立即 compact。
-- provider 报 context overflow 时，可 compact 后重试一次。
-
-这是从 `dream-agent` compact 机制抽象出的通用薄层，不包含 controller、artifact checkpoint、dream 专用 section，也不强制某一种业务状态模型。
-
-相关文件：
-
-- `src/mobmini/compaction.py`
-- `src/mobmini/context.py`
-
-### Provider 与 adapter
-
-provider 层保持轻：
-
-- `build_litellm_model()` 是主要入口。
-- 读取 `LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`、`LLM_MODEL_FAST`。
-- 对 OpenAI-compatible endpoint 自动补 `openai/<model>`。
-- 默认 `tool_choice="auto"`，提高 reasoner / provider 兼容性。
-
-`deepseek_model()` 只是 LiteLLM 上的便利 helper：处理当前 DeepSeek V4 模型名、`https://api.deepseek.com`、可选 thinking 参数和 `tool_choice="auto"`。没有引入重型 DeepSeek-specific schema 层。
-
-Adapter：
-
-- `mcp_tool_collection()` 包装上游 `ToolCollection.from_mcp`。
-- `create_app()` 提供最小 FastAPI `/health` 和 `/run`。
-
-相关文件：
-
-- `src/mobmini/providers.py`
-- `src/mobmini/mcp.py`
-- `src/mobmini/server.py`
-
-### Runtime utilities
-
-通用 runtime 工具：
-
-- `run_async()` / `set_main_loop()`：让同步 tool wrapper 安全调度宿主 event loop 上的 async 资源。
-- `BoundedExecutor`：给同步执行加 timeout 边界。
-- typed error hierarchy：`ProviderConfigError`、`ContextAssemblyError`、`SpecialistOutputError` 等。
-- JSON-line `log_event()` / `log_metric()`。
-
-相关文件：
-
-- `src/mobmini/async_utils.py`
-- `src/mobmini/errors.py`
-- `src/mobmini/observability.py`
-
-## 刻意不包含
-
-当前框架不内置：
-
-- 默认 Controller。
-- 默认 JobRunner。
-- checkpoint client。
-- Langfuse 绑定。
-- 默认 CLI 层。
-- 重型 provider-specific adapter。
-- `dream-agent` 的业务状态。
-
-这些留给宿主应用或未来 optional adapter。
-
-## 当前提交结构
-
-`main` 在原版基线上按能力拆成原子提交：
-
-```text
-docs: rewrite Chinese project overview
-feat(adapters): add litellm provider and service adapters
-feat(subagents): add delegation and specialist wrappers
-feat(context): add context assembler and compact policy
-feat(skills): add skill registry and lookup tools
-feat(runtime): add final-answer and tool utilities
-chore: rename package metadata for mob mini agent
-chore: import original smolagents baseline
+```bash
+PYTHONPATH=src python -X faulthandler -m pytest -p no:capture -o addopts='' tests/test_mobmini_*.py -q
+PYTHONPATH=src python -m ruff check src/mobmini tests/test_mobmini_*.py
 ```
+
+Pi foundation：
+
+```bash
+cd pi
+npm install
+npm run check
+npm test --workspace @moonshort/mob-agent-foundation
+npm run build --workspace @moonshort/mob-agent-foundation
+```
+
+## 架构边界
+
+`mob-mini-agent` 的长期方向是：
+
+1. 保留公开项目 fork 的低层能力，不把 upstream 改成业务平台。
+2. 在 `pi/packages/foundation` 放公司实践层。
+3. 让业务服务通过 foundation 组合能力，而不是复制 Dream Agent 代码。
+4. 把所有 domain-specific prompt、controller、job、artifact、backend API 留在业务仓库。
+5. 对通用 runtime pattern 写测试，避免靠经验文档口口相传。
 
 ## 相关页面
 

@@ -52,3 +52,4 @@ title: Operation Log
 [2026-05-11 14:31] INGEST: raw/2026-05-11-assets-produce-local-videoctl-cleanup.md (assets-produce local videoctl integration, reference folder cleanup, prompt-only knowledge pack)
 [2026-05-11 14:31] CREATE: entities/assets-produce — agent-native asset production platform with local novel-to-video knowledge and opencode videoctl
 [2026-05-11 14:31] UPDATE: index.md — registered assets-produce entity
+[2026-05-12 22:10] UPDATE: entities/mob-mini-agent — sync Pi core transition, foundation package boundary, and production Dream Agent runtime practices
