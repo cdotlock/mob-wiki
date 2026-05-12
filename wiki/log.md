@@ -53,3 +53,4 @@ title: Operation Log
 [2026-05-11 14:31] CREATE: entities/assets-produce — agent-native asset production platform with local novel-to-video knowledge and opencode videoctl
 [2026-05-11 14:31] UPDATE: index.md — registered assets-produce entity
 [2026-05-12 22:10] UPDATE: entities/mob-mini-agent — sync Pi core transition, foundation package boundary, and production Dream Agent runtime practices
+[2026-05-12 22:49] UPDATE: entities/mob-mini-agent — record final Pi-only foundation state, removal of old compatibility surface, run observability diagnostics, and production pitfall rules
