@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-05-12
+updated: 2026-05-14
 ---
 
 # Mob-Wiki Index

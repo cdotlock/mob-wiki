@@ -62,3 +62,6 @@ title: Operation Log
 [2026-05-14 12:32] UPDATE: index.md — registered concepts/cg-pipeline
 [2026-05-14 12:34] CREATE: concepts/sfx-pipeline — SFX pipeline design (sfx-normalizer skill + dramatizer integration for ElevenLabs AI sound effects)
 [2026-05-14 12:34] UPDATE: index.md — registered concepts/sfx-pipeline
+[2026-05-14 12:36] UPDATE: entities/agent-forge — add deprecation banner pointing to assets-produce (opencode-based rewrite); marked tags deprecated, kept page as historical entity
+[2026-05-14 12:36] UPDATE: plan.md — "Agent-Forge 转型" status row 改为 "已 fork 重写为 assets-produce, Phase 7 in progress"; 待启动 列表对应任务挂到 assets-produce
+[2026-05-14 12:36] UPDATE: index.md — bump updated date to 2026-05-14 after batch ingest

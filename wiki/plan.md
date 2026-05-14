@@ -2,7 +2,7 @@
 title: 团队行动计划
 tags: [plan, roadmap, status]
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-05-14
 ---
 
 这是一个持续维护的计划文件。所有人都可以更新自己的进度和下一步。每次更新时修改 `updated` 日期。
@@ -13,7 +13,7 @@ updated: 2026-04-15
 |------|------|------|
 | 产品形态转型 | 已完成 MSS 脚本定义和解释器 | Clock |
 | Dramatizer 重构 | 待启动——需要对接 MSS 输出格式 | August |
-| Agent-Forge 转型 | 待启动——从视频管线转为 VN 素材管线 | 待定 |
+| Agent-Forge 转型 | 已 fork 重写为 [[entities/assets-produce]] (cdotlock/assets-produce, opencode-based) — Phase 0-6 完成,Phase 7 prompt-workflow parity 进行中 (2026-05-12 push) | Clock |
 | 前端播放器 | 待启动——消费 MSS JSON 的 Unfolded 风格播放器 | 待定 |
 | 视频生产（现行） | 继续——雨佳和何莲保障视频生产 | 雨佳/何莲 |
 | UIUX | 待启动——运营和 UIUX 先行 | 待定 |
@@ -37,7 +37,7 @@ updated: 2026-04-15
 ### 待启动
 
 - [ ] Dramatizer Phase 3 重构：ludify 输出从 JSON 改为 MSS 格式
-- [ ] Agent-Forge 素材管线重构：LoRA → 表情 Inpainting → LivePortrait → 背景 → CG
+- [ ] ~~Agent-Forge 素材管线重构~~ → 已转为 assets-produce 重写,见状态快照;LoRA → 表情 Inpainting → LivePortrait → 背景 → CG 这条管线规划现归属 [[entities/assets-produce]]
 - [ ] 前端 Unfolded 播放器：消费 MSS JSON，实现 5 种叙事容器 + 嵌入式小游戏
 - [ ] Remix 功能加速：剧情 Remix + 聊天 Remix + 结局 Remix + 角色支线 Remix
 - [ ] premium choice 支持（`@choice` 加 premium 参数）
