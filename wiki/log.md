@@ -58,3 +58,5 @@ title: Operation Log
 [2026-05-14 12:30] CREATE: concepts/asset-pipeline-green-spill-fix-2026-05-09 — green-spill RGB unspill renderer-level fix landed 2026-05-09
 [2026-05-14 12:30] CREATE: concepts/asset-pipeline-green-spill-runbook — green-spill follow-up runbook for re-render and verification passes
 [2026-05-14 12:30] UPDATE: index.md — registered 3 asset-pipeline concepts (aspect-ratio recovery + green-spill fix + runbook)
+[2026-05-14 12:32] CREATE: concepts/cg-pipeline — novels-to-moonscript stage 07.5 three-layer CG pipeline (cg_collector → cg_render → dramatizer mapping)
+[2026-05-14 12:32] UPDATE: index.md — registered concepts/cg-pipeline
