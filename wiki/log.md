@@ -54,3 +54,7 @@ title: Operation Log
 [2026-05-11 14:31] UPDATE: index.md — registered assets-produce entity
 [2026-05-12 22:10] UPDATE: entities/mob-mini-agent — sync Pi core transition, foundation package boundary, and production Dream Agent runtime practices
 [2026-05-12 22:49] UPDATE: entities/mob-mini-agent — record final Pi-only foundation state, removal of old compatibility surface, run observability diagnostics, and production pitfall rules
+[2026-05-14 12:30] CREATE: concepts/asset-pipeline-aspect-ratio-recovery-2026-05 — NRBI 2026-05 aspect-ratio drift root-cause + cascade re-render playbook
+[2026-05-14 12:30] CREATE: concepts/asset-pipeline-green-spill-fix-2026-05-09 — green-spill RGB unspill renderer-level fix landed 2026-05-09
+[2026-05-14 12:30] CREATE: concepts/asset-pipeline-green-spill-runbook — green-spill follow-up runbook for re-render and verification passes
+[2026-05-14 12:30] UPDATE: index.md — registered 3 asset-pipeline concepts (aspect-ratio recovery + green-spill fix + runbook)
