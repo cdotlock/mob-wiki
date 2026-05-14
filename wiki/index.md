@@ -25,6 +25,7 @@ Welcome to the team knowledge base.
 - [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
 - [[concepts/remix-anywhere]] — 玩家长按对白 → D20+DC → LLM 生成 InsertPatch 插入剧情（含 forward planner 跨集回响）
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access
+- [[concepts/sfx-pipeline]] — SFX pipeline design: `sfx-normalizer` skill + dramatizer integration for AI-generated sound effects via ElevenLabs
 - [[concepts/signal-int-backend]] — Backend 如何加载、持久化、求值、管理 MSS 的 `@signal int` 作者变量
 - [[concepts/stable-step-id]] — 内容寻址 cursor：每个 MSS step 编译期带稳定 ID，splice/replace 对 cursor 透明
 - [[concepts/unfolded-visual-novel]] — Unfolded 风格互动视觉小说展示形态与素材管线

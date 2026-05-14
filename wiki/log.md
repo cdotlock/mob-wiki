@@ -60,3 +60,5 @@ title: Operation Log
 [2026-05-14 12:30] UPDATE: index.md — registered 3 asset-pipeline concepts (aspect-ratio recovery + green-spill fix + runbook)
 [2026-05-14 12:32] CREATE: concepts/cg-pipeline — novels-to-moonscript stage 07.5 three-layer CG pipeline (cg_collector → cg_render → dramatizer mapping)
 [2026-05-14 12:32] UPDATE: index.md — registered concepts/cg-pipeline
+[2026-05-14 12:34] CREATE: concepts/sfx-pipeline — SFX pipeline design (sfx-normalizer skill + dramatizer integration for ElevenLabs AI sound effects)
+[2026-05-14 12:34] UPDATE: index.md — registered concepts/sfx-pipeline
