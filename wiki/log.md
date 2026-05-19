@@ -65,3 +65,5 @@ title: Operation Log
 [2026-05-14 12:36] UPDATE: entities/agent-forge — add deprecation banner pointing to assets-produce (opencode-based rewrite); marked tags deprecated, kept page as historical entity
 [2026-05-14 12:36] UPDATE: plan.md — "Agent-Forge 转型" status row 改为 "已 fork 重写为 assets-produce, Phase 7 in progress"; 待启动 列表对应任务挂到 assets-produce
 [2026-05-14 12:36] UPDATE: index.md — bump updated date to 2026-05-14 after batch ingest
+[2026-05-20 02:44] CREATE: concepts/assetctl-integration-contract — assetctl 原子能力 CLI 冻结接口合同 v0.1.0（信封/退出码/18-id 目录/oss-put 唯一可跑）、assets-produce@48e6eb9 基准、全 Go 重写落地与 foundation 完成状态（已合并 moonshort-ide main @3b70daa）
+[2026-05-20 02:44] UPDATE: index.md — registered concepts/assetctl-integration-contract; bump updated date to 2026-05-20
