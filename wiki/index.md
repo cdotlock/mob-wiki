@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-05-20
+updated: 2026-05-21
 ---
 
 # Mob-Wiki Index
@@ -18,6 +18,7 @@ Welcome to the team knowledge base.
 - [[concepts/asset-pipeline-green-spill-fix-2026-05-09]] — green-spill root cause + RGB unspill fix landed 2026-05-09 (renderer level patch, not matting workaround)
 - [[concepts/asset-pipeline-green-spill-runbook]] — green-spill follow-up runbook: recipes for re-render / verify / batch passes referencing the 05-09 fix
 - [[concepts/assetctl-integration-contract]] — assetctl 原子能力 CLI 接口合同 v0.1.0：codex 外围编排 + 冻结信封/退出码合同 + 18 颗 ATOMIC_TOOL_IDS（本轮仅 oss-put 可跑，余 NOT_IMPLEMENTED 桩）；assets-produce@48e6eb9 行为基准，全 Go 重写吸收进 IDE，foundation 已合并 main
+- [[concepts/assetctl-skills-sync-and-staging]] — Block 2 + Block 3 codex skill 加载链路：assetctl skills load CLI + IDE stageSkills Langfuse-first overlay + IDE-host TTL cache + 静默回退本地 git；S1-S4 共 23 commit 合 main @ 266cd3c
 - [[concepts/assets-produce-ide-workspace-contract]] — assets-produce ↔ Moonshort IDE 工作区契约：mapping.json 为唯一契约、assets/ 按 kind 分子目录、新素材自动登记、走 mapping 解析（本地/OSS）；跨机器/Notion/IDE 本体不在职责内
 - [[concepts/cg-pipeline]] — novels-to-moonscript stage 07.5 CG pipeline: three-layer flow (cg_collector → cg_render → dramatizer mapping) for `@cg show` MSS directives
 - [[concepts/cli-gateway-protocol]] — Unified HTTP protocol for remote CLI command execution
