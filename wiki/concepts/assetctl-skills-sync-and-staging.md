@@ -1,7 +1,7 @@
 ---
 title: assetctl skills sync + Block 2/3 staging（codex skill 加载链路）
 created: 2026-05-20
-updated: 2026-05-20
+updated: 2026-05-21
 tags: [assetctl, block-2, block-3, codex, langfuse, skill-loader, skill-staging, moonshort-ide]
 status: draft
 ---
@@ -140,42 +140,76 @@ IDE 主进程（Electron main）必须在启动前/spawn 前 export 这些 env v
 
 任何 LANGFUSE_* 缺失 → `assetctl skills load` 静默回退本地 git body（spec §2.1 D1），envelope 返回 `source:"local"` for all skills，exit 0。
 
-## Block 3 bootstrap 还没做（B3-IDE-5）
+## ✅ B3-IDE-5 Langfuse 首次 bootstrap 完成（2026-05-21）
 
-剩一件事：**首次把 15 个 skill push 到 Langfuse**（staging → production），让 IDE 可以真的从 Langfuse 拉到东西。这是手工 ops 步骤：
+23 个 SKILL.md（asset 15 + dramatizer 8）已 push 到 Langfuse 自部署实例 `prompt.mobai-game.com` / org `mobai` / project **`Moonshort-IDE`**（org/project id `cmpe3kntg00kprq07ozupgnsa`，独立于历史 `Dramatizer` project 不污染）。两个 label 各一遍：staging 23/23 created + production 23/23 created。
 
-```
-# 1. 在 IDE 主仓根目录
-export LANGFUSE_HOST=prompt.mobai-game.com
-export LANGFUSE_PUBLIC_KEY=<...>
-export LANGFUSE_SECRET_KEY=<...>
+**Project 取名约定**：`Moonshort-IDE` 跟 moonshort-ide 仓库名对齐。以后 IDE 范畴所有 SKILL.md prompts 都装这里；dramatizer Go binary 自家的 `phase2-*`/`phase3_*`/`v2-*` prompts 仍在 `Dramatizer` project 单独维护，互不干涉。
 
-# 2. push 到 staging（不 lint）
+**Prompt 命名约定（确立）**：直接用 skill name as-is，**不加前缀**（如 `cg-render-spec`，不是 `skill_cg-render-spec`）。这跟 assetctl `skills sync` 当前实现一致；以前 assets-produce / opencode 团队 push 到 `Dramatizer` project 的旧 `skill_*` 是历史包袱。
+
+### 最终审计（跑 `assetctl skills load` 链路）
+
+| Label | source:langfuse | 字节匹配本地 SKILL.md |
+|---|---|---|
+| staging | 23/23 | 23/23 |
+| production | 23/23 | 23/23 |
+
+### bootstrap 流程（实际跑通版本）
+
+```bash
+# 1. 在 IDE 主仓根目录 export 凭据
+export LANGFUSE_HOST=https://prompt.mobai-game.com     # 注意带 scheme
+export LANGFUSE_PUBLIC_KEY=pk-lf-...                   # Moonshort-IDE project 的 keypair
+export LANGFUSE_SECRET_KEY=sk-lf-...
+
+# 2. push staging（不 lint）
 ./agents/asset/cli/assetctl/bin/assetctl skills sync --label staging --local-root .
 
-# 3. 确认 staging OK 后 push 到 production（开 lint）
+# 3. push production（要先过 lint）
 ./agents/asset/cli/assetctl/bin/assetctl skills sync --label production --local-root .
 
-# 4. 验证：可以用 skills load 拉回来
+# 4. 验证拉回字节正确
 ./agents/asset/cli/assetctl/bin/assetctl skills load --label production --local-root . --dest /tmp/loadtest
-# 期望 envelope 中所有 skill source = "langfuse"
+# 期望 envelope: results=23, 全部 source:"langfuse"
 ```
 
-触发条件 = 用户提供 Langfuse 凭据 + 同意做 bootstrap。当前 IDE wiring 已经 zero-config 就绪：env 设了走 Langfuse，不设走本地，二者同 byte。
+### 配套 lint 深修（bootstrap 过程发现，2 个 atomic commit）
+
+production push 第一次失败：lint 卡 23/23 报 `missing frontmatter field allowed_tools`。根因不是 SKILL.md 错，是 lint 实现跟 Anthropic Skill spec 偏离。两个调研 agent 并发查（Anthropic 官方 docs + codex Rust loader + GitHub 上主流 skill 仓）得出：
+
+- **codex 完全不读 `allowed-tools`** 字段：`codex-rs/core-skills/src/loader.rs:38-52` 的 serde struct 只 deserialize `name`/`description`/`metadata.short-description`。tool dependencies 走邻居文件 `agents/openai.yaml`，不是 SKILL.md frontmatter
+- **Anthropic 自家 18 个 first-party skills + codex 自家 5 个 bundled samples + superpowers 14 个 skills 全部省略 `allowed-tools`** —— 此字段在 spec 上 optional，只 `description` 被 recommended
+- **Anthropic docs** 文字接受**空格分隔 scalar** 或 **YAML list**，逗号分隔实际容忍但不在 spec
+- **5 类 tool name 命名**（permission rule，不是 tool ID）：PascalCase 内建（`Read`/`Write`/`Bash`）/ scoped 内建（`Read(./.env)`、`Bash(cmd-glob)`、`WebFetch(domain:x)`）/ MCP（`mcp__server__tool`）/ Agent（`Agent(name)`）/ 项目自有 atomic（lowercase-kebab）
+- **`Bash(逗号 list)` 是非法语法**：Bash 括号里只能是**单个**命令 pattern，要拆成 `Bash(cmd:*) Bash(cmd:*)`
+
+两个 atomic commit 落 main：
+
+| Commit | 改 | 内容 |
+|---|---|---|
+| `d4f6900` fix(assetctl) | `vendor/assetctl/internal/skills/lint.go` + 4 个 test 文件（526 insert / 95 delete） | parser 加 paren-aware comma/space split scalar → list；`atomicToolIDSet` 硬卡换为 5-class structural validator（Builtin/ScopedBuiltin/MCP/Atomic/Unknown）；放宽到只 require `description`；加 11 个新测试覆盖各类形态；lint_test.go 含 `TestClassifyToolName` 表格测可观测各类边界（`""`、`"123abc"`、`"foo_bar"`、`"FooBar(..."`、`"mcp__only-one-segment"` 都正确归 Unknown） |
+| `456177b` fix(adaptation) | `agents/adaptation/skills/{bible-reviewer,novel-evaluator}/SKILL.md` line 4 | `Bash(cat:*, wc:*, mkdir:*, ...)` 拆为多个 `Bash(cat:*), Bash(wc:*), Bash(mkdir:*), ...` —— 每个独立 entry 才能在 Claude Code 真的 pre-approve |
+
+### 范式（本块沉淀）
+
+- **不要发明本地 lint 标准**：跟 Anthropic 官方 + Anthropic 自家 examples 的最小公倍数对齐；deferral cost = 用 codex 真不读 / Anthropic 自己也省略的字段去卡作者，是 anti-pattern
+- **frontmatter key allowlist** = codex `quick_validate.py:40` 已经确认的 `{name, description, license, allowed-tools, metadata, compatibility}`；超出的 key 会被 codex 拒（虽然 codex runtime 不读 allowed-tools，但作者侧 quick_validate 是 lint 的真实下游）
+- **同 prompt 名跨 label = 同字节才安全**：staging label 上次 push 是 lint 修之前的旧字节，production 是修后字节 —— 出现"跨 label drift"。这次顺手补：把 2 个 fixed SKILL.md 用 `--name` 单 push 到 staging label（v3）回到一致
 
 ## 已知 follow-up（不在本次 merge 范围）
 
 - **pre-existing gofmt drift**：`vendor/assetctl/internal/tools/{ossput,sfxelevenlabs,suno}/_test.go` 在上 wave camelCase 修改后没 gofmt，main 一直带着；本 branch 不动，留给独立 hygiene PR
 - **`makeRepo()` 调用方的旧 6 测试 temp dir 不清理**：本 branch 只清了 S2+S4 新加的 7 个测试的 temp dir；剩 6 个老 `makeRepo()` 用户（覆盖在 `test/workshop-codex-home.test.mjs` + 同目录其他 `.test.mjs`）有同样的问题，独立 hygiene PR 一起扫
 - **`context.Background()` no timeout in `skills load` + `skills sync`**：Go 层两边都没 timeout；spec reviewer 建议加 30s context，需要时跨 sync/load 一起改
-- **D5 `_shared/knowledge/codex-home.ts` 复制路径决策**：当前候选 (c) 用 repo-absolute path（不复制到 staging）；future D5 final 可能要 codex 真的 copy `_shared/knowledge/` 到 staging，这是 Block 4 范畴
-- **B3-IDE-5 bootstrap push**：见上一节，等用户
+- **`sync --check --label X` 不尊重 `--label` 参数**：`sync.go:191` 硬编码 `s.Client.GetPrompt(ctx, s.Endpoint, name, "production")` —— 不管 `--label staging` 还是 `--label production` 都查 production label。本块发现的小 bug，不影响 skill 内容/lint/运行时，独立 hygiene PR 修
+- **D5 `_shared/knowledge/codex-home.ts` 复制路径决策**：当前候选 (c) 用 repo-absolute path（不复制到 staging）；future D5 final 可能要 codex 真的 copy `_shared/knowledge/` 到 staging，这是 **Block 4 范畴**（未启动）
 
 ## push 状态
 
-- **moonshort-ide main @ `266cd3c`**：本地，cdotlock/moonshort-ide 远端**未推送**（合计 ~84 commit 未推 = Wave 3-5 + Wave 4 doc + Block 2/3 fleet + camelCase 3 + Wave 5 10 + 本次 23）
-- **mob-wiki main @ `a94edb4`**：本地，cdotlock/mob-wiki 远端**未推送**（4 个 Block 1 doc commit + 本次新增）
-- 本次 merge 不 push，用户 2026-05-20 表态"暂不 push，先干活"
+- **moonshort-ide main @ `456177b`**：本地，cdotlock/moonshort-ide 远端**未推送**（合计 86 commit 未推 = Wave 3-5 + Wave 4 doc + Block 2/3 fleet + camelCase 3 + Wave 5 10 + Block 2/3 IDE handoff 23 + lint 深修 + SKILL.md fix 2）
+- **mob-wiki main**：本地新增本次更新，cdotlock/mob-wiki 远端**未推送**
+- 用户 2026-05-20 表态"暂不 push，先干活"
 
 ## 工作机器（沿用 Wave 1-5 + foundation 模式）
 
