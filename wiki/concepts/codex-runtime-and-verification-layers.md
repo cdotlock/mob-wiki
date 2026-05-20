@@ -120,7 +120,7 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 | **L1a 离线 skill discovery** | `MOONSHORT_AGENT_CODEX_PATH=<codex> node tools/verify-skill-discovery.mjs` | 真 codex 二进制 + 仓库 `agents/asset/` + `agents/_shared/`；**不需要 API key** | codex 0.130 真的扫 `$CODEX_HOME/skills/` + 把目录吐进 model-visible prompt input；新 skill folder drop-in 不改 `agent.json` 也立即被发现 |
 | **L1b Langfuse overlay 字节落地** | 设 `LANGFUSE_HOST`/`PUBLIC_KEY`/`SECRET_KEY` 再跑 L1a；之后 diff `<staged>/skills/<name>/SKILL.md` vs `agents/<id>/skills/<name>/SKILL.md` | Langfuse staging 或 production 凭据 | overlay 真把字节换了（确认 assetctl spawn + Langfuse 拉取 + 写盘整条链） |
 | **L2a LLM-in-the-loop auth+transport** | `tools/verify-l2-smoke.mjs` — 跑两段：ChatBackend 直连 chat-completions + CodexBackend 经 codex-shim bridge | `MOONSHORT_AGENT_API_KEY` + `_BASE_URL` + `_MODEL` + `_CODEX_PATH`（可选） | 验 provider 接受 key+model、codex-shim Responses↔chat-completions 桥工作 |
-| **L2b LLM-in-the-loop agentic 任务** | IDE Production Workshop UI（真业务） 或 stale `tools/verify-shadow-codex.mjs` / `verify-agent.mjs` / `verify-workshop-agent.mjs`（**三个都坏了**，引用了被删除的 export，需修） | 同 L2a + 已 build 的 `.app` 或 dev 模式 + mss CLI on PATH | codex 真推理 → 选 skill → 调 assetctl → 解信封 → 取 `loc` → 写 shadow workspace；diff 看 mss 改对没 |
+| **L2b LLM-in-the-loop agentic 任务** | `tools/verify-workshop-agent.mjs`（Workshop EXECUTE stage 端到端：executeInstruction → ChatBackend → extractJson → applyPromptMap）；之后 IDE Production Workshop UI 跑真业务 | 同 L2a；UI 形态另需已 build 的 `.app` 或 dev 模式 + mss CLI on PATH | agent 真推理 → 返回 JSON prompt map → runner 解析并写回每个 asset 的 prompt + status |
 
 ### L0 跑法
 
@@ -195,15 +195,36 @@ config: {"provider":"mob-ai","baseUrl":"https://ai.mob-ai.cn/api/v1","model":"de
 L2 smoke PASSED.
 ```
 
-### L2b 跑法
+### L2b 跑法（已验，2026-05-21）
 
-开 IDE，进 Production Workshop，跑真业务任务。
+```
+# 同 L2a 的 env，再跑：
+node tools/verify-workshop-agent.mjs
+```
 
-> **历史 L2 入口都坏了**：`tools/verify-shadow-codex.mjs`（引用了被删除的 `packages/mss-workbench/out/src/shadow-workspace.js`）、`tools/verify-agent.mjs`（引用已删除的 export `buildInlineEditRequest`/`cleanInlineEditOutput`）、`tools/verify-workshop-agent.mjs`（引用已改名的 `applyPrompts` / `stageInstruction`）。CI 不覆盖这些 live verify，所以悄悄腐烂。修这 3 个脚本是单独 hygiene 任务，不在 L2a 范围。
+预期输出（2026-05-21 实跑结果）：
+
+```
+L2b smoke — Production Workshop EXECUTE stage
+config: {"provider":"mob-ai","baseUrl":"https://ai.mob-ai.cn/api/v1","model":"deepseek-v4-flash",...}
+
+--- Workshop EXECUTE backgrounds segment → live model ---
+  session: agent-...-0
+  output: 1079 chars
+  usage:  {"inputTokens":6344,"outputTokens":356}
+  background:bedroom → Anime-style bedroom interior at night, warm dusk tones, dim amber lampli…
+  background:rooftop → Anime-style rooftop scene looking out over a sprawling city at dusk, war…
+
+L2b smoke PASSED — EXECUTE stage produced usable per-asset prompts.
+```
+
+> **2026-05-21 hygiene**：原来三个 L2 live verify 脚本都坏了——`verify-shadow-codex.mjs` 引用了被删的 `packages/mss-workbench/out/src/shadow-workspace.js`，`verify-agent.mjs` 引用已删的 `buildInlineEditRequest`/`cleanInlineEditOutput`，`verify-workshop-agent.mjs` 引用已改名的 `applyPrompts`/`stageInstruction`。修了：前两个脚本 PONG 部分被 `verify-l2-smoke.mjs` 取代直接删；`verify-workshop-agent.mjs` 重写到新 `executeInstruction` API。同时发现 `extractJson` 用严格 `JSON.parse` 在 LLM 输出有 trailing comma 时会整盘丢——已经改成 strict → sanitized 两段 fallback（commit `037a2db`）。
+>
+> 更深的 agentic 路径（codex 真推理 → 选 skill → 调 assetctl → 写 shadow workspace → diff mss）需要 IDE Workshop UI 跑真业务，目前只能开 `.app` 或 dev 模式验证，没单独 verify 入口。
 
 ## 老 RESUME 笔记的坑
 
-历史 RESUME-next-phase.md 里有一行"**codex 端到端实跑验证仍卡在 `~/.codex/auth.json` 不存在**"——**这是误判**。`codex exec` 在终端直接跑会走 OpenAI 公网 + 需要 OpenAI 凭据；那条路径 IDE 完全不用。正确的 L2 入口是 `tools/verify-shadow-codex.mjs` 或 IDE UI，需要的是 `MOONSHORT_AGENT_API_KEY`（DeepSeek key），不是 OpenAI key。
+历史 RESUME-next-phase.md 里有一行"**codex 端到端实跑验证仍卡在 `~/.codex/auth.json` 不存在**"——**这是误判**。`codex exec` 在终端直接跑会走 OpenAI 公网 + 需要 OpenAI 凭据；那条路径 IDE 完全不用。正确的 L2 入口是 `tools/verify-l2-smoke.mjs`（L2a auth+transport）或 `tools/verify-workshop-agent.mjs`（L2b workshop EXECUTE stage）或 IDE UI，需要的是 `MOONSHORT_AGENT_API_KEY`（team 实际配 mob-ai 的 key），不是 OpenAI key。
 
 2026-05-21 已在 `~/.config/superpowers/worktrees/moonshort-ide/RESUME-next-phase.md` 第 494 行修正。
 
@@ -219,7 +240,8 @@ L2 smoke PASSED.
 | Vendored codex 打包 | `fork/build.mjs` | `stageVendoredCodex`, `CODEX_TRIPLES` |
 | L0 单测 | `test/workshop-codex-home.test.mjs`、`test/workshop-cli.test.mjs`、`test/agent-adapter*.test.mjs` | `stageSkills` / `stageCodexHome` / `CodexBackend` / `loadAgentConfig` |
 | L1a 离线 verify | `tools/verify-skill-discovery.mjs` | `resolveCodex`, `promptInput`, `expectSurfaced` |
-| L2 live verify | `tools/verify-shadow-codex.mjs`、`tools/verify-workshop-agent.mjs` | — |
+| L2a auth+transport verify | `tools/verify-l2-smoke.mjs` | `probeChatBackend`, `probeCodexBackend` |
+| L2b workshop EXECUTE verify | `tools/verify-workshop-agent.mjs` | `executeInstruction`, `extractJson`, `applyPromptMap` |
 
 ## 验证状态（2026-05-21）
 
@@ -227,11 +249,13 @@ L2 smoke PASSED.
 - ✅ L1a 离线 — `tools/verify-skill-discovery.mjs` 跑通，`agents/asset` 15 skills 全部被发现 + 暴露给 codex prompt input
 - ✅ L1b Langfuse overlay — 2026-05-21 B3-IDE-5 bootstrap 期间手动 `assetctl skills load --label production` → 23/23 from langfuse 成功；下次同步式 verify-skill-discovery 加 Langfuse env 再补一次双重验证
 - ✅ **L2a LLM-in-the-loop auth+transport** — 2026-05-21 `tools/verify-l2-smoke.mjs` 跑通（mob-ai / deepseek-v4-flash / cline-bundled codex 0.130）；ChatBackend + CodexBackend 两段都 PONG，codex-shim Responses↔chat-completions 桥工作
-- ⏸️ L2b LLM-in-the-loop agentic 任务 — IDE Workshop UI 真业务还没跑过（也没 build `.app`）；3 个 stale verify 入口需要先修
+- ✅ **L2b LLM-in-the-loop workshop EXECUTE stage** — 2026-05-21 `tools/verify-workshop-agent.mjs` 跑通（同 mob-ai 配置）；agent 真返回 JSON prompt map、`applyPromptMap` 把 prompt + status 写回 assets；顺手发现 `extractJson` 对 trailing comma 不容错（commit `037a2db` 改成 strict → sanitized 两段 fallback）
+- ⏸️ L2b 更深的 agentic 路径 — codex 真推理 → 选 skill → 调 assetctl → 写 shadow workspace → diff mss 还没单独 verify 入口；需要 IDE Workshop UI 跑真业务，或新写一个 codex-host smoke
 
 ## 后续
 
-- 修 3 个 stale verify 脚本（删 / 重写）：`verify-shadow-codex.mjs`、`verify-agent.mjs`、`verify-workshop-agent.mjs`——都引用了被删/改名的 export，CI 不覆盖所以悄悄腐烂。最快是删掉 + 在 `tools/README.md` 里说明只剩 `verify-skill-discovery.mjs` (L1a) 和 `verify-l2-smoke.mjs` (L2a) 两个 live verify 入口
+- ~~修 3 个 stale verify 脚本~~ **2026-05-21 做完**：`verify-shadow-codex.mjs` 和 `verify-agent.mjs` 删除（shadow workspace 已删 / PONG 部分被 verify-l2-smoke 取代）；`verify-workshop-agent.mjs` 重写到 `executeInstruction` + `applyPromptMap` 并跑通 L2b。同时修了 `extractJson` 对 trailing comma 的容错（fix `037a2db`）
 - 把 L1b 加进 `verify-skill-discovery.mjs`：可选 env `MOONSHORT_VERIFY_LANGFUSE=1` 时自动 diff overlay vs source 字节
 - 把 L2a 改装成 CI smoke：用一个最小 stub provider 或 record/replay fixture，避开真 LLM 调用费用（可选）
 - 把 codex 二进制路径默认值从 hardcoded `/Users/Clock/...` 改成相对仓库 path 探测（`tools/verify-skill-discovery.mjs:34`）—— `verify-l2-smoke.mjs` 已经按 vendored 路径探测了，可以照抄
+- L2b 更深的 codex agentic 端到端 verify：codex 真推理 → 选 skill → 调 assetctl → 写 shadow workspace → diff mss。需要新写一个 codex-host smoke 或开 IDE Workshop UI 真业务
