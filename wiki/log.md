@@ -67,3 +67,4 @@ title: Operation Log
 [2026-05-14 12:36] UPDATE: index.md — bump updated date to 2026-05-14 after batch ingest
 [2026-05-20 02:44] CREATE: concepts/assetctl-integration-contract — assetctl 原子能力 CLI 冻结接口合同 v0.1.0（信封/退出码/18-id 目录/oss-put 唯一可跑）、assets-produce@48e6eb9 基准、全 Go 重写落地与 foundation 完成状态（已合并 moonshort-ide main @3b70daa）
 [2026-05-20 02:44] UPDATE: index.md — registered concepts/assetctl-integration-contract; bump updated date to 2026-05-20
+[2026-05-20 12:00] UPDATE: concepts/assetctl-integration-contract — Wave 1 完成（W1-1..5；17 atomic commit；4 颗 runnable：oss-put + nanobanana + seedance + sfxelevenlabs；共享件 internal/aliyun + internal/fc；jsonschema 扩展 Number/Array/Pattern；iface.Tool.MissingEnv 接口加宽；合并 moonshort-ide main @c7e7f0c；覆盖率全部 ≥87%，多颗 100%；pnpm lint/typecheck/go:test 全过）

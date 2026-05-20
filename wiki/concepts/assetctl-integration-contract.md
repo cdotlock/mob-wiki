@@ -2,7 +2,7 @@
 title: assetctl — 原子能力 CLI 接口合同 v0.1.0 (assets-produce → moonshort-ide)
 created: 2026-05-20
 updated: 2026-05-20
-tags: [assetctl, assets-produce, moonshort-ide, atomic-capability, interface-contract, codex, oss-put]
+tags: [assetctl, assets-produce, moonshort-ide, atomic-capability, interface-contract, codex, oss-put, generate-image-nanobanana, generate-video-seedance, generate-sfx-elevenlabs]
 status: draft
 ---
 
@@ -11,7 +11,7 @@ status: draft
 把 assets-produce 的**原子能力**以全 Go 重写吸收进 moonshort-ide：`assetctl` 是 IDE 内 codex（外围编排大脑）临场调度的、冻结接口合同的原子能力 CLI。流程写在 skill 里、不写死在代码里（assets-produce 原则 1/2）。
 
 > 设计 spec：`moonshort-ide/docs/design/2026-05-19-assets-produce-integration-design.md`（项目内 git，未公开；commit `f8cdf81`）
-> 实现计划：`moonshort-ide/docs/design/2026-05-19-assetctl-foundation-plan.md`（commit `b38dfda`）
+> 实现计划：`moonshort-ide/docs/design/2026-05-19-assetctl-foundation-plan.md`（foundation，commit `b38dfda`）· `moonshort-ide/docs/design/2026-05-20-assetctl-wave1-plan.md`（Wave 1，commit `accd681`）
 > 关联：[[entities/assets-produce]] · [[concepts/assets-produce-ide-workspace-contract]]（**非**本终态，仅备注）· [[concepts/moonshort-ide-ai-integration]] · [[concepts/four-layer-philosophy]]
 
 ## 一句话
@@ -62,20 +62,33 @@ status: draft
 
 `generate-image-nanobanana` `generate-image-gpt` `generate-video-seedance` `generate-sfx-elevenlabs` `generate-music-suno` `concat-clips` `crop-video` `generate-video-happyhorse` `cg-render` `nrbi-render-prompt` `upscale-image` `oss-put` `matting` `hybrid-to-webp` `green-spill-clear` `rgb-unspill` `hole-fill` `cutout`
 
-> 本轮（foundation）**只有 `oss-put` 可跑**（真 Aliyun OSS 上传 + dryRun + 体积/路径校验，注入式 uploader 单测不触网，真网走 `//go:build integration` 选测）；其余 17 颗是可发现的 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试），保证目录完整。
+> Wave 1 完结后**共 4 颗可跑**：`oss-put`（Pattern A · Aliyun OSS SDK 直连，foundation 起就有）+ `generate-image-nanobanana` + `generate-video-seedance`（两颗 Pattern B · FC 网关 / 走 mob-ai）+ `generate-sfx-elevenlabs`（Pattern A2 · 直连 ElevenLabs + Aliyun OSS 二次上传）。其余 14 颗仍是 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试）：5 颗 FC 留给 Wave 2（`generate-image-gpt`/`generate-music-suno`/`generate-video-happyhorse`/`concat-clips`/`crop-video`），9 颗 Python 留给 Wave 3/4（`cg-render`/`nrbi-render-prompt`/`matting`/`cutout`/`green-spill-clear`/`hole-fill`/`hybrid-to-webp`/`rgb-unspill`/`upscale-image`）。
 
 ## IDE 侧落地（纯 Go，照 videoctl 现成模式）
 
-- 源码：Go module 于 `vendor/assetctl/`（`internal/{contract,jsonschema,tools,tools/ossput,tools/iface,cli}` + `cmd/assetctl`）。模块声明 `go 1.23.0`（依赖钉版，与新工具链共存——刻意为之）。
+- 源码：Go module 于 `vendor/assetctl/`（`internal/{contract,jsonschema,aliyun,fc,tools,tools/iface,tools/ossput,tools/nanobanana,tools/seedance,tools/sfxelevenlabs,cli}` + `cmd/assetctl`）。模块声明 `go 1.23.0`（依赖钉版，与新工具链共存——刻意为之）。Wave 1 抽出 **共享包**两枚：`internal/aliyun/`（OSS uploader 工厂，多工具共用）+ `internal/fc/`（FC gateway HTTP client，Pattern-B 工具共用，含 `Endpoint`/`Config`/`CallError`/`Client`/`Call`/`ExtractURL`/`MapError`/`IsHTTPS`），后续 5 颗 FC 工具直接复用，不再重复造轮子。
 - 构建：`fork/build.mjs` 的 `buildAssetctl()`（与 `buildVideoctl()` 并列，`go build ./cmd/assetctl`）→ `agents/asset/cli/assetctl/bin/assetctl`（gitignored，构建时出）。IDE 工具链零新增。
 - 登记：`agents/asset/cli/bindings.json` 增 `assetctl` binding（与 `videoctl` 同形）。
 - 重试落地：`agent-adapter` 的 `errors.ts`/`retry.ts` 按 §C 分类；`retryable=true` 退避重试，`GENERATION_REJECTED`/`config(3)` 不重试直接上抛。
 
-## 实现状态（foundation 已完成，2026-05-20）
+## 实现状态
+
+### Foundation（已完成 2026-05-20，main `3b70daa`）
 
 - 全部 13 个计划任务 + footgun 修复，TDD 落地；每任务两段评审（对规范 + 代码质量）→ 终审 APPROVE。
 - 合并进 `moonshort-ide` 本地 `main`（fast-forward `b38dfda..3b70daa`，27 文件 +1891/-1，仅 assetctl 范围）。
 - 验证全绿：`gofmt`/`go vet` 干净；`go test -race ./...` 全过；覆盖率 cli 84% / contract 93% / jsonschema 97.5% / tools 100% / ossput 85.1%（`cmd` 仅 main()、`iface` 无逻辑 = 计划认可例外）。`pnpm lint`/`typecheck`/`build`、绑定 `node --test`、`pnpm go:test` 在合并 main 上实跑通过。二进制冒烟对齐冻结合同（单行信封 / NOT_IMPLEMENTED exit4 / config 3 / config version 报 `0.1.0`+`48e6eb9`）。
+
+### Wave 1（已完成 2026-05-20，main `c7e7f0c`）
+
+- 5 个任务（W1-1 → W1-5）TDD 落地；每任务两段评审 + 评审反馈 cleanup commit。共 17 个 atomic commit（feat 5、fix 2、refactor 5、test 3、docs 1、build 1）。
+- 合并进 `moonshort-ide` 本地 `main`（fast-forward `accd681..c7e7f0c`，新增 8 文件，含 `internal/aliyun/` + `internal/fc/` + 3 个新 tool 包）。
+- **能力扩展**：4 颗可跑（oss-put + nanobanana + seedance + sfxelevenlabs），覆盖三种实现 pattern（A · OSS 直连；A2 · 直连 vendor + OSS 二次上传；B · FC 网关 → mob-ai）。
+- **共享件**：`internal/aliyun/`（多工具复用 OSS uploader）+ `internal/fc/`（Pattern-B FC HTTP client）+ `internal/jsonschema/` 扩展（Number/Array/Pattern/MinLen/MaxLen/Min/Max/ExclusiveMin/MinItems/MaxItems，11-key marshal 顺序锁定）。
+- **接口扩展**：`iface.Tool.MissingEnv() []string` 加入接口；`config validate`（无 `<id>`）改为聚合所有 runnable tool 的 `MissingEnv()` 去重+排序后返回。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go vet -tags=integration ./...` clean、`go test -race -count=1 ./...` 全过。
+- 覆盖率（race + cover）：`aliyun 87.0%` / `cli 88.7%` / `contract 92.9%` / `fc 92.3%` / `jsonschema 98.8%` / `tools 94.1%` / `nanobanana 100.0%` / `ossput 98.1%` / `seedance 100.0%` / `sfxelevenlabs 95.8%`（全部超过 plan 阈值 ≥80%；多颗满 100%）。
+- IDE 主仓 main 上 `pnpm lint` / `pnpm typecheck` / `pnpm go:test` 实跑通过；二进制冒烟：`tools list` 18 颗（4 runnable + 14 NOT_IMPLEMENTED）、`tools schema --format anthropic|openai` 各 18 个 descriptor、`config validate` 缺环境返回 sorted 9-entry missing 列表、3 颗新工具 `run ... --input '{...,"dryRun":true}'` 各自返回符合合同的单行信封，body 字段顺序与 donor 字节一致（FC 工具 donor body 序固定经 fcBody struct 强制，非 `map[string]any` 字母序）。
 - **未做（需明确许可）**：`git push` 到 `cdotlock/moonshort-ide`（非本人 namespace，全局规则需逐次同意）；本页对应的 mob-wiki 远端推送同理。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
