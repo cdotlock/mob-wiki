@@ -62,11 +62,11 @@ status: draft
 
 `generate-image-nanobanana` `generate-image-gpt` `generate-video-seedance` `generate-sfx-elevenlabs` `generate-music-suno` `concat-clips` `crop-video` `generate-video-happyhorse` `cg-render` `nrbi-render-prompt` `upscale-image` `oss-put` `matting` `hybrid-to-webp` `green-spill-clear` `rgb-unspill` `hole-fill` `cutout`
 
-> Wave 1 完结后**共 4 颗可跑**：`oss-put`（Pattern A · Aliyun OSS SDK 直连，foundation 起就有）+ `generate-image-nanobanana` + `generate-video-seedance`（两颗 Pattern B · FC 网关 / 走 mob-ai）+ `generate-sfx-elevenlabs`（Pattern A2 · 直连 ElevenLabs + Aliyun OSS 二次上传）。其余 14 颗仍是 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试）：5 颗 FC 留给 Wave 2（`generate-image-gpt`/`generate-music-suno`/`generate-video-happyhorse`/`concat-clips`/`crop-video`），9 颗 Python 留给 Wave 3/4（`cg-render`/`nrbi-render-prompt`/`matting`/`cutout`/`green-spill-clear`/`hole-fill`/`hybrid-to-webp`/`rgb-unspill`/`upscale-image`）。
+> Wave 2 完结后**共 9 颗可跑**（W1 4 颗 + W2 5 颗）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`，直连 ElevenLabs + Aliyun OSS 二次上传）+ Pattern B 6 颗 FC 网关（`generate-image-nanobanana`/`generate-image-gpt`/`generate-video-seedance`/`generate-video-happyhorse`/`concat-clips`/`crop-video`）+ 占位 1 颗（`generate-music-suno`，Suno 无官方 API，返回确定性 placeholder）。其余 9 颗仍是 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试）——全部为 Pattern C（Python subprocess）留给 Wave 3/4：`cg-render`/`nrbi-render-prompt`/`matting`/`cutout`/`green-spill-clear`/`hole-fill`/`hybrid-to-webp`/`rgb-unspill`/`upscale-image`。
 
 ## IDE 侧落地（纯 Go，照 videoctl 现成模式）
 
-- 源码：Go module 于 `vendor/assetctl/`（`internal/{contract,jsonschema,aliyun,fc,tools,tools/iface,tools/ossput,tools/nanobanana,tools/seedance,tools/sfxelevenlabs,cli}` + `cmd/assetctl`）。模块声明 `go 1.23.0`（依赖钉版，与新工具链共存——刻意为之）。Wave 1 抽出 **共享包**两枚：`internal/aliyun/`（OSS uploader 工厂，多工具共用）+ `internal/fc/`（FC gateway HTTP client，Pattern-B 工具共用，含 `Endpoint`/`Config`/`CallError`/`Client`/`Call`/`ExtractURL`/`MapError`/`IsHTTPS`），后续 5 颗 FC 工具直接复用，不再重复造轮子。
+- 源码：Go module 于 `vendor/assetctl/`（`internal/{contract,jsonschema,aliyun,fc,tools,tools/iface,tools/ossput,tools/nanobanana,tools/seedance,tools/sfxelevenlabs,tools/gpt,tools/happyhorse,tools/suno,tools/concatclips,tools/cropvideo,cli}` + `cmd/assetctl`）。模块声明 `go 1.23.0`（依赖钉版，与新工具链共存——刻意为之）。Wave 1 抽出 **共享包**两枚：`internal/aliyun/`（OSS uploader 工厂，多工具共用）+ `internal/fc/`（FC gateway HTTP client，Pattern-B 工具共用，含 `Endpoint`/`Config`/`CallError`/`Client`/`Call`/`ExtractURL`/`MapError`/`IsHTTPS`）；Wave 2 在 `internal/jsonschema/` 加入 `Enum()` 与 `ObjectProp()`，让结构化数组（如 happyhorse `media[]`）能正确表达 `items: { type:"object", properties:..., required:... }`。
 - 构建：`fork/build.mjs` 的 `buildAssetctl()`（与 `buildVideoctl()` 并列，`go build ./cmd/assetctl`）→ `agents/asset/cli/assetctl/bin/assetctl`（gitignored，构建时出）。IDE 工具链零新增。
 - 登记：`agents/asset/cli/bindings.json` 增 `assetctl` binding（与 `videoctl` 同形）。
 - 重试落地：`agent-adapter` 的 `errors.ts`/`retry.ts` 按 §C 分类；`retryable=true` 退避重试，`GENERATION_REJECTED`/`config(3)` 不重试直接上抛。
@@ -89,6 +89,17 @@ status: draft
 - 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go vet -tags=integration ./...` clean、`go test -race -count=1 ./...` 全过。
 - 覆盖率（race + cover）：`aliyun 87.0%` / `cli 88.7%` / `contract 92.9%` / `fc 92.3%` / `jsonschema 98.8%` / `tools 94.1%` / `nanobanana 100.0%` / `ossput 98.1%` / `seedance 100.0%` / `sfxelevenlabs 95.8%`（全部超过 plan 阈值 ≥80%；多颗满 100%）。
 - IDE 主仓 main 上 `pnpm lint` / `pnpm typecheck` / `pnpm go:test` 实跑通过；二进制冒烟：`tools list` 18 颗（4 runnable + 14 NOT_IMPLEMENTED）、`tools schema --format anthropic|openai` 各 18 个 descriptor、`config validate` 缺环境返回 sorted 9-entry missing 列表、3 颗新工具 `run ... --input '{...,"dryRun":true}'` 各自返回符合合同的单行信封，body 字段顺序与 donor 字节一致（FC 工具 donor body 序固定经 fcBody struct 强制，非 `map[string]any` 字母序）。
+- **未做（需明确许可）**：`git push` 到 `cdotlock/moonshort-ide`（非本人 namespace，全局规则需逐次同意）；本页对应的 mob-wiki 远端推送同理。
+
+### Wave 2（已完成 2026-05-20，main `b8b7f94`）
+
+- 5 个任务（W2-1 → W2-5）TDD 落地；每任务两段评审（W2-1 完整跑过双段评审，其余因 pattern 已成熟改走实施+轻评审）。共 10 个 atomic commit（feat 7、refactor 3：2 颗 jsonschema 扩展 + 1 颗 happyhorse media schema 重构）。
+- 合并进 `moonshort-ide` 本地 `main`（fast-forward `30718f3..b8b7f94`，新增 10 文件 1909 +/0 -）。
+- **能力扩展**：5 颗新可跑工具——`generate-image-gpt`（B · FC，default `gpt-image-1`）、`generate-video-happyhorse`（B · FC，结构化 `media[]` 数组 + 可选 enum 字段 resolution/ratio/duration）、`generate-music-suno`（确定性 placeholder · 上游 Suno 无官方 API，返回固定占位信封）、`concat-clips`（B · FC，纯 FFmpeg 拼接）、`crop-video`（B · FC，纯 FFmpeg 裁剪）。Wave 2 后总计 **9 颗可跑**（含 W1 的 4 颗），剩 9 颗 Python 桩。
+- **共享件再扩展**：`internal/jsonschema/` 加 `Enum(values...)` 与 `ObjectProp(s *Schema, desc)`（嵌套对象 items，marshal 顺序锁定为 type → minLen → maxLen → pattern → enum → minimum → maximum → exclusiveMin → items → minItems → maxItems → properties → required → description）。
+- **新建立的范式**：placeholder 工具同样实现 `iface.Tool` 接口，`MissingEnv()` 返回 nil，`Run()` 直返固定信封（dryRun 与 default 同路径，符合 donor 规约）。FC body field 顺序通过专用 fcBody struct 强制；nested object schema 通过 `ObjectProp` 表达，不再使用 flat-Prop hack。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过。覆盖率（race + cover，新工具）：`gpt 100.0%` / `happyhorse 94.3%` / `suno 100.0%` / `concatclips 100.0%` / `cropvideo 100.0%` / `jsonschema 99.1%`（含 ObjectProp 100%）。整体覆盖率 96.2%。
+- IDE 主仓 main 上 `pnpm lint` / `pnpm typecheck` / `pnpm go:test` 实跑通过；二进制冒烟：`tools list` 18 颗（**9 runnable** + 9 NOT_IMPLEMENTED）、5 颗新工具 `dryRun` envelope body 字段顺序与 donor TS 一致（gpt: prompt → model；happyhorse: action → prompt → media；concat: clipUrls 单字段；crop: videoUrl → startTime → endTime；suno: placeholder 字段集与 metadata 一致）。
 - **未做（需明确许可）**：`git push` 到 `cdotlock/moonshort-ide`（非本人 namespace，全局规则需逐次同意）；本页对应的 mob-wiki 远端推送同理。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
