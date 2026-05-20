@@ -119,7 +119,8 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 | **L0 单测** | `pnpm test`（覆盖 `test/workshop-codex-home.test.mjs`、`test/workshop-cli.test.mjs`、`test/agent-adapter*.test.mjs`） | 无 | stageSkills / stageCodexHome / agent-adapter 函数级正确性；用 fake assetctl 二进制走 spawn 接口 |
 | **L1a 离线 skill discovery** | `MOONSHORT_AGENT_CODEX_PATH=<codex> node tools/verify-skill-discovery.mjs` | 真 codex 二进制 + 仓库 `agents/asset/` + `agents/_shared/`；**不需要 API key** | codex 0.130 真的扫 `$CODEX_HOME/skills/` + 把目录吐进 model-visible prompt input；新 skill folder drop-in 不改 `agent.json` 也立即被发现 |
 | **L1b Langfuse overlay 字节落地** | 设 `LANGFUSE_HOST`/`PUBLIC_KEY`/`SECRET_KEY` 再跑 L1a；之后 diff `<staged>/skills/<name>/SKILL.md` vs `agents/<id>/skills/<name>/SKILL.md` | Langfuse staging 或 production 凭据 | overlay 真把字节换了（确认 assetctl spawn + Langfuse 拉取 + 写盘整条链） |
-| **L2 LLM-in-the-loop 全链** | `tools/verify-shadow-codex.mjs`（小 fixture workspace）或 IDE Production Workshop UI（真业务） | **`MOONSHORT_AGENT_API_KEY`（DeepSeek key 默认）** + `MOONSHORT_AGENT_BASE_URL`（默认 `https://api.deepseek.com`）+ `MOONSHORT_AGENT_MODEL`（默认 `deepseek-chat`）+ 已 build 的 `.app` 或 dev 模式 | codex 真推理 → 选 skill → 调 assetctl → 解信封 → 取 `loc` → 写 shadow workspace；diff 看 mss 改对没 |
+| **L2a LLM-in-the-loop auth+transport** | `tools/verify-l2-smoke.mjs` — 跑两段：ChatBackend 直连 chat-completions + CodexBackend 经 codex-shim bridge | `MOONSHORT_AGENT_API_KEY` + `_BASE_URL` + `_MODEL` + `_CODEX_PATH`（可选） | 验 provider 接受 key+model、codex-shim Responses↔chat-completions 桥工作 |
+| **L2b LLM-in-the-loop agentic 任务** | IDE Production Workshop UI（真业务） 或 stale `tools/verify-shadow-codex.mjs` / `verify-agent.mjs` / `verify-workshop-agent.mjs`（**三个都坏了**，引用了被删除的 export，需修） | 同 L2a + 已 build 的 `.app` 或 dev 模式 + mss CLI on PATH | codex 真推理 → 选 skill → 调 assetctl → 解信封 → 取 `loc` → 写 shadow workspace；diff 看 mss 改对没 |
 
 ### L0 跑法
 
@@ -159,16 +160,46 @@ MOONSHORT_AGENT_CODEX_PATH=<codex> node tools/verify-skill-discovery.mjs
 # vs agents/asset/skills/<name>/SKILL.md，确认字节被换
 ```
 
-### L2 跑法
+### L2a 跑法（已验，2026-05-21 — 团队实际用 mob-ai 而非 DeepSeek）
 
 ```
-export MOONSHORT_AGENT_API_KEY=sk-...           # DeepSeek key
-export MOONSHORT_AGENT_BASE_URL=https://api.deepseek.com  # 默认即此
-export MOONSHORT_AGENT_MODEL=deepseek-chat       # 默认即此
-node tools/verify-shadow-codex.mjs
+export MOONSHORT_AGENT_API_KEY=<MOB_AI_API_KEY 的值>   # 在 assets-produce/.env 里
+export MOONSHORT_AGENT_BASE_URL=https://ai.mob-ai.cn/api/v1
+export MOONSHORT_AGENT_PROVIDER=mob-ai
+export MOONSHORT_AGENT_MODEL=deepseek-v4-flash       # 也可 deepseek-v4-pro / claude-sonnet-4-6 / gpt-5.5:free
+export MOONSHORT_AGENT_CODEX_PATH=<codex 二进制>      # 没 build .app 时填，可借 cline 同版本
+
+node tools/verify-l2-smoke.mjs
 ```
 
-或者直接开 IDE，进 Production Workshop，跑真业务任务。
+预期输出（2026-05-21 实跑结果）：
+
+```
+config: {"provider":"mob-ai","baseUrl":"https://ai.mob-ai.cn/api/v1","model":"deepseek-v4-flash","apiKey":"<redacted:…dd2f>","codexPath":"..."}
+
+--- ChatBackend (direct chat-completions) ---
+  session: agent-...-0
+  output: "PONG"
+  usage: {"inputTokens":42,"outputTokens":23}
+  PASS — provider accepts our key + model.
+
+--- CodexBackend (codex 0.130 → codex-shim → provider) ---
+  session: agent-...-1
+  progress: Codex protocol bridge ready.
+  progress: Codex session started.
+  progress: Codex turn started.
+  progress: Codex turn completed.
+  output: "PONG"
+  PASS — codex harness ran end-to-end through the bridge.
+
+L2 smoke PASSED.
+```
+
+### L2b 跑法
+
+开 IDE，进 Production Workshop，跑真业务任务。
+
+> **历史 L2 入口都坏了**：`tools/verify-shadow-codex.mjs`（引用了被删除的 `packages/mss-workbench/out/src/shadow-workspace.js`）、`tools/verify-agent.mjs`（引用已删除的 export `buildInlineEditRequest`/`cleanInlineEditOutput`）、`tools/verify-workshop-agent.mjs`（引用已改名的 `applyPrompts` / `stageInstruction`）。CI 不覆盖这些 live verify，所以悄悄腐烂。修这 3 个脚本是单独 hygiene 任务，不在 L2a 范围。
 
 ## 老 RESUME 笔记的坑
 
@@ -195,10 +226,12 @@ node tools/verify-shadow-codex.mjs
 - ✅ L0 单测 — 全过（CI 持续验证）
 - ✅ L1a 离线 — `tools/verify-skill-discovery.mjs` 跑通，`agents/asset` 15 skills 全部被发现 + 暴露给 codex prompt input
 - ✅ L1b Langfuse overlay — 2026-05-21 B3-IDE-5 bootstrap 期间手动 `assetctl skills load --label production` → 23/23 from langfuse 成功；下次同步式 verify-skill-discovery 加 Langfuse env 再补一次双重验证
-- ⏸️ L2 LLM-in-the-loop — 未跑，需要 DeepSeek key
+- ✅ **L2a LLM-in-the-loop auth+transport** — 2026-05-21 `tools/verify-l2-smoke.mjs` 跑通（mob-ai / deepseek-v4-flash / cline-bundled codex 0.130）；ChatBackend + CodexBackend 两段都 PONG，codex-shim Responses↔chat-completions 桥工作
+- ⏸️ L2b LLM-in-the-loop agentic 任务 — IDE Workshop UI 真业务还没跑过（也没 build `.app`）；3 个 stale verify 入口需要先修
 
 ## 后续
 
+- 修 3 个 stale verify 脚本（删 / 重写）：`verify-shadow-codex.mjs`、`verify-agent.mjs`、`verify-workshop-agent.mjs`——都引用了被删/改名的 export，CI 不覆盖所以悄悄腐烂。最快是删掉 + 在 `tools/README.md` 里说明只剩 `verify-skill-discovery.mjs` (L1a) 和 `verify-l2-smoke.mjs` (L2a) 两个 live verify 入口
 - 把 L1b 加进 `verify-skill-discovery.mjs`：可选 env `MOONSHORT_VERIFY_LANGFUSE=1` 时自动 diff overlay vs source 字节
-- 把 L2 改装成 CI smoke：用一个最小 stub provider 或 record/replay fixture，避开真 LLM 调用费用（可选）
-- 把 codex 二进制路径默认值从 hardcoded `/Users/Clock/...` 改成相对仓库 path 探测（`tools/verify-skill-discovery.mjs:34`）
+- 把 L2a 改装成 CI smoke：用一个最小 stub provider 或 record/replay fixture，避开真 LLM 调用费用（可选）
+- 把 codex 二进制路径默认值从 hardcoded `/Users/Clock/...` 改成相对仓库 path 探测（`tools/verify-skill-discovery.mjs:34`）—— `verify-l2-smoke.mjs` 已经按 vendored 路径探测了，可以照抄
