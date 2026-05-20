@@ -62,11 +62,11 @@ status: draft
 
 `generate-image-nanobanana` `generate-image-gpt` `generate-video-seedance` `generate-sfx-elevenlabs` `generate-music-suno` `concat-clips` `crop-video` `generate-video-happyhorse` `cg-render` `nrbi-render-prompt` `upscale-image` `oss-put` `matting` `hybrid-to-webp` `green-spill-clear` `rgb-unspill` `hole-fill` `cutout`
 
-> Wave 3 完结后**共 12 颗可跑**（W1 4 颗 + W2 5 颗 + W3 3 颗）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`，直连 ElevenLabs + Aliyun OSS 二次上传）+ Pattern B 6 颗 FC 网关（`generate-image-nanobanana`/`generate-image-gpt`/`generate-video-seedance`/`generate-video-happyhorse`/`concat-clips`/`crop-video`）+ 占位 1 颗（`generate-music-suno`，Suno 无官方 API，返回确定性 placeholder）+ Pattern E 3 颗纯 Go 像素处理（`cutout` HSV 抠像/`green-spill-clear` leak mask/`rgb-unspill` G-channel clamp，PNG only）。其余 6 颗仍是 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试）——全部为 Pattern F（stub，等 Wave 5+ 升 D-via-cgo 或 E-via-onnx）：`cg-render`/`nrbi-render-prompt`/`matting`/`hole-fill`/`hybrid-to-webp`/`upscale-image`。
+> Wave 5 完结后**共 13 颗可跑**（W1 4 颗 + W2 5 颗 + W3 3 颗 + W5 1 颗）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`，直连 ElevenLabs + Aliyun OSS 二次上传）+ Pattern B 6 颗 FC 网关（`generate-image-nanobanana`/`generate-image-gpt`/`generate-video-seedance`/`generate-video-happyhorse`/`concat-clips`/`crop-video`）+ 占位 1 颗（`generate-music-suno`，Suno 无官方 API，返回确定性 placeholder）+ Pattern E 3 颗纯 Go 像素处理（`cutout` HSV 抠像/`green-spill-clear` leak mask/`rgb-unspill` G-channel clamp，PNG + WebP 输出）+ Pattern E2 1 颗 cgo + libwebp（`hybrid-to-webp`）。其余 5 颗仍是 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试）：`cg-render`/`nrbi-render-prompt`/`matting`/`hole-fill`/`upscale-image`（Wave 4 doc 中列出 W4-2/W4-3 lib 评估实验 + W4-4/W4-5 业务驱动作为升级条件）。
 
 ## IDE 侧落地（纯 Go，照 videoctl 现成模式）
 
-- 源码：Go module 于 `vendor/assetctl/`（`internal/{contract,jsonschema,aliyun,fc,imageio,tools,tools/iface,tools/ossput,tools/nanobanana,tools/seedance,tools/sfxelevenlabs,tools/gpt,tools/happyhorse,tools/suno,tools/concatclips,tools/cropvideo,tools/cutout,tools/greenspillclear,tools/rgbunspill,cli}` + `cmd/assetctl`）。模块声明 `go 1.23.0`（依赖钉版，与新工具链共存——刻意为之）。Wave 1 抽出 **共享包**两枚：`internal/aliyun/`（OSS uploader 工厂，多工具共用）+ `internal/fc/`（FC gateway HTTP client，Pattern-B 工具共用，含 `Endpoint`/`Config`/`CallError`/`Client`/`Call`/`ExtractURL`/`MapError`/`IsHTTPS`）；Wave 2 在 `internal/jsonschema/` 加入 `Enum()` 与 `ObjectProp()`，让结构化数组（如 happyhorse `media[]`）能正确表达 `items: { type:"object", properties:..., required:... }`；Wave 3 新增 `internal/imageio/`（PIL-兼容 `RGBToHSV` H∈[0,360)/S/V∈[0,1] + `GaussianBlurAlpha` 可分离 1D 内核 clamp-edge + `ReadPNG`/`WritePNG`/`PromoteRGBA`/`ValidateInputPath`/`ValidateOutputPath`/`WritePlaceholderPNG`），供 3 颗纯 Go 像素处理工具共用。
+- 源码：Go module 于 `vendor/assetctl/`（`internal/{contract,jsonschema,aliyun,fc,imageio,webpio,tools,tools/iface,tools/ossput,tools/nanobanana,tools/seedance,tools/sfxelevenlabs,tools/gpt,tools/happyhorse,tools/suno,tools/concatclips,tools/cropvideo,tools/cutout,tools/greenspillclear,tools/rgbunspill,tools/hybridtowebp,cli}` + `cmd/assetctl`）。模块声明 `go 1.23.0`（依赖钉版，与新工具链共存——刻意为之）。Wave 1 抽出 **共享包**两枚：`internal/aliyun/`（OSS uploader 工厂，多工具共用）+ `internal/fc/`（FC gateway HTTP client，Pattern-B 工具共用，含 `Endpoint`/`Config`/`CallError`/`Client`/`Call`/`ExtractURL`/`MapError`/`IsHTTPS`）；Wave 2 在 `internal/jsonschema/` 加入 `Enum()` 与 `ObjectProp()`，让结构化数组（如 happyhorse `media[]`）能正确表达 `items: { type:"object", properties:..., required:... }`；Wave 3 新增 `internal/imageio/`（PIL-兼容 `RGBToHSV` H∈[0,360)/S/V∈[0,1] + `GaussianBlurAlpha` 可分离 1D 内核 clamp-edge + `ReadPNG`/`WritePNG`/`PromoteRGBA`/`ValidateInputPath`/`ValidateOutputPath`/`WritePlaceholderPNG`），供 3 颗纯 Go 像素处理工具共用。
 - 构建：`fork/build.mjs` 的 `buildAssetctl()`（与 `buildVideoctl()` 并列，`go build ./cmd/assetctl`）→ `agents/asset/cli/assetctl/bin/assetctl`（gitignored，构建时出）。IDE 工具链零新增。
 - 登记：`agents/asset/cli/bindings.json` 增 `assetctl` binding（与 `videoctl` 同形）。
 - 重试落地：`agent-adapter` 的 `errors.ts`/`retry.ts` 按 §C 分类；`retryable=true` 退避重试，`GENERATION_REJECTED`/`config(3)` 不重试直接上抛。
@@ -131,6 +131,25 @@ status: draft
 **W4-1 PoC 实测（2026-05-20）**：在 `/tmp/w4-1-webp-eval/` 写了最小 main.go 用 `github.com/chai2010/webp v1.4.0`。macOS arm64 `go build` 直接通过——chai2010/webp 内联 libwebp C 源（无需 `brew install webp`）；3.8 MB binary，编码 1×1 红色 NRGBA → 72 字节有效 VP8 WebP。Linux amd64 跨编译失败（macOS SDK 头不含 linux syscalls，cgo 解析 `setresuid`/`setresgid` 失败）——这是预期结果，验证了 doc 中 "linux 升级需 cross toolchain" 的预测。
 
 **Wave 4 决策**：W4-1 是最低成本 F→E 候选（2 颗能力解锁，3 MB binary 代价，macOS 立即可用，linux 需 0.5-1 人天 toolchain）。其余 5 颗（W4-2/3/4/5）触发条件 = Block 2 编排 skill 实际调用频次 + 业务需求成型，不在 Wave 5 范围内。Wave 4 评估阶段闭环；W4-2/W4-3 PoC 留待业务驱动启动。
+
+
+
+### Wave 5（已完成 2026-05-20，main `8900997`）
+
+- 5 个任务（W5-1 → W5-5）TDD 落地，每任务 fresh implementer subagent → spec compliance review → code quality review → atomic follow-up commit；共 10 个 atomic commit（plan 1 + feat 4 + refactor 3 + test 1 + build 1）。Wave 5 引入 **assetctl 第一个 cgo 依赖**：`github.com/chai2010/webp v1.4.0`（内置 libwebp C 源，零系统依赖）；零 brew install libwebp 必需。
+- 合并进 `moonshort-ide` 本地 `main`（fast-forward `90d7280..8900997`，新增 5 文件 +约 2400 行 / 改 3 文件 +约 250 行）。
+- **能力扩展**：1 颗新可跑工具 + 1 颗 Wave 3 工具扩展输出格式——`hybrid-to-webp`（E2 · cgo + libwebp，schema 与 donor 一致 7 字段：quality/method/overwrite/mock/dryRun，method 接受参数但 chai2010/webp 用 libwebp 默认 method 内部封装，对 donor 行为是已记录的发散）；`rgb-unspill` 扩 `.webp` 输出（新增 `webpQuality` schema 字段 default 90；mock + `.webp` 经 W5-3 review 找到 bug 后修正——`mock:true` + `.webp` 现在产物为有效 WebP，不再是 PNG 假冒）。Wave 5 后总计 **13 颗可跑**（W1 4 + W2 5 + W3 3 + W5 1），剩 5 颗 NOT_IMPLEMENTED 桩。
+- **新共享层**：`internal/webpio/` 包提供 `WriteWebP(img image.Image, path string, opts WriteOptions) error` + `WritePlaceholderWebP(path string) error` + `WriteOptions{Quality float32, Lossless bool}` + 私有 `nrgbaToRGBA` helper（取 imageio.PromoteRGBA 的 `*image.NRGBA` 返回值转 `*image.RGBA` 避免 chai2010/webp 内部 `toRGBAImage` 慢路径）。
+- **新建立的范式**：Pattern E2 = cgo + bundled C 源；Go 字段命名 WebP 初始词大小写（`WebPQuality`、`WriteWebP`，不是 `Webp...`）；mock 模式按输出扩展名分支到对应 placeholder writer（不能一律写 PNG）；可选 numeric param 用 `*int` 区分 omitted vs explicit zero（Wave 3 沿用）。
+- **构建基础设施**：`fork/build.mjs` 的 `buildAssetctl()` 加入 `CGO_ENABLED=1` + 检测 `HOST_GO` 与 `target` 是否一致；若跨编译，设 `CC="zig cc -target X"` 与 `CXX="zig c++ -target X"`，并验证 `zig version` 可调用否则 `fail()` 报清晰错误。`ZIG_TARGETS` 映射：`linux/amd64=x86_64-linux-musl`、`linux/arm64=aarch64-linux-musl`、`windows/amd64=x86_64-windows-gnu`。macOS host → macOS target **不需要 zig**（native cc 处理 cgo）；`mss` / `mss-lsp` / `videoctl` 维持纯 Go，不受影响。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go vet -tags=integration ./...` clean、`go test -race ./...` 全过。覆盖率：`webpio 94.4%` / `hybridtowebp 93.5%` / `rgbunspill 91.7%`（含 .webp 路径全覆盖）。其余包未回归。
+- 跨编译 smoke（用最终 fork/build.mjs 的等价 `go build` invocation）：
+  - macOS arm64 native（CGO_ENABLED=1，无 CC）：11.6 MB Mach-O
+  - Linux amd64 via `zig cc -target x86_64-linux-musl`：18.8 MB statically-linked ELF
+  - Linux arm64 via `zig cc -target aarch64-linux-musl`：18.1 MB statically-linked ELF
+  - 三个目标全部 chai2010/webp（libwebp C 源）编译通过，无系统 libwebp 依赖
+- IDE 主仓 main 上 `pnpm lint` / `pnpm typecheck` / `pnpm go:test` 实跑通过；二进制冒烟：`tools list` 18 颗（**13 runnable** + 5 NOT_IMPLEMENTED）、`hybrid-to-webp mock:true` envelope 含 `assets[0].loc` + `mock:true`，物理产物 = 1×1 transparent WebP（`file out.webp` 报 RIFF Web/P）；`rgb-unspill mock:true outputPath=.webp` 同样产出有效 WebP（W5-3 MEDIUM bug fix 后）。
+- **未做（需明确许可）**：`git push` 到 `cdotlock/moonshort-ide`（非本人 namespace，全局规则需逐次同意）；本页对应的 mob-wiki 远端推送同理。Wave 4 doc 中余下 4 个升级候选（W4-2 gocv `hole-fill` / W4-3 onnxruntime_go `matting` / W4-4 backend `cg-render` / W4-5 业务驱动 `nrbi-render-prompt`，含拒绝候选 `upscale-image`）维持 deferred 直至业务驱动启动。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
 
