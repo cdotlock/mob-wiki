@@ -112,6 +112,26 @@ status: draft
 - IDE 主仓 main 上 `pnpm lint` / `pnpm typecheck` / `pnpm go:test` 实跑通过；二进制冒烟：`tools list` 18 颗（**12 runnable** + 6 NOT_IMPLEMENTED）、3 颗新工具 `mock:true` envelope 内容与字段顺序符合合同（`tool`/`input_path`/`output_path`/`params`/`assets[0].{kind:image,name,loc}` + `mock:true`），物理产物为 1×1 transparent NRGBA PNG。
 - **未做（需明确许可）**：`git push` 到 `cdotlock/moonshort-ide`（非本人 namespace，全局规则需逐次同意）；本页对应的 mob-wiki 远端推送同理。Wave 4 stub 升级评估 doc 已在 main，作为 Wave 5+ 决策输入。
 
+### Wave 4 stub 升级评估（已完成 2026-05-20，main `14594de`）
+
+**不实现任何工具，只做评估**。Wave 4 是从 Wave 3 起新增的一个评估阶段，目的是给剩下 6 颗 F-stub 找出"什么条件下值得升 E/D"——结论写在 `docs/design/2026-05-20-assetctl-wave4-stub-upgrade-evaluation.md`，作为 Wave 5+ 实施优先级的决策输入。
+
+**评估矩阵**：6 颗 F-stub × 升级路径 × 阻塞条件
+
+| F-stub | 候选升级路径 | 评估阶段 | 结论摘要 |
+|---|---|---|---|
+| `hybrid-to-webp` | E · cgo + libwebp (chai2010/webp) | W4-1 ✅ PoC done | macOS arm64 native ✅ 直接通过（libwebp C 源 v1.4.0 自带，无系统依赖；assetctl 体积 +约 3 MB）；linux 跨编译 ❌ 需 zig/musl-cross 工具链（约 0.5–1 人天） |
+| `rgb-unspill` .webp 子能力 | E · 同上 | W4-1 ✅（合并评估） | 同 hybrid-to-webp 结论；Wave 3 实现已留 `.webp` 输出拒绝路径，升级即解除 |
+| `hole-fill` | E · cgo + gocv (OpenCV) | W4-2 ❌ PoC 未做 | 需系统 libopencv 安装（重量级），跨平台 build 复杂度高；不及 W4-1 经济 |
+| `matting` | E · cgo + onnxruntime_go + MODNet | W4-3 ❌ PoC 未做 | 需 onnxruntime 动态库 + MODNet onnx 权重缓存策略；Apple Silicon benchmark 待跑 |
+| `cg-render` | C · backend `FC_CG_RENDER_*` 端点 | W4-4 业务驱动 | 不需自己实现像素操作；backend 提供端点后约 5 行 Go 即可（同 Pattern B）；触发条件 = backend 同事提供端点 |
+| `upscale-image` | D · cgo + Real-ESRGAN ONNX | W4-4 业务驱动 | 体积爆增（>50 MB ONNX）+ Apple Silicon GPU 加速复杂；**不推荐除非业务必需** |
+| `nrbi-render-prompt` | E · 文本处理（无外部依赖） | W4-5 业务驱动 | 升级简单，等 nrbi 业务需求成型再做对拍基础设施 |
+
+**W4-1 PoC 实测（2026-05-20）**：在 `/tmp/w4-1-webp-eval/` 写了最小 main.go 用 `github.com/chai2010/webp v1.4.0`。macOS arm64 `go build` 直接通过——chai2010/webp 内联 libwebp C 源（无需 `brew install webp`）；3.8 MB binary，编码 1×1 红色 NRGBA → 72 字节有效 VP8 WebP。Linux amd64 跨编译失败（macOS SDK 头不含 linux syscalls，cgo 解析 `setresuid`/`setresgid` 失败）——这是预期结果，验证了 doc 中 "linux 升级需 cross toolchain" 的预测。
+
+**Wave 4 决策**：W4-1 是最低成本 F→E 候选（2 颗能力解锁，3 MB binary 代价，macOS 立即可用，linux 需 0.5-1 人天 toolchain）。其余 5 颗（W4-2/3/4/5）触发条件 = Block 2 编排 skill 实际调用频次 + 业务需求成型，不在 Wave 5 范围内。Wave 4 评估阶段闭环；W4-2/W4-3 PoC 留待业务驱动启动。
+
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
 
 - **O1 · assetctl↔videoctl 边界**：`generate-video-*`/`concat-clips`/`crop-video` 与 `videoctl` 是否重叠——后续 plan 定清（候选：assetctl 不收视频生成类全委派 videoctl；或 videoctl 专投递、生成类归 assetctl）。
