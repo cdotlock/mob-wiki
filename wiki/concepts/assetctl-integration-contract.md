@@ -62,7 +62,9 @@ status: draft
 
 `generate-image-nanobanana` `generate-image-gpt` `generate-video-seedance` `generate-sfx-elevenlabs` `generate-music-suno` `concat-clips` `crop-video` `generate-video-happyhorse` `cg-render` `nrbi-render-prompt` `upscale-image` `oss-put` `matting` `hybrid-to-webp` `green-spill-clear` `rgb-unspill` `hole-fill` `cutout`
 
-> Wave 5 完结后**共 13 颗可跑**（W1 4 颗 + W2 5 颗 + W3 3 颗 + W5 1 颗）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`，直连 ElevenLabs + Aliyun OSS 二次上传）+ Pattern B 6 颗 FC 网关（`generate-image-nanobanana`/`generate-image-gpt`/`generate-video-seedance`/`generate-video-happyhorse`/`concat-clips`/`crop-video`）+ 占位 1 颗（`generate-music-suno`，Suno 无官方 API，返回确定性 placeholder）+ Pattern E 3 颗纯 Go 像素处理（`cutout` HSV 抠像/`green-spill-clear` leak mask/`rgb-unspill` G-channel clamp，PNG + WebP 输出）+ Pattern E2 1 颗 cgo + libwebp（`hybrid-to-webp`）。其余 5 颗仍是 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试）：`cg-render`/`nrbi-render-prompt`/`matting`/`hole-fill`/`upscale-image`（Wave 4 doc 中列出 W4-2/W4-3 lib 评估实验 + W4-4/W4-5 业务驱动作为升级条件）。
+> Wave 6 完结后**共 14 颗可跑**（W1 4 颗 + W2 5 颗 + W3 3 颗 + W5 1 颗 + W6 1 颗）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`，直连 ElevenLabs + Aliyun OSS 二次上传）+ Pattern B **7** 颗 FC 网关（`generate-image-nanobanana`/`generate-image-gpt`/`generate-video-seedance`/`generate-video-happyhorse`/`concat-clips`/`crop-video`/**`cg-render`**）+ 占位 1 颗（`generate-music-suno`，Suno 无官方 API，返回确定性 placeholder）+ Pattern E 3 颗纯 Go 像素处理（`cutout` HSV 抠像/`green-spill-clear` leak mask/`rgb-unspill` G-channel clamp，PNG + WebP 输出）+ Pattern E2 1 颗 cgo + libwebp（`hybrid-to-webp`）。其余 **4 颗**仍是 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试）：`nrbi-render-prompt`/`matting`/`hole-fill`/`upscale-image`（Wave 4 doc 中列出 W4-2/W4-3 lib 评估实验 + W4-5 业务驱动作为升级条件）。
+>
+> **`cg-render` Pattern B 是 scaffolding（W6）**：Go 侧完整 schema/body/MissingEnv/error mapping/dryRun 全部就位，覆盖率 100%；real-run 需要 backend 提供 `FC_CG_RENDER_URL` + `FC_CG_RENDER_TOKEN`，未设时返回 `CONFIG_MISSING`（exit 3）——与 nanobanana 缺 env 时行为一致。
 
 ## IDE 侧落地（纯 Go，照 videoctl 现成模式）
 
@@ -124,7 +126,7 @@ status: draft
 | `rgb-unspill` .webp 子能力 | E · 同上 | W4-1 ✅（合并评估） | 同 hybrid-to-webp 结论；Wave 3 实现已留 `.webp` 输出拒绝路径，升级即解除 |
 | `hole-fill` | E · cgo + gocv (OpenCV) | W4-2 ❌ PoC 未做 | 需系统 libopencv 安装（重量级），跨平台 build 复杂度高；不及 W4-1 经济 |
 | `matting` | E · cgo + onnxruntime_go + MODNet | W4-3 ❌ PoC 未做 | 需 onnxruntime 动态库 + MODNet onnx 权重缓存策略；Apple Silicon benchmark 待跑 |
-| `cg-render` | C · backend `FC_CG_RENDER_*` 端点 | W4-4 业务驱动 | 不需自己实现像素操作；backend 提供端点后约 5 行 Go 即可（同 Pattern B）；触发条件 = backend 同事提供端点 |
+| ~~`cg-render`~~ | B · FC 网关 scaffolding | **W6 ✅ 2026-05-21** | Go 侧 Pattern B 完整落地（套 nanobanana 模板，无 ZENMUX/Python 痕迹，回归 guard 测锁定）；待 backend 提供 `FC_CG_RENDER_URL` + `FC_CG_RENDER_TOKEN` 才能 real-run（缺 env → `CONFIG_MISSING` exit 3）|
 | `upscale-image` | D · cgo + Real-ESRGAN ONNX | W4-4 业务驱动 | 体积爆增（>50 MB ONNX）+ Apple Silicon GPU 加速复杂；**不推荐除非业务必需** |
 | `nrbi-render-prompt` | E · 文本处理（无外部依赖） | W4-5 业务驱动 | 升级简单，等 nrbi 业务需求成型再做对拍基础设施 |
 
@@ -150,6 +152,16 @@ status: draft
   - 三个目标全部 chai2010/webp（libwebp C 源）编译通过，无系统 libwebp 依赖
 - IDE 主仓 main 上 `pnpm lint` / `pnpm typecheck` / `pnpm go:test` 实跑通过；二进制冒烟：`tools list` 18 颗（**13 runnable** + 5 NOT_IMPLEMENTED）、`hybrid-to-webp mock:true` envelope 含 `assets[0].loc` + `mock:true`，物理产物 = 1×1 transparent WebP（`file out.webp` 报 RIFF Web/P）；`rgb-unspill mock:true outputPath=.webp` 同样产出有效 WebP（W5-3 MEDIUM bug fix 后）。
 - **未做（需明确许可）**：`git push` 到 `cdotlock/moonshort-ide`（非本人 namespace，全局规则需逐次同意）；本页对应的 mob-wiki 远端推送同理。Wave 4 doc 中余下 4 个升级候选（W4-2 gocv `hole-fill` / W4-3 onnxruntime_go `matting` / W4-4 backend `cg-render` / W4-5 业务驱动 `nrbi-render-prompt`，含拒绝候选 `upscale-image`）维持 deferred 直至业务驱动启动。
+
+### Wave 6（已完成 2026-05-21，main `2099f03`，推 `dev/assets-produce-integration-2026-05-21`）
+
+- 1 颗工具（cg-render）TDD 落地，fresh implementer subagent → spec compliance review → go-reviewer code quality review → atomic refactor follow-up commit；共 3 个 atomic commit（feat 2 + refactor 1）。Wave 6 是 W4-4 "backend 端点" 路径的 Go 侧 scaffolding，触发条件 = 后续 backend 同事提供 `FC_CG_RENDER_URL` + `FC_CG_RENDER_TOKEN`。
+- 合并进 `moonshort-ide` 本地 `main`（FF `70efdd0..2099f03`），新文件 2 + 改文件 2（cli_test.go aggregate env list 同步 + registry.go realTools 加 cg-render）。
+- **能力扩展**：1 颗新 Pattern B 可跑工具——`cg-render`（schema 7 props：slug/cgName/prompt/referenceImageUrls 4 required + panelCount/model/dryRun 3 optional；fcBody 6 字段固定顺序 slug→cgName→prompt→model→panelCount→referenceImageUrls，**panelCount 与 referenceImageUrls 都不带 `omitempty`**——backend 拿到的 body shape 永远稳定）。Wave 6 后总计 **14 颗可跑**（W1 4 + W2 5 + W3 3 + W5 1 + W6 1），剩 4 颗 NOT_IMPLEMENTED 桩。
+- **新建立的范式（一次性回归 guard）**：donor `cg-render.ts` / `cg-render.txt` 字面上说"via ZENMUX (google-genai)"——这是 donor 的 Python 时代字面，新 Go 实现走 FC 网关（=mob-ai 路由），新 summary/comments/identifiers 一律不沾 ZENMUX/Python/google-genai。`TestSummaryHasNoZenmuxOrPython` 单测同时断言 summary 含 "FC endpoint" + 拒绝 ZENMUX/Python/google-genai 字眼，是回归 guard 锁死字面层契约的范本。
+- **命名一致性 fix**：code-quality review 抓到 `params.ReferenceImageURLs` (URL acronym) vs `fcBody.ReferenceImageUrls` (Urls) 文件内不一致——sibling tools 全用 `Urls`（nanobanana/gpt/seedance/happyhorse），cg-render 沿用 sibling 形（json tag `referenceImageUrls` 不变，wire 字节不变）；同时清死 `stubResponse` test helper（W1-4/W1-5 dead-helper 反 pattern 复发）。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`cgrender` 覆盖率 **100%**。`tools list` 14 runnable + 4 stubs；`tools schema cg-render --format openai` 7 props order 正确；`run cg-render --dryRun` envelope body 在 donor 顺序，`panelCount:1` 默认 emit。
+- **未做**：backend 真端点（业务驱动）；wiki 远端推送（用户 2026-05-21 仅授权 `dev/*` 分支推 `cdotlock/moonshort-ide`，wiki main 推未授权）；Wave 4 doc 中余下 4 个升级候选维持 deferred（W4-2 `hole-fill` / W4-3 `matting` / W4-5 `nrbi-render-prompt` / `upscale-image`）。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
 
