@@ -64,9 +64,9 @@ status: draft
 
 > **Wave 10 完结后全部 18 颗可跑/就位** — **0 F-stub 剩余**。
 >
-> 分布：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`）+ Pattern B **11** 颗 FC 网关（W1: `generate-image-nanobanana`/`generate-video-seedance`；W2: `generate-image-gpt`/`generate-video-happyhorse`/`concat-clips`/`crop-video`；W6: `cg-render`；W8: `matting`；W9: `upscale-image`；W10: `hole-fill`）+ 占位 1 颗（`generate-music-suno`）+ Pattern E 3 颗纯 Go 像素处理（W3: `cutout`/`green-spill-clear`/`rgb-unspill`）+ Pattern E2 1 颗 cgo+libwebp（W5: `hybrid-to-webp`）+ **Pattern E scaffold 1 颗**（W7: `nrbi-render-prompt`，纯 Go 文本处理，real-run 返 NOT_IMPLEMENTED 待 Wave 7b 对拍 CI infra）。
+> 分布（W11 修订）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`）+ Pattern B **12** 颗 FC 网关（W1: `generate-image-nanobanana`/`generate-video-seedance`；W2: `generate-image-gpt`/`generate-video-happyhorse`/`concat-clips`/`crop-video`；W6: `cg-render`；W8: `matting`；W9: `upscale-image`；W10: `hole-fill`；**W11: `nrbi-render-prompt`**）+ 占位 1 颗（`generate-music-suno`）+ Pattern E 3 颗纯 Go 像素处理（W3: `cutout`/`green-spill-clear`/`rgb-unspill`）+ Pattern E2 1 颗 cgo+libwebp（W5: `hybrid-to-webp`）。**Pattern E scaffold 已废止**（W7 nrbi-render-prompt Pattern E scaffold 于 W11 重构为 Pattern B）。
 >
-> **设计原则（Waves 8-10 决策记录）**："不方便改成 Go 的，该保留 C++ 就保留 C++"。原 W4 doc 计划 4 颗（matting/hole-fill/upscale-image/nrbi-render-prompt）走 cgo E/E2 路径（ML 模型推理 + 图像库），但实际工程权衡：matting（MODNet）、hole-fill（OpenCV Inpaint）、upscale-image（Real-ESRGAN）三颗重型 ML/系统库，Go 侧轻量级文本/网络调度，backend 部署及管理模型权重、GPU 加速、版本演进。这样分工降低 Go 打包体积、避免 cgo 跨编译复杂性、支持 model checkpoint 独立更新。nrbi-render-prompt 走 Pattern E scaffold（W7）保留选项，可根据需要转 Pattern B；Wave 7b 对拍 CI 基础设施暂未部署。
+> **设计原则（Waves 8-11 决策记录）**："不方便改成 Go 的，该保留 C++ 就保留 C++"。原 W4 doc 计划 4 颗（matting/hole-fill/upscale-image/nrbi-render-prompt）走 cgo E/E2 路径（ML 模型推理 + 图像库），但实际工程权衡：matting（MODNet）、hole-fill（OpenCV Inpaint）、upscale-image（Real-ESRGAN）三颗重型 ML/系统库 + nrbi-render-prompt（1547 LOC frozen Python sha256-pinned），Go 侧轻量级网络/JSON 调度，backend 部署及管理模型权重、GPU 加速、版本演进。这样分工降低 Go 打包体积、避免 cgo 跨编译复杂性、支持 model checkpoint / Python 冻结代码独立更新。**W11 把 nrbi-render-prompt 也按这条原则收编 Pattern B**（W7 Pattern E scaffold 仅 dryRun + mock，real-run NOT_IMPLEMENTED；W11 转 Pattern B 真调，CONFIG_MISSING 等 backend），省 Wave 7b 对拍 CI 基础设施工作。
 
 ## IDE 侧落地（纯 Go，照 videoctl 现成模式）
 
@@ -201,6 +201,16 @@ status: draft
 - FC env：`FC_HOLE_FILL_URL` / `FC_HOLE_FILL_TOKEN`；120s timeout。
 - **registry cleanup**：commit `4de6903` refactor 删除 `func stubTool(id string) iface.Tool` 占位符，改为 assert `realTools()` 返回包含全 18 个 IDs（验证无漏网工具）。`TestStubToolStructDirectly` 作为范本，演示如何在单测里直接 exercise `stubTool` struct（future 扩展新 canonical ID 时参考），无需保留 registry 级别的占位函数。
 - 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`holefill` 覆盖率 **100%**。`tools list` 18/18；all 18 `tools schema <id>` 全通过；`run hole-fill --dryRun` envelope 正确。
+
+### Wave 11（已完成 2026-05-21，main `7c96f20`）—— W7 Pattern E scaffold 重构为 Pattern B
+
+- 1 颗工具（nrbi-render-prompt）从 Pattern E scaffold 完整重写为 Pattern B FC HTTP；共 2 个 atomic commit（refactor 1 + chore 1）。Wave 11 推翻 W7 决策，按用户设计原则"不方便改成 Go 的，该保留 C++ 就保留 C++"延伸到冻结 Python 场景。
+- 合并进 `moonshort-ide` 本地 `main`（FF `5f80cf7..7c96f20`），改文件 3（nrbirenderprompt.go rewrite 287 LOC + nrbirenderprompt_test.go rewrite 581 LOC + cli_test.go aggregate env 加 nrbi env）。
+- **能力扩展**：1 颗工具从 Pattern E scaffold 转 Pattern B 可跑（待 backend）——`nrbi-render-prompt`（schema 5 props：layer/variable_text 2 required（layer enum A/A5/B/C/D/E，variable_text object）+ category/style_name/reference_image_urls 3 optional + dryRun；fcBody 5 字段固定顺序 layer→variable_text→category→style_name→reference_image_urls）。**drop `mock`** mode（Pattern B sibling 不带，backend 自己处理任何内部 mock）。Wave 11 后 W7 标记从"Pattern E scaffold"改为"Pattern B 等 backend"，18 颗全部 Pattern A/A2/B/E/E2，**无 Pattern E scaffold 留存**。
+- **设计决策记录**：donor 是 1547 LOC frozen Python（sha256-pinned 模板，importlib.util.spec_from_file_location 加载，prompt 构造分散 7 个私有 builder）。完整 Go port 需 Wave 7b byte-faithful sha256 对拍 CI 基础设施（Python baseline runner + Go runner + diff 比对器 + 字面量同步策略，估 1-2 天）+ 1547 LOC 翻译（估 3-5 天）。**W11 取消 Pattern E scaffold + Wave 7b gate，直接 Pattern B 让 backend 跑 donor Python verbatim**，省 5+ 天后续工作。snake_case JSON keys（donor-faithful，backend 跑 donor Python verbatim 期待 snake_case）+ response 用 typed struct 解析（解出 `prompt` string + 元数据 `model`/`style_name`/`category`/`layer`/`meta`，区别于 sibling 工具的 OSS URL response）。
+- **新建立的范式**：Pattern B 不限于 OSS URL response。response shape 是字符串 / 元数据时，用 typed `fcResponse` struct 在 tool package 内 inline 解析（YAGNI `fc.ExtractString` helper，wrapper 还需要 model + meta passthrough）。
+- FC env：`FC_NRBI_RENDER_PROMPT_URL` / `FC_NRBI_RENDER_PROMPT_TOKEN`；60s timeout（轻量字符串构造，无 ML/GPU）。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`nrbirenderprompt` 39 tests pass（含 fcBody 字段顺序 byte-exact 断言 + httptest live FC + 禁字面 `TestSummaryHasNoForbiddenPhrasings` 守 Python/importlib/sha256/ZENMUX/google-genai）；`tools list` 18/18；`run nrbi-render-prompt --dryRun` envelope dry_run:true、body 字段 snake_case 顺序锁住；`run nrbi-render-prompt` 无 env → CONFIG_MISSING 列两个 env 退 3。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
 
