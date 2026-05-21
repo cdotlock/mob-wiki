@@ -24,6 +24,7 @@ Welcome to the team knowledge base.
 - [[concepts/cli-gateway-protocol]] — Unified HTTP protocol for remote CLI command execution
 - [[concepts/codex-runtime-and-verification-layers]] — Moonshort IDE 里 codex 怎么起、auth 怎么传（`MOONSHORT_AGENT_API_KEY` + 本地 `codex-shim` HTTP bridge，**不**走 `~/.codex/auth.json`）；4 层验证（L0 单测 / L1a 离线 skill discovery / L1b Langfuse overlay / L2 LLM-in-the-loop）+ 每层跑法 + 代码参考表
 - [[concepts/comfyui-modal-deploy]] — ComfyUI on Modal serverless deploy for assetctl `matting` (BiRefNet_toonOut) + `upscale-image` (Real-ESRGAN-anime)；单 Modal app 双 endpoint、阿里云 OSS 直传、IDE 端零改动只改 4 个 FC_* env var；spec 落在 `docs/design/2026-05-21-comfyui-modal-deploy-spec.md`
+- [[concepts/dream-trigger-v2-mechanical]] — Producer-side dream trigger v2 (2026-05-21): pure-mechanical evaluator (no LLM) — UserNovelProfile vector + weighted running mean + cosine drift + sharpness gates, replaces v1 single-gate. Drops phase dedup; first-dream保送 keeps committed_success ≥ 3.
 - [[concepts/dreaming-universe]] — 玩家画像触发的共享 Dream 支线宇宙：Episode graph + assignment-gated overlay + Python dream-agent
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
 - [[concepts/moonshort-ide-ai-integration]] — Moonshort IDE 内 AI 集成架构:为什么改用 Cline 而非 VS Code 原生 chat(被 Copilot 闸住),最终两个表面 —— Tab 补全 + Moonshort Agent
