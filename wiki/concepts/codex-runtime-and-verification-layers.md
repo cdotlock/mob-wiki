@@ -264,7 +264,7 @@ L2b deeper smoke PASSED — codex produced usable per-asset prompts through stag
 >
 > `verify-codex-host.mjs` 不验证"codex 真**调** assetctl"那一层——它只看模型最终回的 JSON prompt map 长什么样。`L2c` 是把这条进一步收窄的下一层（见 `verify-codex-assetctl.mjs`）：codex 必须**真 shell out 到** `assetctl run cutout` 才能拿到 envelope 回报 `ok=true`，prompt-knowledge 走不了这条路径。
 
-### L2c 跑法（脚本就绪，首跑待定）
+### L2c 跑法（已验，2026-05-22）
 
 ```
 # 先编译 assetctl 到 canonical vendored path（agentToolPaths 会自动捡到）：
@@ -282,32 +282,38 @@ cd /Users/august/MobAI/moonshort-ide
 node tools/verify-codex-assetctl.mjs
 ```
 
-预期输出形状：
+预期输出（2026-05-22 实跑结果）：
 
 ```
 L2c smoke — codex → assetctl shell-out via CodexBackend + staged CODEX_HOME
-config:      {"provider":"mob-ai","baseUrl":"https://ai.mob-ai.cn/api/v1","model":"claude-sonnet-4-6",...}
-codexPath:   ...
+config:      {"provider":"mob-ai","baseUrl":"https://ai.mob-ai.cn/api/v1","model":"claude-sonnet-4-6","apiKey":"<redacted:…dd2f>","codexPath":"..."}
+codexPath:   /opt/homebrew/lib/node_modules/cline/.../codex/codex
 assetctl:    /Users/august/MobAI/moonshort-ide/agents/asset/cli/assetctl/bin/assetctl
-runId:       verify-l2c-...
+runId:       verify-l2c-f56795a2
 
-[stage] CODEX_HOME = /var/folders/.../moonshort-codex-verify-l2c-...
-[stage] catalog (15): asset-prompt-generator, asset-renderer, ...
-[stage] cwd  = /var/folders/.../moonshort-l2c-cwd-...
+[stage] CODEX_HOME = /var/folders/.../moonshort-codex-verify-l2c-f56795a2-XXXX
+[stage] catalog (15): asset-prompt-generator, asset-renderer, asset-reviewer, ...
+[stage] cwd  = /var/folders/.../moonshort-l2c-cwd-XXXX
 
 --- codex EXECUTE — single assetctl shell-out ---
-  session: agent-...
+  session: agent-mpexc0oh-0
   progress: Codex protocol bridge ready.
   progress: Codex session started.
   progress: Codex turn started.
-  tool: shell assetctl run cutout --input '{"inputPath":...,"dryRun":true}'
+  tool: shell /bin/zsh -lc "assetctl run cutout --input '{\"inputPath\":\".../input.png\",\"outputPath\":\".../out.png\",\"dryRun\":true}'"
   tool done: shell (ok)
   progress: Codex turn completed.
-  output: ~80 chars
-  shell events: 1 (last detail snippet: assetctl run cutout --input '{...}')
+  output: 62 chars
+  shell events: 1 (last detail snippet: /bin/zsh -lc "assetctl run cutout --input '{...}'")
 
 L2c smoke PASSED — codex shelled out to assetctl and consumed its envelope.
 ```
+
+值得记的实跑细节（2026-05-22 首跑结果）：
+
+- codex 把 shell call 包在 `/bin/zsh -lc "..."` 里，不是直接 spawn `assetctl`——这是 codex 0.130 把所有 command_execution 走 login shell 的默认形状。`AgentConfig.toolPaths` 前置到 PATH 后，zsh `-lc` 一样能找到 vendored assetctl
+- 一个 turn 解决（usage 没回 tokens；session→shell→completion），claude-sonnet-4-6 直接顺着 system prompt 跑，没绕路
+- `tool.start name=shell detail=...` 事件正确进 AgentEvent stream，detail 含完整命令行——IDE Workshop 运行面板的 activity feed 这条已经能渲
 
 L2c 验到 L2b-deeper 不验的：
 
@@ -347,7 +353,7 @@ L2c 验到 L2b-deeper 不验的：
 - ✅ **L2a LLM-in-the-loop auth+transport** — 2026-05-21 `tools/verify-l2-smoke.mjs` 跑通（mob-ai / deepseek-v4-flash / cline-bundled codex 0.130）；ChatBackend + CodexBackend 两段都 PONG，codex-shim Responses↔chat-completions 桥工作
 - ✅ **L2b LLM-in-the-loop workshop EXECUTE stage** — 2026-05-21 `tools/verify-workshop-agent.mjs` 跑通（同 mob-ai 配置）；agent 真返回 JSON prompt map、`applyPromptMap` 把 prompt + status 写回 assets；顺手发现 `extractJson` 对 trailing comma 不容错（commit `037a2db` 改成 strict → sanitized 两段 fallback）
 - ✅ **L2b-deeper codex 真 agentic 链路** — 2026-05-22 `tools/verify-codex-host.mjs` 跑通（mob-ai / **claude-sonnet-4-6** / cline-bundled codex 0.130）；codex 真跑 shell tool 读 SKILL.md、多 turn 推理、回 JSON prompt map；`stageCodexHome` 真起 run-private CODEX_HOME，15 个 asset skill 全 stage 进去
-- 🟡 **L2c codex shell-out 到 assetctl** — 脚本就绪（`tools/verify-codex-assetctl.mjs`，commit `1d52a35`），assetctl 二进制 build 验过（`go build` → `cutout --dryRun` envelope `{"ok":true,...}`）；首次端到端跑还没做（卡在当前 session 拿不到 `MOONSHORT_AGENT_API_KEY` env）
+- ✅ **L2c codex shell-out 到 assetctl** — 2026-05-22 `tools/verify-codex-assetctl.mjs` 首跑通过（mob-ai / claude-sonnet-4-6 / cline-bundled codex 0.130）；codex 0.130 通过 `/bin/zsh -lc "..."` shell tool 真调 vendored `assetctl run cutout --dryRun`，单 turn 完成，envelope `{"ok":true,...}` 被消费，final assistant 报 `L2c VERIFIED ok=true tool=cutout`；`AgentConfig.toolPaths` PATH 前置生效（agentToolPaths 实际生产链路同形）；commit `1d52a35` (script) + `6cf1dde` (wiki) 已落，验证后再追一条 wiki ✅ 翻牌 commit
 - ⏸️ L2c 之后：真写 shadow workspace + diff mss 链路 — 仍需 IDE Workshop UI 跑真业务（未启动）
 
 ## 后续
