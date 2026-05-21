@@ -64,9 +64,9 @@ status: draft
 
 > **Wave 10 完结后全部 18 颗可跑/就位** — **0 F-stub 剩余**。
 >
-> 分布（W12 修订）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`）+ Pattern B **11** 颗 FC 网关（W1: `generate-image-nanobanana`/`generate-video-seedance`；W2: `generate-image-gpt`/`generate-video-happyhorse`/`concat-clips`/`crop-video`；W6: `cg-render`；W8: `matting`；W9: `upscale-image`；**W11: `nrbi-render-prompt`**）+ 占位 1 颗（`generate-music-suno`）+ Pattern E **4** 颗纯 Go（W3: `cutout`/`green-spill-clear`/`rgb-unspill`；**W12: `hole-fill` Telea inpaint**）+ Pattern E2 1 颗 cgo+libwebp（W5: `hybrid-to-webp`）。**Pattern E scaffold 已废止**。
+> 分布（**W13 修订**）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`）+ Pattern B **9** 颗 FC 网关（W1: `generate-image-nanobanana`/`generate-video-seedance`；W2: `generate-image-gpt`/`generate-video-happyhorse`/`concat-clips`/`crop-video`；W6: `cg-render`；W8: `matting`；W9: `upscale-image`）+ 占位 1 颗（`generate-music-suno`）+ Pattern E **5** 颗纯 Go（W3: `cutout`/`green-spill-clear`/`rgb-unspill`；**W12: `hole-fill` Telea inpaint**；**W13: `nrbi-render-prompt` captured-goldens**）+ Pattern E2 1 颗 cgo+libwebp（W5: `hybrid-to-webp`）。**Pattern E scaffold 已废止**。合计 9+5+1+1+1+1 = 18 颗。
 >
-> **设计原则（Waves 8-12 决策记录，修订二次）**："不方便改成 Go 的，该保留 C++ 就保留 C++" + 反向校验"方便改成 Go 的就改"。**W8/W9/W11** 真重型依赖（matting MODNet、upscale-image Real-ESRGAN、nrbi-render-prompt 1547 LOC frozen Python）走 Pattern B FC 网关（backend 部署）。**W12 撤销 W10 决策**：hole-fill 原本归 Pattern B（"OpenCV C++ 实现"），但本质是 Telea/Navier-Stokes 经典 CV 算法（2003 论文，不需要 ML/GPU/系统库），属于"方便改成 Go 的"——纯 Go BFS-layered Telea-style 实现 ~590 LOC 可用，质量在绿幕补洞用途等效 OpenCV，省一个 backend endpoint。这种分工降低 Go 打包体积、避免 cgo 跨编译复杂性、支持模型独立更新；同时不为了"统一 Pattern B"而盲目把可纯 Go 的算法外包。
+> **设计原则（Waves 8-13 决策记录，修订三次）**："不方便改成 Go 的，该保留 C++ 就保留 C++" + 反向校验"方便改成 Go 的就改"。**W8/W9** 真重型依赖（matting MODNet、upscale-image Real-ESRGAN）走 Pattern B FC 网关（backend 部署）。**W12 撤销 W10 决策**：hole-fill 原本归 Pattern B（"OpenCV C++ 实现"），但本质是 Telea/Navier-Stokes 经典 CV 算法（2003 论文，不需要 ML/GPU/系统库），属于"方便改成 Go 的"——纯 Go BFS-layered Telea-style 实现 ~590 LOC 可用，质量在绿幕补洞用途等效 OpenCV，省一个 backend endpoint。**W13 撤销 W11 决策**：nrbi-render-prompt 原本归 Pattern B（"1547 LOC frozen Python 走 backend"），但 1547 LOC 是 headline 错算——donor render.py 实际只用 ~6 个 builder + 一把 regex helper（impl 607 LOC + tests 392 LOC = 999 LOC 真实 Go 端口面，不含 frozen 模板与 importlib loader），属经典 stdlib 文本处理，不需要 backend 部署。`captured-goldens` 范式（一次性从 donor 抓 9 个 byte-faithful 输出，commit 入树，单测 diff Go 输出 vs goldens）完全验证字节保真，CI 无需保留 Python runtime。这种分工降低 Go 打包体积、避免 cgo 跨编译复杂性、支持模型独立更新；同时不为了"统一 Pattern B"而盲目把可纯 Go 的算法/文本处理外包。
 
 ## IDE 侧落地（纯 Go，照 videoctl 现成模式）
 
@@ -221,6 +221,16 @@ status: draft
 - **新建立的范式**：Pattern B 不限于 OSS URL response。response shape 是字符串 / 元数据时，用 typed `fcResponse` struct 在 tool package 内 inline 解析（YAGNI `fc.ExtractString` helper，wrapper 还需要 model + meta passthrough）。
 - FC env：`FC_NRBI_RENDER_PROMPT_URL` / `FC_NRBI_RENDER_PROMPT_TOKEN`；60s timeout（轻量字符串构造，无 ML/GPU）。
 - 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`nrbirenderprompt` 39 tests pass（含 fcBody 字段顺序 byte-exact 断言 + httptest live FC + 禁字面 `TestSummaryHasNoForbiddenPhrasings` 守 Python/importlib/sha256/ZENMUX/google-genai）；`tools list` 18/18；`run nrbi-render-prompt --dryRun` envelope dry_run:true、body 字段 snake_case 顺序锁住；`run nrbi-render-prompt` 无 env → CONFIG_MISSING 列两个 env 退 3。
+
+### Wave 13（已完成 2026-05-21，`feat/assetctl-wave13-nrbi-port`）—— W11 Pattern B 重构为 Pattern E（captured-goldens 范式）
+
+- 1 颗工具（nrbi-render-prompt）从 Pattern B FC HTTP 完整重写为 Pattern E 纯 Go（stdlib-only 文本处理 + 一次性 captured goldens 对拍）；共 5 个 atomic commit on `feat/assetctl-wave13-nrbi-port`（`e533754` docs plan + `7cd004d` feat capture goldens + `8f8e0d4` feat port Assemble+helpers+6 builders + `c47791f` fix spec-review feedback + `a97ee76` refactor Pattern B → E）。Wave 13 推翻 W11 决策，按用户原则"方便改成 Go 的就改"延伸到经典 stdlib 文本处理场景。
+- **触发**：用户对 W11 "1547 LOC frozen Python 必走 backend" 的判断提出复核——render.py 实际只触碰一个薄切片，frozen 模板 + importlib loader 是 donor 侧噪音，真正需要端口的是 6 个 builder + 一把 regex helper。
+- **Pattern 决策**：Pattern E（纯 Go，stdlib only）+ captured-goldens 范式。一次性从 donor 抓 9 个 byte-faithful 输出（覆盖 layer A/A5/B/C/D/E 全部分支 + edge cases），commit 入树（`testdata/goldens/`）；单测 diff Go 输出 vs goldens，CI 不需要 Python runtime。**未沿用 Wave 7b 设想的 sha256 对拍 CI 基础设施**（Python baseline runner + Go runner + diff 比对器在每次 CI 跑 Python），那条路重型且脆弱；captured-goldens 一次抓完、commit、永远 deterministic。
+- **实算 LOC**：impl 607 LOC（render.go + helpers + 6 builders）+ tests 392 LOC = **999 LOC 真实 Go 端口面**。W11 doc 的 "1547 LOC" headline 是 donor render.py 全文件计数（含 frozen 模板字面量 + importlib loader + 大段注释），高估 ~55%。
+- **文件改动**：nrbirenderprompt.go rewrite Pattern B → Pattern E（drop fcBody/fcResponse/HTTP client → 加 6 个 builder + Assemble + helpers）；nrbirenderprompt_test.go rewrite Pattern B 39 tests → 9 byte-faithful golden 对拍 + 18 unit + 25 wrapper tests = **52 tests pass**；`testdata/goldens/` 新增 9 个 fixtures（一次性 capture，donor-faithful 字节）；cli_test.go aggregate env 移除 `FC_NRBI_RENDER_PROMPT_*`（无 env 依赖）；tool wrapper **-167 LOC**（drop fcBody struct + HTTP client 配置）。
+- **验证**：9 byte-faithful golden 对拍 + 18 unit + 25 wrapper tests 全绿；`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`tools list` 18/18；`run nrbi-render-prompt --dryRun` envelope OK（Pattern E 本地 path，无 env 无 HTTP）；`MissingEnv()` 返回 nil。
+- **决策回溯**：W7 Pattern E scaffold（real-run NOT_IMPLEMENTED 等 Wave 7b CI）→ W11 Pattern B（让 backend 跑 donor verbatim 省事）→ W13 Pattern E captured-goldens（端口 999 LOC 真实面 + 一次性 goldens 验证字节保真）。三轮迭代后落点：tool wrapper -167 LOC、tool 零 env 依赖、backend 少一个 endpoint、CI 无 Python runtime；同时不为了"统一 Pattern B"而把可纯 Go 的文本处理外包。这条路径解锁未来类似工具（e.g. 任何 frozen 模板 + builder 风格的 prompt 构造逻辑）。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
 
