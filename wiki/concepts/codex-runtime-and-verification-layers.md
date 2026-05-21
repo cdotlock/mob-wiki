@@ -1,7 +1,7 @@
 ---
 title: codex 运行时（IDE 内） — auth 模型 + 验证层级
 created: 2026-05-21
-updated: 2026-05-21
+updated: 2026-05-22
 tags: [moonshort-ide, codex, agent-adapter, auth, verification, codex-shim]
 status: draft
 ---
@@ -122,6 +122,7 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 | **L2a LLM-in-the-loop auth+transport** | `tools/verify-l2-smoke.mjs` — 跑两段：ChatBackend 直连 chat-completions + CodexBackend 经 codex-shim bridge | `MOONSHORT_AGENT_API_KEY` + `_BASE_URL` + `_MODEL` + `_CODEX_PATH`（可选） | 验 provider 接受 key+model、codex-shim Responses↔chat-completions 桥工作 |
 | **L2b LLM-in-the-loop agentic 任务** | `tools/verify-workshop-agent.mjs`（Workshop EXECUTE stage 端到端：executeInstruction → ChatBackend → extractJson → applyPromptMap） | 同 L2a 但 ChatBackend only（不需要 codex 二进制） | agent 真推理 → 返回 JSON prompt map → runner 解析并写回每个 asset 的 prompt + status |
 | **L2b-deeper codex 真 agentic** | `tools/verify-codex-host.mjs` — 同 L2b 但 backend 换成 CodexBackend，CODEX_HOME 用 `stageCodexHome` 真起，agents/asset 全部 15 个 skill 全部 stage 进去 | 同 L2a；codex 二进制必须存在；模型选**非 thinking** 的（claude-sonnet-4-6 ✅；deepseek-v4-flash 当前不行——见下文 reasoning_content bug） | codex 真跑 shell 工具 read SKILL.md、推理、回 JSON prompt map；端到端验证 host 端 staging + codex-shim 多 turn agentic 链路 |
+| **L2c codex shell → assetctl** | `tools/verify-codex-assetctl.mjs` — CodexBackend + 暴露 `agents/asset/cli/assetctl/bin/assetctl` 到 codex 子进程 PATH，让模型从 shell 工具调 `assetctl run cutout --input '{...,"dryRun":true}'` 然后报告 envelope.ok | 同 L2b-deeper；**额外** assetctl 二进制必须先 `cd vendor/assetctl && go build -o ../../agents/asset/cli/assetctl/bin/assetctl ./cmd/assetctl` 编译出来 | codex 0.130 的 workspace-write shell loop 真能把 vendored Go CLI 当 tool 用、读 stdout JSON envelope；断言 `tool.start name=shell` 至少出现一次 detail 含 `assetctl run`，且最终 assistant message 包含 `L2c VERIFIED ok=true tool=cutout` |
 
 ### L0 跑法
 
@@ -261,7 +262,59 @@ L2b deeper smoke PASSED — codex produced usable per-asset prompts through stag
 
 > **deepseek-v4-flash 在 L2b-deeper 当前不行**（2026-05-22 复现）：codex 第一 turn 用 shell tool 读完 SKILL.md 后准备第二 turn 时，mob-ai 上游 litellm 报 `The reasoning_content in the thinking mode must be passed back to the API`。根因在 `packages/agent-adapter/src/codex-shim.ts:161-163`——`inputItemToMessages` 把 `type: reasoning` 的 input item 直接 `return []`，于是 chat-completions 第二 turn 看不到上一 turn 模型自带的 thinking 块。litellm wraps deepseek 时硬要 reasoning_content 回传。修法（follow-up）：reasoning item 翻译成 assistant message 携 `reasoning_content` 字段，不是丢弃。验过：claude-sonnet-4-6 不走 thinking mode，所以无此问题。
 >
-> 还更深一层的 agentic 路径（codex 真**调 assetctl**、真写 shadow workspace、真 diff mss）需要 IDE Workshop UI 跑真业务，或者给 codex 配 `agents/openai.yaml` 暴露 assetctl 作 tool 给它调；目前 `verify-codex-host.mjs` 不做这部分。
+> `verify-codex-host.mjs` 不验证"codex 真**调** assetctl"那一层——它只看模型最终回的 JSON prompt map 长什么样。`L2c` 是把这条进一步收窄的下一层（见 `verify-codex-assetctl.mjs`）：codex 必须**真 shell out 到** `assetctl run cutout` 才能拿到 envelope 回报 `ok=true`，prompt-knowledge 走不了这条路径。
+
+### L2c 跑法（脚本就绪，首跑待定）
+
+```
+# 先编译 assetctl 到 canonical vendored path（agentToolPaths 会自动捡到）：
+cd /Users/august/MobAI/moonshort-ide/vendor/assetctl
+go build -o ../../agents/asset/cli/assetctl/bin/assetctl ./cmd/assetctl
+
+# 同 L2b-deeper 的 env（claude-sonnet-4-6 ✅）：
+export MOONSHORT_AGENT_API_KEY=<MOB_AI_API_KEY>
+export MOONSHORT_AGENT_BASE_URL=https://ai.mob-ai.cn/api/v1
+export MOONSHORT_AGENT_PROVIDER=mob-ai
+export MOONSHORT_AGENT_MODEL=claude-sonnet-4-6
+export MOONSHORT_AGENT_CODEX_PATH=<codex 二进制>
+
+cd /Users/august/MobAI/moonshort-ide
+node tools/verify-codex-assetctl.mjs
+```
+
+预期输出形状：
+
+```
+L2c smoke — codex → assetctl shell-out via CodexBackend + staged CODEX_HOME
+config:      {"provider":"mob-ai","baseUrl":"https://ai.mob-ai.cn/api/v1","model":"claude-sonnet-4-6",...}
+codexPath:   ...
+assetctl:    /Users/august/MobAI/moonshort-ide/agents/asset/cli/assetctl/bin/assetctl
+runId:       verify-l2c-...
+
+[stage] CODEX_HOME = /var/folders/.../moonshort-codex-verify-l2c-...
+[stage] catalog (15): asset-prompt-generator, asset-renderer, ...
+[stage] cwd  = /var/folders/.../moonshort-l2c-cwd-...
+
+--- codex EXECUTE — single assetctl shell-out ---
+  session: agent-...
+  progress: Codex protocol bridge ready.
+  progress: Codex session started.
+  progress: Codex turn started.
+  tool: shell assetctl run cutout --input '{"inputPath":...,"dryRun":true}'
+  tool done: shell (ok)
+  progress: Codex turn completed.
+  output: ~80 chars
+  shell events: 1 (last detail snippet: assetctl run cutout --input '{...}')
+
+L2c smoke PASSED — codex shelled out to assetctl and consumed its envelope.
+```
+
+L2c 验到 L2b-deeper 不验的：
+
+- `AgentConfig.toolPaths`（实际生产链路里由 `agentToolPaths(agentDir)` 读 `bindings.json` 自动生成）真的把 vendored CLI 目录前置到 codex 子进程 PATH
+- codex 0.130 的 `-s workspace-write` sandbox 不挡这条 shell call（vendored 二进制可执行）
+- `assetctl run <id> --input '<json>'` 的 single-line envelope 真能被 codex 当 tool result 重新读回
+- IDE Workshop 运行面板里的 activity feed（`tool.start name=shell ...`）真有数据可显示
 
 ## 老 RESUME 笔记的坑
 
@@ -284,6 +337,7 @@ L2b deeper smoke PASSED — codex produced usable per-asset prompts through stag
 | L2a auth+transport verify | `tools/verify-l2-smoke.mjs` | `probeChatBackend`, `probeCodexBackend` |
 | L2b workshop EXECUTE verify | `tools/verify-workshop-agent.mjs` | `executeInstruction`, `extractJson`, `applyPromptMap` |
 | L2b-deeper codex agentic verify | `tools/verify-codex-host.mjs` | `stageCodexHome` + `CodexBackend` + `extractJson` + `applyPromptMap` |
+| L2c codex → assetctl shell-out verify | `tools/verify-codex-assetctl.mjs` | `stageCodexHome` + `CodexBackend` + `toolPaths` injection + `tool.start` event assertion |
 
 ## 验证状态（2026-05-22）
 
@@ -293,7 +347,8 @@ L2b deeper smoke PASSED — codex produced usable per-asset prompts through stag
 - ✅ **L2a LLM-in-the-loop auth+transport** — 2026-05-21 `tools/verify-l2-smoke.mjs` 跑通（mob-ai / deepseek-v4-flash / cline-bundled codex 0.130）；ChatBackend + CodexBackend 两段都 PONG，codex-shim Responses↔chat-completions 桥工作
 - ✅ **L2b LLM-in-the-loop workshop EXECUTE stage** — 2026-05-21 `tools/verify-workshop-agent.mjs` 跑通（同 mob-ai 配置）；agent 真返回 JSON prompt map、`applyPromptMap` 把 prompt + status 写回 assets；顺手发现 `extractJson` 对 trailing comma 不容错（commit `037a2db` 改成 strict → sanitized 两段 fallback）
 - ✅ **L2b-deeper codex 真 agentic 链路** — 2026-05-22 `tools/verify-codex-host.mjs` 跑通（mob-ai / **claude-sonnet-4-6** / cline-bundled codex 0.130）；codex 真跑 shell tool 读 SKILL.md、多 turn 推理、回 JSON prompt map；`stageCodexHome` 真起 run-private CODEX_HOME，15 个 asset skill 全 stage 进去
-- ⏸️ L2b-deeper 真调 assetctl + shadow workspace + diff mss 链路 — 仍需 IDE Workshop UI 跑真业务，或给 codex 配 `agents/openai.yaml` 暴露 assetctl 作 tool（未启动）
+- 🟡 **L2c codex shell-out 到 assetctl** — 脚本就绪（`tools/verify-codex-assetctl.mjs`，commit `1d52a35`），assetctl 二进制 build 验过（`go build` → `cutout --dryRun` envelope `{"ok":true,...}`）；首次端到端跑还没做（卡在当前 session 拿不到 `MOONSHORT_AGENT_API_KEY` env）
+- ⏸️ L2c 之后：真写 shadow workspace + diff mss 链路 — 仍需 IDE Workshop UI 跑真业务（未启动）
 
 ## 后续
 
@@ -302,4 +357,5 @@ L2b deeper smoke PASSED — codex produced usable per-asset prompts through stag
 - 把 L2a 改装成 CI smoke：用一个最小 stub provider 或 record/replay fixture，避开真 LLM 调用费用（可选）
 - 把 codex 二进制路径默认值从 hardcoded `/Users/Clock/...` 改成相对仓库 path 探测（`tools/verify-skill-discovery.mjs:34`）—— `verify-l2-smoke.mjs` 已经按 vendored 路径探测了，可以照抄
 - **codex-shim 修 reasoning_content 桥** — `codex-shim.ts:161-163` 把 Responses API `type: reasoning` 的 input item 丢弃；mob-ai 上游 litellm 包 deepseek-v4-flash 时硬要 reasoning_content 回传。多 turn agentic + thinking model 才会撞，PONG 单 turn 不撞，所以 L2a 没暴露这个。修法：reasoning item 翻译成 assistant message 带 `reasoning_content` 字段，而不是 `return []`
-- L2b-deeper 再深一层：codex 真 shell 调 `assetctl run cutout ...`、真写 shadow workspace、真 diff mss。需要 IDE Workshop UI 真业务，或给 codex 配 `agents/openai.yaml` 暴露 assetctl 作 tool
+- ~~L2b-deeper 再深一层：codex 真 shell 调 `assetctl run cutout ...`~~ — **L2c 起点**：`tools/verify-codex-assetctl.mjs` 已落（`feat(tools): add verify-codex-assetctl.mjs for L2c smoke`，commit `1d52a35`）。脚本断言 `tool.start name=shell` 至少一次出现 `assetctl run`，并在 final assistant message 里找 `L2c VERIFIED ok=true tool=cutout`。下次拿到 provider env 直接 `node tools/verify-codex-assetctl.mjs` 即可
+- L2c 之上：真写 shadow workspace + 真 diff mss 这条链路依然没动，要靠 IDE Workshop UI 跑真业务或别的更上层 smoke 来覆盖
