@@ -121,7 +121,7 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 | **L1b Langfuse overlay 字节落地** | 设 `LANGFUSE_HOST`/`PUBLIC_KEY`/`SECRET_KEY` 再跑 L1a；之后 diff `<staged>/skills/<name>/SKILL.md` vs `agents/<id>/skills/<name>/SKILL.md` | Langfuse staging 或 production 凭据 | overlay 真把字节换了（确认 assetctl spawn + Langfuse 拉取 + 写盘整条链） |
 | **L2a LLM-in-the-loop auth+transport** | `tools/verify-l2-smoke.mjs` — 跑两段：ChatBackend 直连 chat-completions + CodexBackend 经 codex-shim bridge | `MOONSHORT_AGENT_API_KEY` + `_BASE_URL` + `_MODEL` + `_CODEX_PATH`（可选） | 验 provider 接受 key+model、codex-shim Responses↔chat-completions 桥工作 |
 | **L2b LLM-in-the-loop agentic 任务** | `tools/verify-workshop-agent.mjs`（Workshop EXECUTE stage 端到端：executeInstruction → ChatBackend → extractJson → applyPromptMap） | 同 L2a 但 ChatBackend only（不需要 codex 二进制） | agent 真推理 → 返回 JSON prompt map → runner 解析并写回每个 asset 的 prompt + status |
-| **L2b-deeper codex 真 agentic** | `tools/verify-codex-host.mjs` — 同 L2b 但 backend 换成 CodexBackend，CODEX_HOME 用 `stageCodexHome` 真起，agents/asset 全部 15 个 skill 全部 stage 进去 | 同 L2a；codex 二进制必须存在；模型选**非 thinking** 的（claude-sonnet-4-6 ✅；deepseek-v4-flash 当前不行——见下文 reasoning_content bug） | codex 真跑 shell 工具 read SKILL.md、推理、回 JSON prompt map；端到端验证 host 端 staging + codex-shim 多 turn agentic 链路 |
+| **L2b-deeper codex 真 agentic** | `tools/verify-codex-host.mjs` — 同 L2b 但 backend 换成 CodexBackend，CODEX_HOME 用 `stageCodexHome` 真起，agents/asset 全部 15 个 skill 全部 stage 进去 | 同 L2a；codex 二进制必须存在；模型支持 thinking + non-thinking 双路径（claude-sonnet-4-6 ✅；deepseek-v4-flash 在 reasoning_content bridge 修了之后**也走得通**，但模型本身在结构化 JSON 输出上稳定性差，命中率较低） | codex 真跑 shell 工具 read SKILL.md、推理、回 JSON prompt map；端到端验证 host 端 staging + codex-shim 多 turn agentic 链路 |
 | **L2c codex shell → assetctl** | `tools/verify-codex-assetctl.mjs` — CodexBackend + 暴露 `agents/asset/cli/assetctl/bin/assetctl` 到 codex 子进程 PATH，让模型从 shell 工具调 `assetctl run cutout --input '{...,"dryRun":true}'` 然后报告 envelope.ok | 同 L2b-deeper；**额外** assetctl 二进制必须先 `cd vendor/assetctl && go build -o ../../agents/asset/cli/assetctl/bin/assetctl ./cmd/assetctl` 编译出来 | codex 0.130 的 workspace-write shell loop 真能把 vendored Go CLI 当 tool 用、读 stdout JSON envelope；断言 `tool.start name=shell` 至少出现一次 detail 含 `assetctl run`，且最终 assistant message 包含 `L2c VERIFIED ok=true tool=cutout` |
 
 ### L0 跑法
@@ -260,7 +260,9 @@ L2b deeper smoke PASSED — codex produced usable per-asset prompts through stag
 - codex-shim Responses↔chat-completions 桥处理 reasoning + tool call + content delta
 - 最终 JSON prompt map 经 `extractJson` → `applyPromptMap` 落回 2 个 asset 的 prompt 字段
 
-> **deepseek-v4-flash 在 L2b-deeper 当前不行**（2026-05-22 复现）：codex 第一 turn 用 shell tool 读完 SKILL.md 后准备第二 turn 时，mob-ai 上游 litellm 报 `The reasoning_content in the thinking mode must be passed back to the API`。根因在 `packages/agent-adapter/src/codex-shim.ts:161-163`——`inputItemToMessages` 把 `type: reasoning` 的 input item 直接 `return []`，于是 chat-completions 第二 turn 看不到上一 turn 模型自带的 thinking 块。litellm wraps deepseek 时硬要 reasoning_content 回传。修法（follow-up）：reasoning item 翻译成 assistant message 携 `reasoning_content` 字段，不是丢弃。验过：claude-sonnet-4-6 不走 thinking mode，所以无此问题。
+> ~~**deepseek-v4-flash 在 L2b-deeper 当前不行**（2026-05-22 复现）：codex 第一 turn 用 shell tool 读完 SKILL.md 后准备第二 turn 时，mob-ai 上游 litellm 报 `The reasoning_content in the thinking mode must be passed back to the API`。根因在 `packages/agent-adapter/src/codex-shim.ts:161-163`~~ — **已修（2026-05-22 commit `ebc9147` `fix(agent-adapter): codex-shim — round-trip reasoning_content for thinking-mode multi-turn agentic`）**。修的不是简单一行——bridge 两边都漏：①request 侧 `inputItemToMessages` 把 `type: reasoning` input item 直接丢；②response 侧 `callChatCompletions` 不从 chat-completions 上游 `message.reasoning_content` 抽出来，`emitCompletion` 也不发 Responses-API `reasoning` output item 给 codex，于是 codex 的 session 里根本没存 reasoning，下一 turn 自然回传不了。补全方案：(1) reasoning item 翻译成 assistant `reasoning_content`（支持 `text` / `summary[]` / `content[]` 三种 shape）；(2) 把一个 model turn 切到多 Responses input item（reasoning + message + function_call）的情况统一合并成**一条** chat-completions assistant message（chat-completions 不存在多 item turn 概念）；(3) response 侧从上游抽 `reasoning_content` 并 emit 一个 Responses-API `reasoning` 输出 item 让 codex 存进 session。L2c smoke + deepseek-v4-flash 验通（多 turn shell call 完整跑过、final assistant 报 `L2c VERIFIED ok=true tool=cutout`）。L2b-deeper + claude-sonnet-4-6 / deepseek-v4-flash 双 model 不回归。10 个新单测 covering 各种 shape + multi-turn ordering（`test/agent-adapter-codex-shim.test.mjs`）。
+
+> 后续 chore：`packages/agent-adapter/src/codex-shim.ts` 加了 `CODEX_SHIM_DEBUG=1` env-gated stderr dump（commit `70efdd0`），下次 codex ↔ shim 协议层有问题时一行命令就能看 inbound/outbound 形状。
 >
 > `verify-codex-host.mjs` 不验证"codex 真**调** assetctl"那一层——它只看模型最终回的 JSON prompt map 长什么样。`L2c` 是把这条进一步收窄的下一层（见 `verify-codex-assetctl.mjs`）：codex 必须**真 shell out 到** `assetctl run cutout` 才能拿到 envelope 回报 `ok=true`，prompt-knowledge 走不了这条路径。
 
@@ -333,7 +335,7 @@ L2c 验到 L2b-deeper 不验的：
 | 关注点 | 文件 | 关键符号 |
 |---|---|---|
 | codex spawn / env / args | `packages/agent-adapter/src/backends/codex.ts` | `CodexBackend`, `codexCommand`, `codexEnv`, `codexArgs`, `CODEX_API_KEY_ENV` |
-| codex-shim HTTP bridge | `packages/agent-adapter/src/codex-shim.ts` | `startCodexShim`, `handleRequest` |
+| codex-shim HTTP bridge | `packages/agent-adapter/src/codex-shim.ts` | `startCodexShim`, `handleRequest`, `toChatRequest`, `inputItemToMessages`, `extractReasoningText`, `mergeContiguousAssistantTurn`, `emitCompletion` |
 | Agent config 三层 fallback | `packages/mss-workshop/src/agent-config.ts` | `loadAgentConfig`, `bundledCodexPath`, `parseDotEnv` |
 | CODEX_HOME staging | `packages/mss-workshop/src/codex-home.ts` | `stageCodexHome`, `stageSkills`, `discoverSkills`, `agentsMd` |
 | assetctl overlay spawn + TTL 缓存 | `packages/mss-workshop/src/assetctl-bridge.ts` | `loadSkillsViaAssetctl`, `clearAssetctlLoadCache` |
@@ -344,6 +346,7 @@ L2c 验到 L2b-deeper 不验的：
 | L2b workshop EXECUTE verify | `tools/verify-workshop-agent.mjs` | `executeInstruction`, `extractJson`, `applyPromptMap` |
 | L2b-deeper codex agentic verify | `tools/verify-codex-host.mjs` | `stageCodexHome` + `CodexBackend` + `extractJson` + `applyPromptMap` |
 | L2c codex → assetctl shell-out verify | `tools/verify-codex-assetctl.mjs` | `stageCodexHome` + `CodexBackend` + `toolPaths` injection + `tool.start` event assertion |
+| codex-shim reasoning_content 桥 单测 | `test/agent-adapter-codex-shim.test.mjs` | `toChatRequest` + `mergeContiguousAssistantTurn` + `extractReasoningText` |
 
 ## 验证状态（2026-05-22）
 
@@ -353,7 +356,8 @@ L2c 验到 L2b-deeper 不验的：
 - ✅ **L2a LLM-in-the-loop auth+transport** — 2026-05-21 `tools/verify-l2-smoke.mjs` 跑通（mob-ai / deepseek-v4-flash / cline-bundled codex 0.130）；ChatBackend + CodexBackend 两段都 PONG，codex-shim Responses↔chat-completions 桥工作
 - ✅ **L2b LLM-in-the-loop workshop EXECUTE stage** — 2026-05-21 `tools/verify-workshop-agent.mjs` 跑通（同 mob-ai 配置）；agent 真返回 JSON prompt map、`applyPromptMap` 把 prompt + status 写回 assets；顺手发现 `extractJson` 对 trailing comma 不容错（commit `037a2db` 改成 strict → sanitized 两段 fallback）
 - ✅ **L2b-deeper codex 真 agentic 链路** — 2026-05-22 `tools/verify-codex-host.mjs` 跑通（mob-ai / **claude-sonnet-4-6** / cline-bundled codex 0.130）；codex 真跑 shell tool 读 SKILL.md、多 turn 推理、回 JSON prompt map；`stageCodexHome` 真起 run-private CODEX_HOME，15 个 asset skill 全 stage 进去
-- ✅ **L2c codex shell-out 到 assetctl** — 2026-05-22 `tools/verify-codex-assetctl.mjs` 首跑通过（mob-ai / claude-sonnet-4-6 / cline-bundled codex 0.130）；codex 0.130 通过 `/bin/zsh -lc "..."` shell tool 真调 vendored `assetctl run cutout --dryRun`，单 turn 完成，envelope `{"ok":true,...}` 被消费，final assistant 报 `L2c VERIFIED ok=true tool=cutout`；`AgentConfig.toolPaths` PATH 前置生效（agentToolPaths 实际生产链路同形）；commit `1d52a35` (script) + `6cf1dde` (wiki) 已落，验证后再追一条 wiki ✅ 翻牌 commit
+- ✅ **L2c codex shell-out 到 assetctl** — 2026-05-22 `tools/verify-codex-assetctl.mjs` 首跑通过（mob-ai / claude-sonnet-4-6 / cline-bundled codex 0.130）；codex 0.130 通过 `/bin/zsh -lc "..."` shell tool 真调 vendored `assetctl run cutout --dryRun`，单 turn 完成，envelope `{"ok":true,...}` 被消费，final assistant 报 `L2c VERIFIED ok=true tool=cutout`；`AgentConfig.toolPaths` PATH 前置生效（agentToolPaths 实际生产链路同形）；commit `1d52a35` (script) + `6cf1dde`/`6f72424` (wiki) 已落
+- ✅ **codex-shim reasoning_content 桥** — 2026-05-22 commit `ebc9147` + `70efdd0` 修了 thinking-mode 多 turn agentic 的 `reasoning_content` 回传 bug。10 个新单测 + 双 model 端到端验过；L2c + deepseek-v4-flash 多 turn shell call 完整跑过（修前 100% HTTP 400，修后 ok）
 - ⏸️ L2c 之后：真写 shadow workspace + diff mss 链路 — 仍需 IDE Workshop UI 跑真业务（未启动）
 
 ## 后续
@@ -362,6 +366,6 @@ L2c 验到 L2b-deeper 不验的：
 - 把 L1b 加进 `verify-skill-discovery.mjs`：可选 env `MOONSHORT_VERIFY_LANGFUSE=1` 时自动 diff overlay vs source 字节
 - 把 L2a 改装成 CI smoke：用一个最小 stub provider 或 record/replay fixture，避开真 LLM 调用费用（可选）
 - 把 codex 二进制路径默认值从 hardcoded `/Users/Clock/...` 改成相对仓库 path 探测（`tools/verify-skill-discovery.mjs:34`）—— `verify-l2-smoke.mjs` 已经按 vendored 路径探测了，可以照抄
-- **codex-shim 修 reasoning_content 桥** — `codex-shim.ts:161-163` 把 Responses API `type: reasoning` 的 input item 丢弃；mob-ai 上游 litellm 包 deepseek-v4-flash 时硬要 reasoning_content 回传。多 turn agentic + thinking model 才会撞，PONG 单 turn 不撞，所以 L2a 没暴露这个。修法：reasoning item 翻译成 assistant message 带 `reasoning_content` 字段，而不是 `return []`
+- ~~**codex-shim 修 reasoning_content 桥**~~ — **2026-05-22 做完**：commit `ebc9147` fix + `70efdd0` chore。两边都漏（request 侧 inputItemToMessages 把 reasoning 丢；response 侧 callChatCompletions 不抽 + emitCompletion 不发 reasoning output item），加合并算法把同 turn 的 reasoning + message + function_call 三件事合成一条 chat-completions assistant message。L2c + deepseek-v4-flash 多 turn shell call 端到端通了
 - ~~L2b-deeper 再深一层：codex 真 shell 调 `assetctl run cutout ...`~~ — **L2c 起点**：`tools/verify-codex-assetctl.mjs` 已落（`feat(tools): add verify-codex-assetctl.mjs for L2c smoke`，commit `1d52a35`）。脚本断言 `tool.start name=shell` 至少一次出现 `assetctl run`，并在 final assistant message 里找 `L2c VERIFIED ok=true tool=cutout`。下次拿到 provider env 直接 `node tools/verify-codex-assetctl.mjs` 即可
 - L2c 之上：真写 shadow workspace + 真 diff mss 这条链路依然没动，要靠 IDE Workshop UI 跑真业务或别的更上层 smoke 来覆盖
