@@ -1,10 +1,27 @@
 ---
 title: Asset Matting Hybrid (A 默认 + 检测 + B 兜底)
-updated: 2026-05-06
-status: draft
+updated: 2026-05-22
+status: superseded
+superseded_by: ESRGAN ×2 + MODNet + V10 服务端全链（2026-05-12 起 donor 上线，2026-05-22 IDE 侧迁移完成）
 ---
 
-# Asset Matting Hybrid (A 默认 + 检测 + B 兜底)
+# Asset Matting Hybrid (A 默认 + 检测 + B 兜底)  ⛔ SUPERSEDED
+
+> **2026-05-22 起本页冻结。** 这套 "chromakey 主路径 + MODNet 兜底" 的混合架构整体被替代：
+> donor (`moonshort-backend/generate-upscale-matting`) 自 2026-05-12 起把全量 NRBI 主流程升级到
+> **ESRGAN ×2 → MODNet → V10 服务端后处理 (hard-bg + size-filtered CC + spill suppression + unmix
+> + edge decontam + alpha sharpen + feather)**。MODNet 不再是 "兜底"，而是主路径；HSV chromakey
+> + hole_fill + green_spill_clear 这套 V4-era 后处理已从 IDE 侧 (`asset-renderer/SKILL.md` Layer
+> 6-9) 删除。详见：
+>
+> - **donor 真相源**：`~/MobAI/moonshort-backend/generate-upscale-matting/matting.py` `V10_*` 常量 + `matte_v10()`
+> - **IDE 迁移设计**：`docs/design/2026-05-22-asset-renderer-v10-migration-design.md`（moonshort-ide repo）
+> - **IDE 实现**：`agents/asset/skills/asset-renderer/postprocess_v10.py`（oss-put → upscale-image → matting → HTTP GET）
+> - **modal-comfy 端**：`modal-comfy/matting_v10.py`（port of donor v10）+ `modal-comfy/app.py` `handle_matting` 端点
+>
+> 下面 §1-§N 是 2026-05-06 当时的设计快照，**仅作历史记录**。不要按这个架构新开发；任何新代码应直接走 V10 全链。
+
+---
 
 novels-to-moonscript / asset-renderer 的抠图流水线架构 —— 让 chromakey 主路径自动检测翻车、用 MODNet 兜底，而不是单方案替换。
 
