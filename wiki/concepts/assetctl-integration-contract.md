@@ -64,9 +64,9 @@ status: draft
 
 > **Wave 10 完结后全部 18 颗可跑/就位** — **0 F-stub 剩余**。
 >
-> 分布（W11 修订）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`）+ Pattern B **12** 颗 FC 网关（W1: `generate-image-nanobanana`/`generate-video-seedance`；W2: `generate-image-gpt`/`generate-video-happyhorse`/`concat-clips`/`crop-video`；W6: `cg-render`；W8: `matting`；W9: `upscale-image`；W10: `hole-fill`；**W11: `nrbi-render-prompt`**）+ 占位 1 颗（`generate-music-suno`）+ Pattern E 3 颗纯 Go 像素处理（W3: `cutout`/`green-spill-clear`/`rgb-unspill`）+ Pattern E2 1 颗 cgo+libwebp（W5: `hybrid-to-webp`）。**Pattern E scaffold 已废止**（W7 nrbi-render-prompt Pattern E scaffold 于 W11 重构为 Pattern B）。
+> 分布（W12 修订）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`）+ Pattern B **11** 颗 FC 网关（W1: `generate-image-nanobanana`/`generate-video-seedance`；W2: `generate-image-gpt`/`generate-video-happyhorse`/`concat-clips`/`crop-video`；W6: `cg-render`；W8: `matting`；W9: `upscale-image`；**W11: `nrbi-render-prompt`**）+ 占位 1 颗（`generate-music-suno`）+ Pattern E **4** 颗纯 Go（W3: `cutout`/`green-spill-clear`/`rgb-unspill`；**W12: `hole-fill` Telea inpaint**）+ Pattern E2 1 颗 cgo+libwebp（W5: `hybrid-to-webp`）。**Pattern E scaffold 已废止**。
 >
-> **设计原则（Waves 8-11 决策记录）**："不方便改成 Go 的，该保留 C++ 就保留 C++"。原 W4 doc 计划 4 颗（matting/hole-fill/upscale-image/nrbi-render-prompt）走 cgo E/E2 路径（ML 模型推理 + 图像库），但实际工程权衡：matting（MODNet）、hole-fill（OpenCV Inpaint）、upscale-image（Real-ESRGAN）三颗重型 ML/系统库 + nrbi-render-prompt（1547 LOC frozen Python sha256-pinned），Go 侧轻量级网络/JSON 调度，backend 部署及管理模型权重、GPU 加速、版本演进。这样分工降低 Go 打包体积、避免 cgo 跨编译复杂性、支持 model checkpoint / Python 冻结代码独立更新。**W11 把 nrbi-render-prompt 也按这条原则收编 Pattern B**（W7 Pattern E scaffold 仅 dryRun + mock，real-run NOT_IMPLEMENTED；W11 转 Pattern B 真调，CONFIG_MISSING 等 backend），省 Wave 7b 对拍 CI 基础设施工作。
+> **设计原则（Waves 8-12 决策记录，修订二次）**："不方便改成 Go 的，该保留 C++ 就保留 C++" + 反向校验"方便改成 Go 的就改"。**W8/W9/W11** 真重型依赖（matting MODNet、upscale-image Real-ESRGAN、nrbi-render-prompt 1547 LOC frozen Python）走 Pattern B FC 网关（backend 部署）。**W12 撤销 W10 决策**：hole-fill 原本归 Pattern B（"OpenCV C++ 实现"），但本质是 Telea/Navier-Stokes 经典 CV 算法（2003 论文，不需要 ML/GPU/系统库），属于"方便改成 Go 的"——纯 Go BFS-layered Telea-style 实现 ~590 LOC 可用，质量在绿幕补洞用途等效 OpenCV，省一个 backend endpoint。这种分工降低 Go 打包体积、避免 cgo 跨编译复杂性、支持模型独立更新；同时不为了"统一 Pattern B"而盲目把可纯 Go 的算法外包。
 
 ## IDE 侧落地（纯 Go，照 videoctl 现成模式）
 
@@ -201,6 +201,16 @@ status: draft
 - FC env：`FC_HOLE_FILL_URL` / `FC_HOLE_FILL_TOKEN`；120s timeout。
 - **registry cleanup**：commit `4de6903` refactor 删除 `func stubTool(id string) iface.Tool` 占位符，改为 assert `realTools()` 返回包含全 18 个 IDs（验证无漏网工具）。`TestStubToolStructDirectly` 作为范本，演示如何在单测里直接 exercise `stubTool` struct（future 扩展新 canonical ID 时参考），无需保留 registry 级别的占位函数。
 - 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`holefill` 覆盖率 **100%**。`tools list` 18/18；all 18 `tools schema <id>` 全通过；`run hole-fill --dryRun` envelope 正确。
+
+### Wave 12（已完成 2026-05-21，main `1c17878`）—— W10 Pattern B 重构为 Pattern E 纯 Go
+
+- 1 颗工具（hole-fill）从 Pattern B FC HTTP 完整重写为 Pattern E 纯 Go Telea inpainting；2 个 atomic commit（refactor 1 + chore 1）。Wave 12 推翻 W10 决策，按用户原则反向校验"方便改成 Go 的就改"。
+- 合并进 `moonshort-ide` 本地 `main`（FF `7c96f20..1c17878`），改文件 3（holefill.go rewrite ~305→~590 LOC + holefill_test.go rewrite ~779→~657 LOC + cli_test.go 移除 FC_HOLE_FILL_* aggregate env）。
+- **能力扩展**：1 颗工具从 Pattern B 转 Pattern E 本地可跑——`hole-fill`（schema 7 props：inputPath/outputPath 2 required + dilate/minSize/maxSize/overwrite/mock/dryRun 5 optional，donor-faithful；无 env 无 FC HTTP）。Wave 12 后 Pattern B 12→11 颗，Pattern E 3→4 颗，总数 18 不变。
+- **设计决策记录**：W10 默认 hole-fill 走 Pattern B（"donor 用 OpenCV，那就 backend 部署 OpenCV 服务"），但用户挑明："hole-fill 不是本地跑吗？为什么还要我部署？" 重新审视：hole-fill 用 Telea (2003) / Navier-Stokes (2001) 经典 CV 算法，**不需要 ML 推理、不需要 GPU、不需要系统库**。Explore 调查 Go 生态零现成 inpainting lib（pkg.go.dev / GitHub 搜索 telea / fast marching / inpainting language:go 全零结果），从零实现 Telea。**算法选择**：BFS distance transform（不用 Fast Marching Method，更简单 + 10-20% 慢但绿幕补洞场景无感）+ 3×3 inverse-square distance weights（matching donor `inpaintRadius=3`）+ concentric-ring fallback（degenerate 情况）；无 directional gradient term（donor hole 都小 + 周围色单一，directional 项贡献微小）。**质量验证**：合成 fixture（64×64 NRGBA 红底 + 6×6 中心 alpha=0 hole）inpaint 后中心精确恢复 R=200/G=50/B=50，与 OpenCV 实现视觉无差异；性能比 OpenCV 慢 2-5x 但单张图无感。
+- **新建立的范式**：从零实现经典 CV 算法在 Go assetctl 是可行的，前提是 (a) 算法是 deterministic 数学（不依赖 ML 模型权重），(b) 用例容忍质量轻微差异（实际场景的 quality budget），(c) BFS / iterative methods 通常比 Fast Marching / PDE solver 更易实现且性能可接受。这条路径解锁未来类似工具（e.g. 经典 filter / morphology / classical detection）。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`holefill` 26 tests pass（含 interior fill / border-touching skip / [minSize, maxSize) banding / no-op idempotence / mock / dryRun / validation 8 项 / forbidden-phrasing guard）；`tools list` 18/18；`run hole-fill --dryRun` envelope OK，`--mock` 写 1×1 占位 PNG，real-run 在合成 fixture 上 inpaint 后 alpha=255。
+- `MissingEnv()` 返回 nil（无 env 依赖，纯本地 IO + 算法）。
 
 ### Wave 11（已完成 2026-05-21，main `7c96f20`）—— W7 Pattern E scaffold 重构为 Pattern B
 
