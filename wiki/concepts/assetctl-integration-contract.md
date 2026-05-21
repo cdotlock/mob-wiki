@@ -62,9 +62,11 @@ status: draft
 
 `generate-image-nanobanana` `generate-image-gpt` `generate-video-seedance` `generate-sfx-elevenlabs` `generate-music-suno` `concat-clips` `crop-video` `generate-video-happyhorse` `cg-render` `nrbi-render-prompt` `upscale-image` `oss-put` `matting` `hybrid-to-webp` `green-spill-clear` `rgb-unspill` `hole-fill` `cutout`
 
-> Wave 6 完结后**共 14 颗可跑**（W1 4 颗 + W2 5 颗 + W3 3 颗 + W5 1 颗 + W6 1 颗）：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`，直连 ElevenLabs + Aliyun OSS 二次上传）+ Pattern B **7** 颗 FC 网关（`generate-image-nanobanana`/`generate-image-gpt`/`generate-video-seedance`/`generate-video-happyhorse`/`concat-clips`/`crop-video`/**`cg-render`**）+ 占位 1 颗（`generate-music-suno`，Suno 无官方 API，返回确定性 placeholder）+ Pattern E 3 颗纯 Go 像素处理（`cutout` HSV 抠像/`green-spill-clear` leak mask/`rgb-unspill` G-channel clamp，PNG + WebP 输出）+ Pattern E2 1 颗 cgo + libwebp（`hybrid-to-webp`）。其余 **4 颗**仍是 **NOT_IMPLEMENTED 桩**（exit 4，`retryable=false`，codex 不得重试）：`nrbi-render-prompt`/`matting`/`hole-fill`/`upscale-image`（Wave 4 doc 中列出 W4-2/W4-3 lib 评估实验 + W4-5 业务驱动作为升级条件）。
+> **Wave 10 完结后全部 18 颗可跑/就位** — **0 F-stub 剩余**。
 >
-> **`cg-render` Pattern B 是 scaffolding（W6）**：Go 侧完整 schema/body/MissingEnv/error mapping/dryRun 全部就位，覆盖率 100%；real-run 需要 backend 提供 `FC_CG_RENDER_URL` + `FC_CG_RENDER_TOKEN`，未设时返回 `CONFIG_MISSING`（exit 3）——与 nanobanana 缺 env 时行为一致。
+> 分布：Pattern A 1 颗（`oss-put`）+ Pattern A2 1 颗（`generate-sfx-elevenlabs`）+ Pattern B **11** 颗 FC 网关（W1: `generate-image-nanobanana`/`generate-video-seedance`；W2: `generate-image-gpt`/`generate-video-happyhorse`/`concat-clips`/`crop-video`；W6: `cg-render`；W8: `matting`；W9: `upscale-image`；W10: `hole-fill`）+ 占位 1 颗（`generate-music-suno`）+ Pattern E 3 颗纯 Go 像素处理（W3: `cutout`/`green-spill-clear`/`rgb-unspill`）+ Pattern E2 1 颗 cgo+libwebp（W5: `hybrid-to-webp`）+ **Pattern E scaffold 1 颗**（W7: `nrbi-render-prompt`，纯 Go 文本处理，real-run 返 NOT_IMPLEMENTED 待 Wave 7b 对拍 CI infra）。
+>
+> **设计原则（Waves 8-10 决策记录）**："不方便改成 Go 的，该保留 C++ 就保留 C++"。原 W4 doc 计划 4 颗（matting/hole-fill/upscale-image/nrbi-render-prompt）走 cgo E/E2 路径（ML 模型推理 + 图像库），但实际工程权衡：matting（MODNet）、hole-fill（OpenCV Inpaint）、upscale-image（Real-ESRGAN）三颗重型 ML/系统库，Go 侧轻量级文本/网络调度，backend 部署及管理模型权重、GPU 加速、版本演进。这样分工降低 Go 打包体积、避免 cgo 跨编译复杂性、支持 model checkpoint 独立更新。nrbi-render-prompt 走 Pattern E scaffold（W7）保留选项，可根据需要转 Pattern B；Wave 7b 对拍 CI 基础设施暂未部署。
 
 ## IDE 侧落地（纯 Go，照 videoctl 现成模式）
 
@@ -162,6 +164,43 @@ status: draft
 - **命名一致性 fix**：code-quality review 抓到 `params.ReferenceImageURLs` (URL acronym) vs `fcBody.ReferenceImageUrls` (Urls) 文件内不一致——sibling tools 全用 `Urls`（nanobanana/gpt/seedance/happyhorse），cg-render 沿用 sibling 形（json tag `referenceImageUrls` 不变，wire 字节不变）；同时清死 `stubResponse` test helper（W1-4/W1-5 dead-helper 反 pattern 复发）。
 - 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`cgrender` 覆盖率 **100%**。`tools list` 14 runnable + 4 stubs；`tools schema cg-render --format openai` 7 props order 正确；`run cg-render --dryRun` envelope body 在 donor 顺序，`panelCount:1` 默认 emit。
 - **未做**：backend 真端点（业务驱动）；wiki 远端推送（用户 2026-05-21 仅授权 `dev/*` 分支推 `cdotlock/moonshort-ide`，wiki main 推未授权）；Wave 4 doc 中余下 4 个升级候选维持 deferred（W4-2 `hole-fill` / W4-3 `matting` / W4-5 `nrbi-render-prompt` / `upscale-image`）。
+
+### Wave 7（已完成 2026-05-21，main `c930894`）
+
+- 1 颗工具（nrbi-render-prompt）TDD 落地，fresh implementer subagent → spec compliance review → code quality review → atomic refactor follow-up commit；共 2 个 atomic commit（feat 1 + refactor 1）。Wave 7 是 W4-5 "nrbi-render-prompt" 升级路径的 Pattern E 纯 Go scaffold，触发条件 = Wave 7b 对拍基础设施就绪（或用户决定转 Pattern B）。
+- 合并进 `moonshort-ide` 本地 `main`（FF `2099f03..c930894`），新文件 2 + 改文件 1（cli_test.go aggregate env list 同步 + registry.go realTools 加 nrbi-render-prompt）。
+- **能力扩展**：1 颗新 Pattern E 工具——`nrbi-render-prompt`（schema 5 props：layer/variable_text 2 required（layer enum A/A5/B/C/D/E，variable_text object）+ category/style_name/reference_image_urls 3 optional；无外部依赖，纯 Go 文本处理）。Wave 7 后总计 **15 颗可跑或已 scaffold**（W1 4 + W2 5 + W3 3 + W5 1 + W6 1 + W7 1），剩 3 颗 NOT_IMPLEMENTED 桩（matting/hole-fill/upscale-image）。
+- **暂时 NOT_IMPLEMENTED**：dryRun 与 mock 模式现返回 `NOT_IMPLEMENTED`（exit 4）。real-run 需要 Wave 7b byte-faithful 对拍 CI 基础设施（Python baseline runner + Go 实现 runner + sha256 diff 比对器），或在 user 考虑下将此工具转换为 Pattern B（backend 部署 Python donor 服务）。
+- **新建立的范式**：Pattern E scaffold = 接口全实现（schema/Run/MissingEnv），但 real-run 返 NOT_IMPLEMENTED 待条件就绪。dryRun + mock 同样返此错；无需区分。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`nrbirenderprompt` 覆盖率 **100%**（简化实现）。`tools list` 15/18；`tools schema nrbi-render-prompt --format openai` 5 props order 正确；`run nrbi-render-prompt --dryRun` 返 NOT_IMPLEMENTED envelope。
+
+### Wave 8（已完成 2026-05-21，main `703420b`）
+
+- 1 颗工具（matting）TDD 落地，fresh implementer subagent → spec compliance review → code quality review → atomic refactor follow-up commit；共 2 个 atomic commit（feat 1 + refactor 1）。Wave 8 是 W4-3 "matting" 升级路径的 Pattern B FC 网关转换（原计划 cgo+onnxruntime_go，实际采纳 backend 部署）。
+- 合并进 `moonshort-ide` 本地 `main`（FF `c930894..703420b`），新文件 2 + 改文件 1（cli_test.go aggregate env + registry.go realTools 加 matting）。
+- **能力扩展**：1 颗新 Pattern B 可跑工具——`matting`（schema 5 props：slug/assetName/inputUrl 3 required + format/device 2 optional（format enum webp/png，device enum cpu/cuda/mps）；fcBody 3 字段固定顺序 slug→assetName→inputUrl + optional format/device）。Wave 8 后总计 **16 颗可跑**（新增 matting），剩 2 颗 NOT_IMPLEMENTED（hole-fill/upscale-image）。
+- **设计决策记录**：原 W4 doc 计划 matting 走 E-via-onnx（cgo+onnxruntime_go 推理 MODNet），但实际工程评估：ML 推理（MODNet + GPU 加速）属重型，Go 侧负责轻量级网络/文本调度更合理。backend 部署 Python MODNet 服务（含 CUDA/MPS GPU 支持），Go assetctl 通过 FC 网关轻量调度。符合设计原则"不方便改成 Go 的，该保留 C++ 就保留 C++"（Go 替 C++ = MODNet，backend Python runner）。
+- FC env：`FC_MATTING_URL` / `FC_MATTING_TOKEN`；600s timeout。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`matting` 覆盖率 **100%**。`tools schema matting` 5 props order 正确；`run matting --dryRun` envelope 正确。
+
+### Wave 9（已完成 2026-05-21，main `5dcb146`）
+
+- 1 颗工具（upscale-image）TDD 落地，fresh implementer subagent → spec compliance review → code quality review → atomic refactor follow-up commit；共 2 个 atomic commit（feat 1 + refactor 1）。Wave 9 是 W4-4 "upscale-image" 升级路径的 Pattern B FC 网关转换（原计划 D-via-realesrgan-ncnn-vulkan，实际采纳 backend 部署）。
+- 合并进 `moonshort-ide` 本地 `main`（FF `703420b..5dcb146`），新文件 2 + 改文件 1（cli_test.go aggregate env + registry.go realTools 加 upscale-image）。
+- **能力扩展**：1 颗新 Pattern B 可跑工具——`upscale-image`（schema 5 props：slug/assetName/inputUrl 3 required + scale/model 2 optional（scale enum 2/4，model default "realesrgan-x4plus-anime"）；fcBody 4 字段固定顺序 slug→assetName→inputUrl + optional scale/model）。Wave 9 后总计 **17 颗可跑**（新增 upscale-image），剩 1 颗 NOT_IMPLEMENTED（hole-fill）。
+- **设计决策记录**：原 W4 doc 标记 upscale-image 为"极低优先级"且"不推荐除非业务必需"（Real-ESRGAN ONNX model >50MB）。Go 侧打包该模型 + Vulkan 依赖爆增。实际采纳：backend 部署 Real-ESRGAN + GPU 加速 + 权重缓存，Go assetctl 轻量网关。符合设计原则。
+- FC env：`FC_UPSCALE_IMAGE_URL` / `FC_UPSCALE_IMAGE_TOKEN`；600s timeout。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`upscaleimage` 覆盖率 **100%**。`tools schema upscale-image` 5 props order 正确；`run upscale-image --dryRun` envelope 正确。
+
+### Wave 10（已完成 2026-05-21，main `4de6903`）
+
+- 1 颗工具（hole-fill）TDD 落地，fresh implementer subagent → spec compliance review → code quality review → atomic refactor follow-up commit；共 3 个 atomic commit（feat 1 + refactor 2）。Wave 10 是 W4-2 "hole-fill" 升级路径的 Pattern B FC 网关转换（原计划 D-via-gocv，实际采纳 backend 部署）。同时清理最后的 stubTool 占位符（commit `4de6903` refactor），all 18 tools 现 realTools 或 scaffold。
+- 合并进 `moonshort-ide` 本地 `main`（FF `5dcb146..4de6903`），新文件 2 + 改文件 2（cli_test.go aggregate env + registry.go realTools + registry_test.go 清死 stubTool 断言）。
+- **能力扩展**：1 颗新 Pattern B 可跑工具——`hole-fill`（schema 5 props：slug/assetName/inputUrl 3 required + dilate/minSize/maxSize 3 optional，其中 minSize/maxSize 有 minSize≤maxSize 约束 + dryRun；fcBody 5 字段固定顺序 slug→assetName→inputUrl + optional dilate/minSize/maxSize）。Wave 10 后总计 **18 颗全部就位**（all runnable 或 Pattern E scaffold）。**0 F-stub 剩余**。
+- **设计决策记录**：原 W4 doc 计划 hole-fill 走 D-via-gocv（cgo+OpenCV cgo binding），评估显示跨平台 OpenCV build 复杂（macOS Gatekeeper/SIP + linux musl），且 OpenCV 系统库动辄 50MB+。实际采纳：backend 部署 OpenCV Inpaint 服务（Telea/Navier-Stokes 两算法），Go assetctl 轻量网关。符合设计原则。
+- FC env：`FC_HOLE_FILL_URL` / `FC_HOLE_FILL_TOKEN`；120s timeout。
+- **registry cleanup**：commit `4de6903` refactor 删除 `func stubTool(id string) iface.Tool` 占位符，改为 assert `realTools()` 返回包含全 18 个 IDs（验证无漏网工具）。`TestStubToolStructDirectly` 作为范本，演示如何在单测里直接 exercise `stubTool` struct（future 扩展新 canonical ID 时参考），无需保留 registry 级别的占位函数。
+- 验证全绿：`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`holefill` 覆盖率 **100%**。`tools list` 18/18；all 18 `tools schema <id>` 全通过；`run hole-fill --dryRun` envelope 正确。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
 
