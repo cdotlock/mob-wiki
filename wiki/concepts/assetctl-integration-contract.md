@@ -1,7 +1,7 @@
 ---
 title: assetctl — 原子能力 CLI 接口合同 v0.1.0 (assets-produce → moonshort-ide)
 created: 2026-05-20
-updated: 2026-05-22
+updated: 2026-05-22 (Wave 15)
 tags: [assetctl, assets-produce, moonshort-ide, atomic-capability, interface-contract, codex, oss-put, generate-image-nanobanana, generate-video-seedance, generate-sfx-elevenlabs]
 status: draft
 ---
@@ -58,15 +58,17 @@ status: draft
 
 **E. 防漂移**：合同带语义版本号；`vendor/README` 钉对照基准 SHA（沿用 `videoctl`/`moonshort-script` 范式）；IDE 侧 parity/契约测试，版本或信封形状不符即失败。
 
-## 21 颗原子能力（ATOMIC_TOOL_IDS：18 canonical + 3 IDE-native，后者 append-only）
+## 25 颗原子能力（ATOMIC_TOOL_IDS：18 canonical + 7 IDE-native，后者 append-only）
 
 **前 18 颗** verbatim 自 `assets-produce@48e6eb9` `skill-source.ts` 源序，永远不改顺序、不删、不重排：
 
 `generate-image-nanobanana` `generate-image-gpt` `generate-video-seedance` `generate-sfx-elevenlabs` `generate-music-suno` `concat-clips` `crop-video` `generate-video-happyhorse` `cg-render` `nrbi-render-prompt` `upscale-image` `oss-put` `matting` `hybrid-to-webp` `green-spill-clear` `rgb-unspill` `hole-fill` `cutout`
 
-**后 3 颗（IDE-native，Wave 14 起，commit-arrival 顺序，never reorder, only append）**：
+**后 7 颗（IDE-native，Wave 14 起，commit-arrival 顺序，never reorder, only append）**：
 
-`audit-mapping` `parse-wardrobe` `check-clothing-keyword`
+`audit-mapping` `parse-wardrobe` `check-clothing-keyword` `check-clothing-llm` `extract-look-signatures` `build-wardrobe-map` `apply-look-aliases`
+
+> Wave 15 (2026-05-22) 同时为 `generate-image-nanobanana` / `generate-image-gpt` 增加可选 `chromakeyMode: true` boolean（default false，schema 向后兼容）—— inline 5 句 chromakey-green 背景契约后缀，取代独立 `green_screen.py wrap_for_chromakey()` helper；marker `[BACKGROUND CONTRACT — chromakey green]` 保证幂等。**不是新原子，是既有原子的 schema 扩展**。
 
 > **Wave 10 完结后全部 18 颗可跑/就位** — **0 F-stub 剩余**。
 >
@@ -253,6 +255,24 @@ status: draft
   - **Python 端口动作配套**：每 port 一颗，必同步删 Python 源 + 修 import 同包 stale comments + 更新 SKILL.md 命令样例 + relax 任何 hard-coded `==18` 断言。
 - 验证全绿：`pnpm check` exit 0（lint + typecheck + node test 187 pass + go test）；vendor/assetctl 全 14 包 `go test -race` 通过，覆盖率：`auditmapping 86.4%` / `parsewardrobe 96.2%` / `checkclothingkeyword 95.8%`。`tools list` 21/21（18 canonical runnable + 3 IDE-native runnable）；`tools schema audit-mapping|parse-wardrobe|check-clothing-keyword` envelope schema 正确；`assetctl tools list | jq -r '.[].name'` 末尾 3 行依次是 audit-mapping → parse-wardrobe → check-clothing-keyword（commit-arrival 顺序）。
 - **Wave 14 后总数**：18 canonical（assets-produce@48e6eb9 verbatim，all runnable）+ 3 IDE-native（IDE 独有，all runnable）= **21 颗全部可跑**，0 stub。
+
+### Wave 15（已完成 2026-05-22，`feat/assetctl-foundation` `7306c27`）—— ATOMIC_TOOL_IDS 再扩展：4 颗新 IDE-native 原子 + chromakey inline schema 扩展（21 → 25）
+
+- 4 颗 IDE-native 原子能力（继续从 asset-prompt-generator skill 的 Python 脚本 port 成 Go）+ 1 个既有原子的 schema 扩展（chromakey inline）从三个隔离 worktree 集成回 `feat/assetctl-foundation`；共 5 个 atomic commit cherry-pick 到 origin tip（9c9907f → c635ea9）+ 1 个 docs 同步 commit（7306c27），fast-forward push 6 个 commit 到 cdotlock/moonshort-ide。Wave 15 延续 Wave 14 ATOMIC_TOOL_IDS append-only 协议（never reorder, only append），并首次在既有原子上做 schema 扩展（非新原子，向后兼容）。
+- **触发**：Wave 14 收尾时三个 sibling Python 脚本（`llm_clothing_audit.py` LLM 模式 / `look_canonicalizer.py` 6 阶段 wardrobe canonicalizer / `green_screen.py` chromakey 后缀 helper）未在范围内；Wave 15 三路并发（subagent A/B/C 各跑一条隔离 worktree）补齐。
+- **能力扩展**：4 颗新 Pattern E 纯 Go 原子 + 1 个 schema 扩展。
+  - `check-clothing-llm`（B 路）：扫 stage-06 sprite prompts vs stage-05 narrative 的 truth-table 模式——每集一次 Zenmux LLM 调用，从 narrative 抽 "这集每个 BEAT 每个角色穿什么" 真值表，跟 sprite prompt 做语义对账。同义词 / 归属 / idiom 过滤由 LLM 处理（不再像 `--mode keyword` 走 verbatim 关键词集）。per-episode SHA256 内容键缓存（避免重复 LLM 调用），ZENMUX_API_KEY env 依赖（OpenAI-compatible HTTP client）。比 `check-clothing-keyword` 假阳性率低一个数量级（NRBI 实测：keyword ~18%，llm < 3%）。90.7% 覆盖率。
+  - `extract-look-signatures`（C 路 phase 1+2）：从角色 Bible 的 canonical wardrobe table 抽 (char, look) 二元组的 LLM 签名（颜色 / 材质 / 廓形 / accessory 5–8 维度），落地 `look_signatures.json`。LLM-only（无 keyword fallback），ZENMUX_API_KEY env 依赖。下游 `build-wardrobe-map` 消费。90.2% 覆盖率。
+  - `build-wardrobe-map`（C 路 phase 3）：消费 `extract-look-signatures` 的输出 + stage-05 narrative 里出现的 raw `<char> [look]:` look-name tokens，LLM 决策每个 raw token 应该 canonicalize 到哪一颗 (char, wardrobeId)，输出 `wardrobe_map.json` 含 `confidence` / `evidence` 字段。88.1% 覆盖率。
+  - `apply-look-aliases`（C 路 phase 4+5+6）：消费 `wardrobe_map.json` 把 raw look tokens 在脚本里 in-place rewrite 成 canonical wardrobeId，同时把 alias 折回到 `compiled/aliases.json`（让 `audit-mapping` 下次走绿）。本颗收尾整条 wardrobe canonicalization pipeline。88.2% 覆盖率。
+  - **chromakey inline**（A 路）：`generate-image-nanobanana` / `generate-image-gpt` schema 各增加一个可选 `chromakeyMode: true` boolean（default false，向后兼容；新字段插在 schema 既有 props 末尾，donor-faithful prop 顺序保留）。当 `chromakeyMode: true` 时，prompt builder 在用户 prompt 末尾 append 5 句 chromakey-green 背景契约后缀（"Solid uniform chromakey green (#00FF00) background..." 等）。**Marker `[BACKGROUND CONTRACT — chromakey green]` 保证幂等**（已含 marker 的 prompt 不会被重复加 suffix）。取代独立 `green_screen.py wrap_for_chromakey()` helper。**不是新原子**，是既有原子的 schema 扩展。nanobanana / gpt 各 100% 覆盖率。
+- **Python 源清理**：删除四个被 Go 原子完全替代的脚本：`llm_clothing_audit.py`（489 LOC，B 路完成后删）+ `look_canonicalizer.py`（1107 LOC，C 路 phase 4+5+6 落地后整文件删）+ `canonical_wardrobe.py`（207 LOC，最后一个 `from canonical_wardrobe import` 在 look_canonicalizer 删除后随之删）+ `green_screen.py`（A 路完成后删，chromakey suffix 已 inline 进 nanobanana / gpt 的 prompt builder）。`SKILL.md` 配套命令样例 3 处改写为 `assetctl run <id> --input '{...}'` JSON envelope 形态（match Wave 14 范式）。`references/outfit-llm-prompt-pattern.md` 同步加 "look canonicalization 已迁 Go atoms" 段。
+- **新建立的范式**：
+  - **ATOMIC_TOOL_IDS schema 扩展（非新原子）协议**：既有原子加可选字段时——(a) 新字段插 schema props 末尾，(b) default false / 0 / "" 保证 backward-compat，(c) 行为变更要 idempotent（用 marker / token 防重复应用），(d) bindings.json description 同步说明扩展。
+  - **三路并发隔离 worktree → cherry-pick 集成**：Wave 15 首次跑三个 subagent 并发（A/B/C 各占一个隔离 worktree），各自落 commit 到独立分支，最后 cherry-pick 到 integration 分支。冲突点全部 additive（registry.go ATOMIC_TOOL_IDS 数组 + realTools map + imports 三处都被多方追加），按 commit-arrival 顺序逐 commit cherry-pick 时手动保留双方条目即可，无需 rebase。
+  - **LLM-only 原子的缓存范式**：`check-clothing-llm` / `extract-look-signatures` / `build-wardrobe-map` 三颗都消耗 ZENMUX_API_KEY，per-episode SHA256 内容键缓存到 `.cache/` 目录（content-addressed，rerun 同 input 直接命中），ZENMUX_API_KEY 走 AgentConfig.additionalEnv 从 workspace .env 注入（IDE 启动无需 pre-source shell）。
+- 验证全绿：`pnpm check` exit 0（lint + typecheck + node test 全过 + go test）；vendor/assetctl 全包 `go test -race` 通过，本轮新增 5 包覆盖率：`checkclothingllm 90.7%` / `extractlooksignatures 90.2%` / `buildwardrobemap 88.1%` / `applylookaliases 88.2%` / `nanobanana 100%` / `gpt 100%`；node test **294 pass / 0 fail**。`tools list` 25/25（18 canonical runnable + 7 IDE-native runnable）；4 个新原子 `tools schema <id>` envelope schema 正确；`assetctl tools list | jq -r '.[].name'` 末尾 7 行依次是 audit-mapping → parse-wardrobe → check-clothing-keyword → check-clothing-llm → extract-look-signatures → build-wardrobe-map → apply-look-aliases（commit-arrival 顺序）。`tools schema generate-image-nanobanana` / `tools schema generate-image-gpt` 末尾 prop 显示 `chromakeyMode: { type: boolean, default: false }`。
+- **Wave 15 后总数**：18 canonical（assets-produce@48e6eb9 verbatim，all runnable）+ 7 IDE-native（IDE 独有，commit-arrival 顺序追加，all runnable）= **25 颗全部可跑**，0 stub。chromakey inline 是 schema 扩展（nanobanana / gpt 两颗既有原子上），不计入原子数。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
 
