@@ -1,7 +1,7 @@
 ---
 title: assetctl — 原子能力 CLI 接口合同 v0.1.0 (assets-produce → moonshort-ide)
 created: 2026-05-20
-updated: 2026-05-20
+updated: 2026-05-22
 tags: [assetctl, assets-produce, moonshort-ide, atomic-capability, interface-contract, codex, oss-put, generate-image-nanobanana, generate-video-seedance, generate-sfx-elevenlabs]
 status: draft
 ---
@@ -58,9 +58,15 @@ status: draft
 
 **E. 防漂移**：合同带语义版本号；`vendor/README` 钉对照基准 SHA（沿用 `videoctl`/`moonshort-script` 范式）；IDE 侧 parity/契约测试，版本或信封形状不符即失败。
 
-## 18 颗原子能力（ATOMIC_TOOL_IDS，单一真相源 = `skill-source.ts`，源序）
+## 21 颗原子能力（ATOMIC_TOOL_IDS：18 canonical + 3 IDE-native，后者 append-only）
+
+**前 18 颗** verbatim 自 `assets-produce@48e6eb9` `skill-source.ts` 源序，永远不改顺序、不删、不重排：
 
 `generate-image-nanobanana` `generate-image-gpt` `generate-video-seedance` `generate-sfx-elevenlabs` `generate-music-suno` `concat-clips` `crop-video` `generate-video-happyhorse` `cg-render` `nrbi-render-prompt` `upscale-image` `oss-put` `matting` `hybrid-to-webp` `green-spill-clear` `rgb-unspill` `hole-fill` `cutout`
+
+**后 3 颗（IDE-native，Wave 14 起，commit-arrival 顺序，never reorder, only append）**：
+
+`audit-mapping` `parse-wardrobe` `check-clothing-keyword`
 
 > **Wave 10 完结后全部 18 颗可跑/就位** — **0 F-stub 剩余**。
 >
@@ -231,6 +237,22 @@ status: draft
 - **文件改动**：nrbirenderprompt.go rewrite Pattern B → Pattern E（drop fcBody/fcResponse/HTTP client → 加 6 个 builder + Assemble + helpers）；nrbirenderprompt_test.go rewrite Pattern B 39 tests → 9 byte-faithful golden 对拍 + 18 unit + 25 wrapper tests = **52 tests pass**；`testdata/goldens/` 新增 9 个 fixtures（一次性 capture，donor-faithful 字节）；cli_test.go aggregate env 移除 `FC_NRBI_RENDER_PROMPT_*`（无 env 依赖）；tool wrapper **-167 LOC**（drop fcBody struct + HTTP client 配置）。
 - **验证**：9 byte-faithful golden 对拍 + 18 unit + 25 wrapper tests 全绿；`gofmt -l` 空、`go vet ./...` clean、`go test -race ./...` 全过；`tools list` 18/18；`run nrbi-render-prompt --dryRun` envelope OK（Pattern E 本地 path，无 env 无 HTTP）；`MissingEnv()` 返回 nil。
 - **决策回溯**：W7 Pattern E scaffold（real-run NOT_IMPLEMENTED 等 Wave 7b CI）→ W11 Pattern B（让 backend 跑 donor verbatim 省事）→ W13 Pattern E captured-goldens（端口 999 LOC 真实面 + 一次性 goldens 验证字节保真）。三轮迭代后落点：tool wrapper -167 LOC、tool 零 env 依赖、backend 少一个 endpoint、CI 无 Python runtime；同时不为了"统一 Pattern B"而把可纯 Go 的文本处理外包。这条路径解锁未来类似工具（e.g. 任何 frozen 模板 + builder 风格的 prompt 构造逻辑）。
+
+### Wave 14（已完成 2026-05-22，`feat/assetctl-foundation` `57065d5`）—— ATOMIC_TOOL_IDS 扩展：IDE-native 审计原子（18 → 21）
+
+- 3 颗 IDE-native 原子能力（从 novels-to-moonscript / moonshort-ide asset-prompt-generator skill 的 Python 脚本 port 成 Go）从 `feat/mapping-port-atoms` 隔离 worktree 集成回 `feat/assetctl-foundation`；共 7 个 atomic commit cherry-pick 到 origin tip（277985a → 57065d5），fast-forward push。Wave 14 突破"18 颗 = 完整 catalog"边界——首次给 IDE 独有的、不在 assets-produce@48e6eb9 donor 里的本地审计能力建立 append-only 通道。
+- **ATOMIC_TOOL_IDS 契约语义变更（minor，向后兼容）**：原 §2 文字"18 颗 = source order = 单一真相源"扩展为"**前 18 颗 verbatim 自 assets-produce@48e6eb9 skill-source.ts（永远不改顺序、不删、不重排）+ 后面按 commit-arrival 顺序追加 IDE-native 原子（never reorder, only append）**"。registry.go / registry_test.go / cli_test.go / lint_test.go 的`==18` 断言全部松到 `>=18`（floor，不 cap）。bindings.json description 同步："All 18 canonical atomic ids are runnable (...) + 3 IDE-native audit atoms appended after the canonical 18 (audit-mapping, parse-wardrobe, check-clothing-keyword)"。
+- **能力扩展**：3 颗 Pattern E 纯 Go 原子，全本地、无 env 依赖、无 FC HTTP。
+  - `audit-mapping`：扫 `.mss.md` 脚本里 `@<char> show/look` + `<CHAR> [look]:` 内联三种引用形式，对账 `compiled/mapping.json` 缺失的 (char, look) 条目；`apply: true` 备份原 mapping 到 `mapping.pre-patch.backup.json` 再写 patched 版；voice-tag 启发式把 `muffled`/`quiet_voice`/`warm_chuckle` 等纯声音描述降级为 informational `missingVoiceTag`（不阻塞画面）。`aliasesPath` JSON 接受 `aliases` / `look_aliases` / `voice_tag_tokens` 三段配置。chaoreqi-idol parity：242 refs / 212 hits / 2 missing_sprite / 2 missing_voice_tag bit-for-bit 对齐原 Python `patch_mapping.py`。86.4% 覆盖率。
+  - `parse-wardrobe`：解析 character-bible Markdown（02-character-architect/`mc-bible-*.md` / `li-bible-*.md` / `supporting-cast-filter.md`）里的 `## Canonical Wardrobe` table，emit `{characters: {<char>: {wardrobe: [{wardrobeId, description, when, isLayeredVariant}]}}, charList, total}` envelope。NRBI selena/diego/supporting-cast 三条路径与原 Python `canonical_wardrobe.py` bit-for-bit 一致。96.2% 覆盖率。
+  - `check-clothing-keyword`：扫 stage-06 sprite prompts vs stage-05 narrative 的关键词集（`EN_KEYWORDS` / `ZH_KEYWORDS` / `SYNONYMS` / `NONCOSTUME_PHRASES` verbatim 自原 Python），±N 行窗口；offline fallback，~18 假阳性率（NRBI 实测）。默认 LLM mode 仍由 sibling Python `llm_clothing_audit.py` 提供（不在本轮 port 范围）。95.8% 覆盖率，34 test fn。
+- **Python 源清理**：删除两个被 Go 原子完全替代的脚本：`agents/asset/skills/asset-prompt-generator/patch_mapping.py`（605 LOC）+ `check_clothing_consistency.py`（451 LOC）+ `tests/test_patch_mapping.py`（400 LOC）。保留 `canonical_wardrobe.py`（`look_canonicalizer.py` 仍 `from canonical_wardrobe import ...`，下一轮 port look_canonicalizer 时一起删）+ `llm_clothing_audit.py`（LLM mode 不在本轮 port 范围）+ `green_screen.py`（已挪入 image gen 原子的 prompt 后缀链路，单独清理）。同时把 `gen_e10_22_sprites.py`（NRBI 一次性 sprite spec 生成器，708 LOC）archive 删除并把 OUTFIT_SYSTEM / EXPRESSION_SYSTEM 模板提炼到 `references/outfit-llm-prompt-pattern.md`（220 行 reusable pattern doc）。SKILL.md 两个 "06 收尾自检" 段 `python3 .../patch_mapping.py ...` / `python3 .../check_clothing_consistency.py ...` 命令样例改写为 `assetctl run audit-mapping --input '{...}'` / `assetctl run check-clothing-keyword --input '{...}'` JSON envelope 形态，配套输出示例从 Python 文本 dump 改成 envelope `{ok, data: {missingSprite[], missingVoiceTag[], ...}}`。
+- **新建立的范式**：
+  - **ATOMIC_TOOL_IDS append-only 协议**：donor catalog 之外的 IDE-native 原子追加在数组末尾，commit-arrival 顺序，never reorder。
+  - **隔离 worktree → cherry-pick 集成**：当 origin/feat/assetctl-foundation 与本地 isolation 分支同时推进时，cherry-pick 单 commit 逐个 onto origin tip，逐步 resolve conflicts（registry.go imports alphabetic merge + realTools 末尾 append）比一次性 rebase 200+ commits 更可控。冲突点全部 additive（HEAD 已 wired 18 atoms + 我加 1，合并 = 接受双方）。
+  - **Python 端口动作配套**：每 port 一颗，必同步删 Python 源 + 修 import 同包 stale comments + 更新 SKILL.md 命令样例 + relax 任何 hard-coded `==18` 断言。
+- 验证全绿：`pnpm check` exit 0（lint + typecheck + node test 187 pass + go test）；vendor/assetctl 全 14 包 `go test -race` 通过，覆盖率：`auditmapping 86.4%` / `parsewardrobe 96.2%` / `checkclothingkeyword 95.8%`。`tools list` 21/21（18 canonical runnable + 3 IDE-native runnable）；`tools schema audit-mapping|parse-wardrobe|check-clothing-keyword` envelope schema 正确；`assetctl tools list | jq -r '.[].name'` 末尾 3 行依次是 audit-mapping → parse-wardrobe → check-clothing-keyword（commit-arrival 顺序）。
+- **Wave 14 后总数**：18 canonical（assets-produce@48e6eb9 verbatim，all runnable）+ 3 IDE-native（IDE 独有，all runnable）= **21 颗全部可跑**，0 stub。
 
 ## 开放细节 & 后续（顺序死板 0→1→2→3）
 
