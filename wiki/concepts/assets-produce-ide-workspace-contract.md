@@ -3,10 +3,12 @@ title: assets-produce ↔ Moonshort IDE 工作区契约
 tags: [assets-produce, moonshort-ide, mapping-json, asset-pipeline, contract]
 sources: []
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-22
 ---
 
 Moonshort IDE 通过**打开一个本地工作区文件夹**消费 assets-produce 产物。本页定死 assets-produce 必须保证什么，IDE 才能正确认素材。配套设计文档:assets-produce 仓库 `docs/superpowers/specs/2026-05-18-assets-produce-ide-workspace-contract.md`。
+
+> **2026-05-22 状态更新**:`novels-to-moonscript` 和 `assets-produce` 两个上游仓库已冻结,所有 skill / CLI 都迁入 `moonshort-ide` 仓库本身(详见下方 "IDE 自带 mapping-patch 工具" 段)。本页约束的"契约"现在由 IDE 内部脚本守。
 
 IDE 内部 AI 架构(Cline / Tab 补全)见 [[concepts/moonshort-ide-ai-integration]];素材解耦原则见 [[concepts/mss-format]];项目实体见 [[entities/assets-produce]]。
 
@@ -41,6 +43,59 @@ IDE 内部 AI 架构(Cline / Tab 补全)见 [[concepts/moonshort-ide-ai-integrat
 ## 静默失败 bug 类(为什么规则 3 不可省)
 
 漏登记 = 文件在、IDE/MSS 看不见 → 编译期静默跳过或渲染期 404,整段戏丢失且**不报错**。MSS wiki 有真实 bug 史(`MRS. KING:` 标签失配 → 8 条 dialogue 静默丢;`@mama_reyes` 无 mapping 键 → 编译静默忽略)。这是反复出现的同构 bug 族,自动登记是唯一根治。
+
+具体在角色立绘这一层,最常见的同构 bug 是:**05 episode-writer 写了 `@<char> show <look>` 或 `<CHAR> [look]:`,但 06 asset-prompt-generator 没枚举这个 `(char, look)`,mapping 不存在,引擎 lookup miss 保留前一帧**。NRBI / chaoreqi-idol 两本都中招过,见下一段。
+
+## IDE 自带 mapping-patch 工具(2026-05-22 加入)
+
+`agents/asset/skills/asset-prompt-generator/patch_mapping.py` 是 IDE 内置的 mapping 完整性自检工具,落点跟 `check_clothing_consistency.py` 并列,目的是把以下两种历史人工补丁通用化:
+
+| 历史先例 | 做了什么 |
+|---|---|
+| **NRBI** | `compiled/mapping.json` 是手工 baked 的 frozen vendored artifact——某个时刻有人把 `look_alias_map.json` 摊平进 mapping,但脚本没沉淀到任一仓库 |
+| **chaoreqi-idol** | 团队在 `_render/patch_mapping.py` 硬编码 15 个 supplementary look(suyongqing 7 + yunchen 8)+ `patch_mapping_aliases.py` 5 个中文 alias |
+
+新工具的能力:
+
+1. **扫描 + 对账**:walk `scripts/*.mss.md`,三种引用形式(`@char show` / `@char look` / `<CHAR> [look]:`)全部提取,跟 `mapping.assets.characters[char][look]` 比对
+2. **分类**:`missing_sprite`(影响画面,退出 1) vs `missing_voice_tag`(`muffled` / `quiet_voice` / `warm_chuckle` 等启发式识别,引擎保留前一帧,信息性)
+3. **`--apply`**:把缺失 sprite 写进 mapping,备份原版到 `mapping.pre-patch.backup.json`,**幂等**(再次 apply 不覆盖备份)
+4. **`--aliases <json>`**:display 角色名→canonical(中文显示名),per-look alias(`waigong.warm_chuckle` → `waigong.warm_smile`),用户自定义 voice_tag tokens
+5. **路径约定自动推断**:从 mapping 现有第一条 character entry 推 `(prefix, subdir, ext)`;`--oss-prefix` `--char-subdir` `--ext` 可覆盖
+6. **CI 友好**:`--json` 输出机器可读,退出码 0(干净 OR apply 成功) / 1(dry-run 有 missing_sprite) / 2(环境错)
+
+### 实战验证(2026-05-22 chaoreqi-idol 真本)
+
+```
+[patch_mapping] /Users/.../chaoreqi-idol/compiled/mapping.json
+  refs=242  hits=212  missing_sprite=2  missing_voice_tag=2
+  path convention: crqi/characters/<char>_<look>.webp
+
+── MISSING SPRITE ──
+  ✗ 苏咏晴.confident_smirk  (×3)        ← 团队漏渲
+  ✗ 苏咏晴.fierce_protective  (×8)       ← 团队 patch_aliases 漏列中文 alias
+
+── MISSING VOICE TAG ──
+  ◦ 苏咏晴.muffled  (×1)                ← DELIVERY.md 已标注
+  ◦ 苏咏晴.quiet_voice  (×18)            ← DELIVERY.md 只报了 4 次,实际 18 次
+```
+
+工具检出了 chaoreqi 团队手撸脚本**真实漏掉的 2 个问题** + 验证了 voice 标签分类正确。
+
+### 使用流程
+
+```bash
+# 在 IDE 仓库根目录跑
+python3 agents/asset/skills/asset-prompt-generator/patch_mapping.py \
+    --book <slug> --root <path/to/book>        # dry-run 对账
+python3 agents/asset/skills/asset-prompt-generator/patch_mapping.py \
+    --book <slug> --root <path> --apply        # 实际写 mapping
+python3 agents/asset/skills/asset-prompt-generator/patch_mapping.py \
+    --book <slug> --root <path> --apply \
+    --aliases <path/to/aliases.json>           # 配合显示名 / 跨语种 alias
+```
+
+详细 schema 与处理 finding 的标准动作见 `agents/asset/skills/asset-prompt-generator/SKILL.md` "## 06 收尾自检:mapping 完整性" 段。
 
 ## 不在 assets-produce 职责内
 
