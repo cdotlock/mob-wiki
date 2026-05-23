@@ -1,6 +1,6 @@
 ---
 title: dream-rec integration architecture (Component 0)
-updated: 2026-05-23
+updated: 2026-05-24
 tags: [dream-rec, recommendation, moonshort-backend, architecture, component-0]
 ---
 
@@ -17,12 +17,14 @@ Independent Python FastAPI recommendation service that consumes choice events fr
 
 ## Theoretical base
 
-5 main personality axes (openness, sensation, cognition, affect, attachment) + 1 agency play-style axis. Bayesian Thurstonian IRT (TIRT) with heteropolar keying and testlet structure. See [[concepts/dream-rec-theoretical-base]] (companion spec, Bayesian TIRT). Sub-specs to come:
+5 main personality axes (openness, sensation, cognition, affect, attachment) + 1 agency play-style axis. Bayesian Thurstonian IRT (TIRT) with heteropolar keying and testlet structure. See [[concepts/dream-rec-theoretical-base]] (companion spec, Bayesian TIRT). Sub-specs:
 
-- **Component 1:** TIRT estimator (currently `app/services/tirt_estimator.py` stub — only increments choice_count).
-- **Component 2:** LLM-as-annotator with confidence-weighted Bayesian prior (currently `app/services/llm_tagger.py` stub).
-- **Component 3+4:** genre projection / axis matching.
-- **Component 5:** cold-start questionnaire.
+- **Component 1:** [[concepts/dream-rec-component-1-tirt-estimator]] — shipped 2026-05-24. Bayesian TIRT Laplace updater with `(user, story_id)` testlet and LLM-confidence-weighted ψ².
+- **Component 2:** [[concepts/dream-rec-component-2-llm-tagger]] — shipped. Batch episode-level tagger producing ItemTag + DreamSignature against the mob-ai gateway.
+- **Component 3:** [[concepts/dream-rec-component-3-genre-projection]] — shipped 2026-05-24. Hybrid (manual seed + PCA refinement) `M_g` matrices with shadow-swap versioning and cold-start identity-on-5-core fallback.
+- **Component 4:** [[concepts/dream-rec-component-4-dream-ranker]] — shipped 2026-05-24. `axis_match × engagement × freshness` ranker with continuous sharpness blending into popularity.
+- **Component 5:** [[concepts/dream-rec-component-5-cold-start]] — shipped 2026-05-24. 5-item forced-choice onboarding questionnaire feeding informative `(μ₀, Σ₀)` via the same TIRT likelihood.
+- **Component 6:** [[concepts/dream-rec-component-6-dashboard]] — deferred. Streamlit dashboard for the three calibration loops A/C/B; design locked, awaits `recommend_log` + moonshort funnel API.
 
 Component 0 (this page) wires the seams so the sub-components can land without touching transport, schema, or moonshort-backend.
 
