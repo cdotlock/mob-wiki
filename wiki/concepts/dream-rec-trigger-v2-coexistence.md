@@ -44,7 +44,7 @@ Commit 1 adds `app/services/dream-rec-client.ts` (`postChoiceEvent` / `postTagNo
 
 All three commits coexist with v2's hooks at the same call sites — v2 and dream-rec each get their own fire-and-forget call after the same transaction commits, sharing `action.id` as the idempotency key.
 
-**Not yet pushed.** `cdotlock/moonshort-backend` is a non-user namespace; per the global push rule the push needs explicit user authorization. Commits live in the worktree until then.
+**PR open**: [cdotlock/moonshort-backend#3](https://github.com/cdotlock/moonshort-backend/pull/3) — `feat/dream-rec-integration` → `main`. Awaiting colleague review. Three patches also archived in `dream-rec/docs/integration-patches/` for offline distribution if PR review stalls.
 
 ## Open questions
 
