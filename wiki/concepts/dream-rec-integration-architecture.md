@@ -79,13 +79,13 @@ All routes except `/health` require `Authorization: Bearer ${DREAM_REC_BEARER}`.
 
 `/events/choice` writes a `choice_event` row inside the request, then calls `process_choice_event` synchronously inside the same transaction. If processing fails or no `item_tag` matches, the event is still durable in the table — the standalone `app/workers/outbox.py` worker picks up `pending|failed` events every 30s and retries. Idempotency key prevents duplicate inserts on retry from the client.
 
-## moonshort-backend integration (SHIPPED 2026-05-23)
+## moonshort-backend integration (re-authored 2026-05-24)
 
-Three hook points feeding events live in `moonshort-backend`. Local commits only (NOT pushed — `moonshort-backend` is in non-user namespace and the user keeps these local per their explicit instruction):
+Three hook points feeding events live in `moonshort-backend`, re-authored on 2026-05-24 against the current `origin/main` after the original cherry-pick conflicted with [[concepts/dream-trigger-v2-mechanical|Dream Trigger v2]]'s overlapping changes at the same call sites (see [[concepts/dream-rec-trigger-v2-coexistence]] for the coexistence design). Worktree at `/tmp/msb-dream-rec`, branch `feat/dream-rec-integration`. Local commits only (NOT pushed — `cdotlock/moonshort-backend` is in non-user namespace and the user keeps these local per their explicit instruction):
 
-1. **`c60bd52e feat: push choice events to dream-rec service`** — `app/services/save-action-service.ts:submitChoice` fires `postChoiceEvent` after the prisma transaction commits.
-2. **`b22a6ac3 feat: trigger dream-rec signature generation on dream finalize`** — dream production checkpoint route fires `postTagDream`.
-3. **`035e3870 feat: trigger dream-rec novel tagging after seed completes`** — seed-runner fires `postTagNovel`.
+1. **`87360e66 feat(dream-rec): wire submitChoice to dream-rec service`** — adds `app/services/dream-rec-client.ts` (`postChoiceEvent / postTagNovel / postTagDream`), modifies `app/services/save-action-service.ts:submitChoice` to capture `action.id`, build `dreamRecPayload` inside the prisma tx, and fire `postChoiceEvent` after commit (side-by-side with v2's profile-vector update), and adds `DREAM_REC_URL / DREAM_REC_BEARER / DREAM_REC_ENABLED` to `.env.example`.
+2. **`67ea73eb feat(dream-rec): trigger dream signature on dream finalize`** — `app/api/internal/dream-production-jobs/[jobId]/checkpoint/route.ts` fires `postTagDream` when `finalizedDream` exists, alongside v2's producer-snapshot block.
+3. **`1a09a000 feat(dream-rec): trigger novel tagging after seed completes`** — `scripts/_seed-helpers/seed-runner.ts` fires `postTagNovel` at the end of `runSeed` so the LLM tagger ingests freshly-published episodes.
 
 Helper: `app/services/dream-rec-client.ts` with `postChoiceEvent / postTagNovel / postTagDream` reading `DREAM_REC_URL / DREAM_REC_BEARER / DREAM_REC_ENABLED` env vars. All calls are fire-and-forget — moonshort never blocks on dream-rec. Default `DREAM_REC_ENABLED=false` — safe rollback flag.
 
