@@ -1,7 +1,7 @@
 ---
 title: dream-rec integration architecture (Component 0)
 updated: 2026-05-24
-tags: [dream-rec, recommendation, moonshort-backend, architecture, component-0]
+tags: [dream-rec, recommendation, moonshort-backend, architecture, component-0, monorepo]
 status: shipped
 ---
 
@@ -79,9 +79,9 @@ All routes except `/health` require `Authorization: Bearer ${DREAM_REC_BEARER}`.
 
 `/events/choice` writes a `choice_event` row inside the request, then calls `process_choice_event` synchronously inside the same transaction. If processing fails or no `item_tag` matches, the event is still durable in the table — the standalone `app/workers/outbox.py` worker picks up `pending|failed` events every 30s and retries. Idempotency key prevents duplicate inserts on retry from the client.
 
-## moonshort-backend integration (PR open 2026-05-24)
+## moonshort-backend integration (PR #3 merged 2026-05-24)
 
-Three hook points feeding events live in `moonshort-backend`, re-authored on 2026-05-24 against the current `origin/main` after the original cherry-pick conflicted with [[concepts/dream-trigger-v2-mechanical|Dream Trigger v2]]'s overlapping changes at the same call sites (see [[concepts/dream-rec-trigger-v2-coexistence]] for the coexistence design). Branch `feat/dream-rec-integration` pushed to `cdotlock/moonshort-backend`; **PR open at [#3](https://github.com/cdotlock/moonshort-backend/pull/3)** awaiting colleague review. Original worktree at `/tmp/msb-dream-rec` (ephemeral); patches archived in `dream-rec/docs/integration-patches/` as backup.
+Three hook points feeding events live in `moonshort-backend`, re-authored on 2026-05-24 against the current `origin/main` after the original cherry-pick conflicted with [[concepts/dream-trigger-v2-mechanical|Dream Trigger v2]]'s overlapping changes at the same call sites (see [[concepts/dream-rec-trigger-v2-coexistence]] for the coexistence design). PR [#3](https://github.com/cdotlock/moonshort-backend/pull/3) **merged 2026-05-24 07:07 UTC** (merge commit `dc5d7e4d`). Patches archived in `services/dream-rec/docs/integration-patches/` as offline backup.
 
 1. **`87360e66 feat(dream-rec): wire submitChoice to dream-rec service`** — adds `app/services/dream-rec-client.ts` (`postChoiceEvent / postTagNovel / postTagDream`), modifies `app/services/save-action-service.ts:submitChoice` to capture `action.id`, build `dreamRecPayload` inside the prisma tx, and fire `postChoiceEvent` after commit (side-by-side with v2's profile-vector update), and adds `DREAM_REC_URL / DREAM_REC_BEARER / DREAM_REC_ENABLED` to `.env.example`.
 2. **`67ea73eb feat(dream-rec): trigger dream signature on dream finalize`** — `app/api/internal/dream-production-jobs/[jobId]/checkpoint/route.ts` fires `postTagDream` when `finalizedDream` exists, alongside v2's producer-snapshot block.
@@ -89,9 +89,27 @@ Three hook points feeding events live in `moonshort-backend`, re-authored on 202
 
 Helper: `app/services/dream-rec-client.ts` with `postChoiceEvent / postTagNovel / postTagDream` reading `DREAM_REC_URL / DREAM_REC_BEARER / DREAM_REC_ENABLED` env vars. All calls are fire-and-forget — moonshort never blocks on dream-rec. Default `DREAM_REC_ENABLED=false` — safe rollback flag.
 
+## Monorepo migration (2026-05-24)
+
+dream-rec was migrated into the `moonshort-backend` monorepo at `services/dream-rec/` via `git subtree add` (full history preserved, no squash). Decision drivers: deployment simplification ("demo 阶段先合"), colleague handles single repo's ops, future plan to split out again as microservices when scale demands it.
+
+- **Branch:** `feat/dream-rec-monorepo` on `cdotlock/moonshort-backend` (pushed 2026-05-24, no PR opened yet — user pending decision)
+- **Subtree merge:** `d816a19e` brings 100+ dream-rec history commits in as ancestors
+- **Monorepo commits added on top:**
+  - `c219e44f` — Dockerfile (Python 3.12-slim + uv) + docker-entrypoint.sh (auto-runs `alembic upgrade head`)
+  - `0d92ac1b` — `docker-compose.dev.yml` opt-in profile (`--profile dream-rec`, 2 services: API :8766 + outbox worker)
+  - `8b5d95bd` — `.env.production.example` Railway env keys (DREAM_REC_URL/BEARER/ENABLED on backend side; DATABASE_URL/MOB_AI_*/BACKEND_INTERNAL_* on dream-rec side)
+  - `fdbb178f` — `services/dream-rec/README.md` Railway provisioning handover for ops
+
+Production-deploy status: pending — ops needs to create a 5th Railway service named `dream-rec` in the dashboard (`services/dream-rec/Dockerfile` as build, `/health` healthcheck, env vars per `.env.production.example` § dream-rec). Backend kill-switch `DREAM_REC_ENABLED=false` keeps the hooks no-op until the service is live.
+
+- **Archive:** `AugustZAD/dream-rec` repo frozen at tag [`pre-monorepo-2026-05-24`](https://github.com/AugustZAD/dream-rec/releases/tag/pre-monorepo-2026-05-24). README points readers at the monorepo.
+- **Migration spec:** `services/dream-rec/docs/superpowers/specs/2026-05-24-dream-rec-monorepo-migration-design.md`
+- **Migration plan:** `services/dream-rec/docs/superpowers/plans/2026-05-24-dream-rec-monorepo-migration.md`
+
 ## Status (2026-05-24)
 
-Component 0 fully implemented; C1-C5 fully shipped; C6 deferred (design locked). Real-environment smoke verified against local Postgres on 2026-05-24:
+Component 0 fully implemented; C1-C5 fully shipped; C6 deferred (design locked). Real-environment smoke verified against local Postgres on 2026-05-24, and `docker build` of the monorepo Dockerfile + 367 pytest run inside `services/dream-rec/` both clean.
 
 - Cold-start → C1 Laplace MAP → 6-axis θ posterior with 6×6 covariance
 - `/events/choice` → TIRT incremental update fires; θ moves monotonically with option loadings (5× option-a choices pushed all 6 axes in loading direction, sharpness 1.658 → 1.737)
@@ -99,8 +117,9 @@ Component 0 fully implemented; C1-C5 fully shipped; C6 deferred (design locked).
 
 Test count: 367 pytest passing, ruff clean across `app/tests/scripts`.
 
-**Path:** `~/MobAI/dream-rec` (FastAPI service)
-**Plan:** `docs/superpowers/plans/2026-05-23-dream-rec-integration-architecture.md`
-**Spec:** `docs/superpowers/specs/2026-05-23-dream-rec-integration-architecture-design.md`
-**Theoretical spec:** `docs/superpowers/specs/2026-05-20-dream-rec-recommendation-design.md`
-**Seed script (dev only):** `scripts/seed_dev_dreams.py`
+**Path (canonical):** `cdotlock/moonshort-backend → services/dream-rec/` (FastAPI service)
+**Path (archive):** `AugustZAD/dream-rec @ pre-monorepo-2026-05-24` (read-only)
+**Plan:** `services/dream-rec/docs/superpowers/plans/2026-05-23-dream-rec-integration-architecture.md`
+**Spec:** `services/dream-rec/docs/superpowers/specs/2026-05-23-dream-rec-integration-architecture-design.md`
+**Theoretical spec:** `services/dream-rec/docs/superpowers/specs/2026-05-20-dream-rec-recommendation-design.md`
+**Seed script (dev only):** `services/dream-rec/scripts/seed_dev_dreams.py`
