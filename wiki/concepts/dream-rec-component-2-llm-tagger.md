@@ -30,7 +30,7 @@ Loadings ∈ [−1, +1]; strong correlation ±0.7~±1.0; neutral 0.
 - **Provider:** mob-ai gateway (`https://ai.mob-ai.cn/v1`), OpenAI-compatible. Same gateway as [[entities/assets-produce]].
 - **Model:** `mob-ai/claude-sonnet-4-6` (default env-overridable; `claude-sonnet-4-7` not routable on the gateway as of 2026-05-23).
 - **Granularity:** Episode-level batch — one LLM call per episode, prompt contains all choices + their option texts + branch summaries.
-- **Confidence:** Self-reported by model; `confidence >= TAU_REVIEW=0.6` → `auto_accepted`, below → `pending_review` (both pass downstream — review is for audit, not blocking).
+- **Confidence:** Self-reported by model; `confidence >= TAU_REVIEW` → `auto_accepted`, below → `pending_review` (both pass downstream — review is for audit, not blocking). Default `TAU_REVIEW=0.0` (review disabled) as of 2026-05-24 per product decision; bump above 0 to re-enable human review for low-confidence tags.
 - **Execution:** FastAPI `BackgroundTasks` + resumable tagger (skip-already-tagged via partial unique index lookup). No new outbox table.
 - **Parser:** `compiled_walker.py` walks compiled JSON (stable step ids baked in by MSS compiler), not source MSS markdown regex.
 - **Concurrency:** `LLM_MAX_CONCURRENCY=4` semaphore across episodes within a single novel tagging job.
