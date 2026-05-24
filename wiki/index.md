@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-05-21
+updated: 2026-05-24
 ---
 
 # Mob-Wiki Index
@@ -36,6 +36,7 @@ Welcome to the team knowledge base.
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
 - [[concepts/moonshort-ide-ai-integration]] — Moonshort IDE 内 AI 集成架构:为什么改用 Cline 而非 VS Code 原生 chat(被 Copilot 闸住),最终两个表面 —— Tab 补全 + Moonshort Agent
 - [[concepts/mss-format]] — MoonShort Script (MSS) 脚本标记语言完整规范
+- [[concepts/novel-dream-artifact]] — `NovelDreamArtifact` 1:1 sidecar of Novel holds `characterArcs` (renamed from `characterBible`) + `assetMapping` + audit meta; 2026-05-24 抽表 to separate admin authoritative data from dream-pipeline regenerable derived data
 - [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
 - [[concepts/remix-anywhere]] — 玩家长按对白 → D20+DC → LLM 生成 InsertPatch 插入剧情（含 forward planner 跨集回响）
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access

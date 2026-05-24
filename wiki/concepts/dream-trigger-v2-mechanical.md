@@ -205,7 +205,7 @@ Modified:
 - Public-pool matching / dream adapter agent
 - Distinctiveness term (global centroid hardcoded null)
 - per-LI dimension
-- characterBible refactor / storyline tag
+- characterBible refactor / storyline tag (2026-05-24 status: characterBible refactor landed — renamed to `characterArcs` + extracted to `NovelDreamArtifact` 1:1 sidecar; see [[concepts/novel-dream-artifact]])
 - in_play / post_play trigger timing itself (still remix-commit fire-and-forget + Completed + 8h delay)
 - Online threshold tuning / admin panel
 
