@@ -52,6 +52,7 @@ Welcome to the team knowledge base.
 - [[entities/cli-gateway]] — Lightweight HTTP microservice for remote CLI execution (deployed per-service)
 - [[entities/dramatizer]] — Go binary for novel-to-screenplay conversion (15-stage LLM pipeline)
 - [[entities/dramatizer-mss]] — Novels-to-Moonscript skill workflow for MSS writing, route planning, and visual asset production
+- [[entities/mob-ai-router]] — Public OpenAI-compatible LLM router (`https://ai.mob-ai.cn/api`) fronting Claude, DeepSeek, GPT, Jina embeddings/rerank, and image/video providers behind a single virtual-key surface
 - [[entities/mob-mini-agent]] — Pi-based company Agent foundation with Moonshot runtime practices, observability, and compaction safety
 - [[entities/mob-sandbox-ops]] — Self-hosted Daytona/OpenHands/Claude Code sandbox platform and operator runbook
 - [[entities/mobai-agent]] — Master AI agent orchestrator for the Moonshort platform
