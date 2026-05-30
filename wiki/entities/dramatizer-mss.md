@@ -1,12 +1,20 @@
 ---
 title: Dramatizer-MSS
-tags: [dramatizer, mss, assets, skills]
+tags: [dramatizer, mss, assets, skills, partially-deprecated]
 sources: []
 created: 2026-05-03
-updated: 2026-05-03
+updated: 2026-05-30
 ---
 
-Dramatizer-MSS is the novels-to-Moonscript toolchain used to adapt long-form romance novels into Moonshort-ready MSS scripts, character bibles, route plans, asset prompts, and rendered visual-novel assets. It is separate from the older Go [[entities/dramatizer]] service: Dramatizer-MSS is a Claude Code skill-and-artifact workflow, while Dramatizer is the earlier Go pipeline and integration binary.
+> **⚠️ 2026-05-19 partial deprecation — upstream authoring 10 skills 整体迁到 [[entities/assets-produce]]**。novel → `.mss` 编剧前半（novel-evaluator / character-architect / bible-reviewer / entity-planner / planner-reviewer / entity-normalizer / entity-rename / rename-reviewer / episode-writer / episode-writer-reviewer / arc-reviewer）已 verbatim 迁到 `cdotlock/assets-produce` 的 `knowledge/novel-to-mss/<skill>/SKILL.md`，由那边的 `novel_to_mss` orchestration skill + `mss-validate` atomic tool 驱动，是唯一权威。每个被迁的 `SKILL.md` 顶部都加了 deprecation banner 警告"don't edit here — changes will not propagate"。本仓库这 10 个 skill 副本**保留作历史归档**。
+>
+> **仍在本仓维护**：downstream asset pipeline（`asset-prompt-generator` + `asset-renderer` + `asset-reviewer` + cg / outfit / wardrobe canonicalization 全套）+ `dramatizer/` 配套（pipeline / cg config / music normalizer / stage assets）+ NRBI 真实项目工作目录（`moonscripts/no-rules-in-bad-ideas/` 等）。
+>
+> 迁移设计 spec：assets-produce `docs/superpowers/specs/2026-05-19-upstream-authoring-migration-design.md`（master-spec §15 r1.16）。
+
+Dramatizer-MSS 是 novels-to-Moonscript 工具链：把长篇言情小说改编成 Moonshort-ready MSS 剧本 + 角色 bible + 路线规划 + 素材 prompt + 渲染好的视觉小说素材。它和老的 Go [[entities/dramatizer]] service 不同：Dramatizer-MSS 是 Claude Code skill + artifact 工作流，Dramatizer 是更早的 Go pipeline + 集成二进制。
+
+**2026-05-19 后实际角色压缩**：编剧前半（评估 / 角色 / 路线 / 集数规划 / 编剧 / 审稿）走 assets-produce；本仓只跑素材渲染下半（asset prompt / 渲染 / 审图 / cg pipeline / wardrobe + outfit + sprite canonical / music normalizer）+ NRBI 实际生产工程文件夹。
 
 ## Repository Identity
 
@@ -45,22 +53,43 @@ The target audience is North American women aged 18-24, with romance and otome p
 
 ## Skill Inventory
 
-The repository defines 12 major skills:
+The repository historically defined 12 major skills. **2026-05-19 起 11 个被标 deprecated — 编剧前半（authoring）全迁到 [[entities/assets-produce]]**：
 
-| Skill | Purpose | Main output |
-|---|---|---|
-| `novel-evaluator` | Score a source novel across adaptation dimensions such as MC agency, LI depth, zero-explanation genre fit, choice potential, fantasy type, and natural branches. | GO/NO-GO report. |
-| `character-architect` | Rebuild novel characters into game characters with personality, wounds, secrets, affection rules, signal hooks, and route conditions. | Character Bible Set. |
-| `bible-reviewer` | Verify character bible details against the original novel and check LI differentiation. | PASS/CONDITIONAL/FAIL report. |
-| `entity-planner` | Plan public route and LI-specific routes, episode counts, signals, affection changes, and branch structure. | Episode and route planning document. |
-| `planner-reviewer` | Independently simulate each LI route and run cross-route consistency checks. | Planner review report. |
-| `entity-normalizer` | Normalize character and location names into stable IDs used by scripts and assets. | `characters.json`, `locations.json`, `alias_map.json`. |
-| `episode-writer` | Write MSS episodes from bible, plan, and normalized IDs. | `ep_N_final.md`. |
-| `episode-writer-reviewer` | Simulate the target player, check bible/plan/MSS adherence, and score the episode. | Episode review report. |
-| `arc-reviewer` | Review a complete arc using narrative inventories for facts, promises, signals, choices, continuity, and LI agency. | Arc prescriptions and revised scripts. |
-| `asset-prompt-generator` | Turn character and location descriptions into image-generation prompts and task JSON. | `tasks_output.json`, wardrobe/canonicalization artifacts. |
-| `asset-renderer` | Render character sprites and scenes through image generation and post-processing. | PNG assets. |
-| `asset-reviewer` | Review rendered images against prompts and create rework instructions. | `img_review.md`. |
+| Skill | Status | Main output | Now lives in |
+|---|---|---|---|
+| `novel-evaluator` | ⚠️ DEPRECATED | GO/NO-GO report. | assets-produce `knowledge/novel-to-mss/novel-evaluator/SKILL.md` |
+| `character-architect` | ⚠️ DEPRECATED | Character Bible Set. | assets-produce `knowledge/novel-to-mss/character-architect/SKILL.md` |
+| `bible-reviewer` | ⚠️ DEPRECATED | PASS/CONDITIONAL/FAIL report. | assets-produce 同上路径 |
+| `entity-planner` | ⚠️ DEPRECATED | Episode and route planning document. | assets-produce 同上路径 |
+| `planner-reviewer` | ⚠️ DEPRECATED | Planner review report. | assets-produce 同上路径 |
+| `entity-normalizer` | ⚠️ DEPRECATED | `characters.json`, `locations.json`, `alias_map.json`. | assets-produce 同上路径 |
+| `entity-rename` | ⚠️ DEPRECATED | `rename_map.json`, batch-renamed scripts. | assets-produce 同上路径 |
+| `rename-reviewer` | ⚠️ DEPRECATED | `apply_report.md`. | assets-produce 同上路径 |
+| `episode-writer` | ⚠️ DEPRECATED | `ep_N_final.md`. | assets-produce 同上路径 |
+| `episode-writer-reviewer` | ⚠️ DEPRECATED | Episode review report. | assets-produce 同上路径 |
+| `arc-reviewer` | ⚠️ DEPRECATED | Arc prescriptions and revised scripts. | assets-produce 同上路径 |
+| `asset-prompt-generator` | ✅ Active | `tasks_output.json`, wardrobe/canonicalization artifacts. | dramatizer-mss `skills/asset-prompt-generator/` |
+| `asset-renderer` | ✅ Active (本仓壳，实跑走 backend) | PNG assets. | dramatizer-mss `skills/asset-renderer/`，实际渲染走 backend `generate-upscale-matting/`（2026-05-07 切换） |
+| `asset-reviewer` | ✅ Active | `img_review.md`. | dramatizer-mss `skills/asset-reviewer/` |
+
+迁后跨 repo 的实际工作流：
+
+```
+assets-produce (novel_to_mss orchestration)
+  → 跑 novel-evaluator → character-architect → bible-reviewer
+  → entity-planner / planner-reviewer / entity-normalizer / entity-rename / rename-reviewer
+  → episode-writer / episode-writer-reviewer / arc-reviewer
+  → 产出 ep_N_final.md + characters.json + locations.json + bible.md
+       │
+       ▼ artifact handoff
+dramatizer-mss (downstream)
+  → asset-prompt-generator（含 wardrobe canonicalizer + sprite C' + outfit anchor renderer）
+  → asset-renderer（壳）→ backend `generate-upscale-matting/` 实跑
+  → asset-reviewer + cg-renderer + music-normalizer
+       │
+       ▼
+backend assets/<book-slug>/ → MSS engine 消费
+```
 
 All reviewer steps are intentionally separated from writer steps. The repository treats self-review as a failure mode; reviewer agents are supposed to cold-read artifacts and report concrete defects before the main worker edits.
 

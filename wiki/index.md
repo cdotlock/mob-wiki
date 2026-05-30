@@ -55,14 +55,15 @@ Welcome to the team knowledge base.
 - [[entities/assets-produce]] — Agent-native asset production platform with local prompt workflow knowledge and opencode `videoctl`
 - [[entities/cli-gateway]] — Lightweight HTTP microservice for remote CLI execution (deployed per-service)
 - [[entities/dramatizer]] — Go binary for novel-to-screenplay conversion (15-stage LLM pipeline)
-- [[entities/dramatizer-mss]] — Novels-to-Moonscript skill workflow for MSS writing, route planning, and visual asset production
+- [[entities/dramatizer-mss]] — Novels-to-Moonscript skill workflow（**2026-05-19 起 upstream authoring 10 skills 整体迁到 assets-produce**；本仓只剩 downstream asset / cg / wardrobe pipeline + NRBI 真实生产工程文件夹）
 - [[entities/mob-ai-router]] — Public OpenAI-compatible LLM router (`https://ai.mob-ai.cn/api`) fronting Claude, DeepSeek, GPT, Jina embeddings/rerank, and image/video providers behind a single virtual-key surface
 - [[entities/mob-mini-agent]] — Pi-based company Agent foundation with Moonshot runtime practices, observability, and compaction safety
 - [[entities/mob-sandbox-ops]] — Self-hosted Daytona/OpenHands/Claude Code sandbox platform and operator runbook
 - [[entities/mobai-agent]] — Master AI agent orchestrator for the Moonshort platform
 - [[entities/moonshort-backend]] — Next.js game engine, admin dashboard, 85+ API routes
 - [[entities/moonshort-client]] — Cocos Creator game frontend with headless testing
-- [[entities/moonshort-script]] — MSS interpreter: Go binary compiling .md scripts to player-ready JSON
+- [[entities/moonshort-ide]] — VS Code 1.119.1 fork 一层壳：MSS 编辑 + `mss-lsp` + Production Workshop（6 agents，含 voice casting workbench / onboarding spotlight tour / minigame workbench / production manifest publish）+ codex agent 跑时 + Moonshort Agent (Cline fork)；8 packages + agents/ 单一 canonical config root
+- [[entities/moonshort-script]] — MSS interpreter: Go binary compiling .md scripts to player-ready JSON；2026-05 trick/minigame 解耦 + trick 白名单锁死 6 类 + minigame 退化为叶子 + FastAPI wrapper + episode-scoped step ID
 - [[entities/video-agent-claude-wangbo]] — Claude Code video shot prompt workflow with Seedance gateway, OSS validation, and ablation-backed skill package
 
 ## Syntheses
