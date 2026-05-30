@@ -3,14 +3,18 @@ title: Remix Anywhere — Player Intervention via D20+DC Patch Injection
 tags: [moonshort, backend, remix, llm, mss, tabletop]
 sources: [docs/superpowers/specs/2026-04-24-remix-anywhere-design.md]
 created: 2026-04-25
-updated: 2026-04-25
+updated: 2026-05-30
 ---
 
 # Remix Anywhere
 
-Remix Anywhere 是 moonshort-backend 在 2026-04-24 上线的核心玩家介入系统。玩家在播剧时可以**长按任意对白**或**点击角色立绘**，输入一段 ≤50 字的自由文本（如"抓住她的手"、"告诉他你说谎了"），由跑团式 D20 + DC 机制决定是否成功，成功则把 LLM 生成的一小段剧情（3-8 个 MSS step）直接 splice 进当前集，并在后续 3 集异步生成"回响"。
+> **2026-05-05**：Drama Remix (M7 整集重生) 已从代码库完全摘除（`app/services/drama-remix-service.ts` 删、`prisma.DramaRemix` model drop、`app/api/sessions/[id]/drama-remixes/*` route 全去）。**Remix Anywhere 是唯一玩家介入系统**。Asset Remix（角色立绘 / CG 生成）作为独立 pipeline 仍在（`app/services/assets-remix-service.ts` + outbox topic `assets-remix.*`，real provider 走 `ASSETS_REMIX_MODE=real` env 开关，当前 ship stub）。
+>
+> **2026-05-24**：forward planner 从 3-batch 流水线换成**单 plan、跨非 dream 全分支、两阶段 pick→write**（见 §forward-planner-whole-novel）。
 
-和旧的 [[entities/moonshort-backend#drama-remix]] 系统（重新生成整集）根本不同：本系统**不生成新剧集**，只在现有剧本里插入小段 InsertPatch，写作成本 10%、叙事一致性强、延展性极好。
+Remix Anywhere 是 moonshort-backend 在 2026-04-24 上线的核心玩家介入系统。玩家在播剧时可以**长按任意对白**或**点击角色立绘**，输入一段 ≤50 字的自由文本（如"抓住她的手"、"告诉他你说谎了"），由跑团式 D20 + DC 机制决定是否成功，成功则把 LLM 生成的一小段剧情（3-8 个 MSS step）直接 splice 进当前集，并在后续未来 episode 异步生成"回响"。
+
+和旧的 Drama Remix（重新生成整集）根本不同：本系统**不生成新剧集**，只在现有剧本里插入小段 InsertPatch，写作成本 10%、叙事一致性强、延展性极好。
 
 ## 设计哲学
 
@@ -101,7 +105,47 @@ spendGemsForRemix(userId, amount, remixId, sessionId)  // idempotent by remixId
 | `POST /api/remix/commit` | finalize remix；拿 patch 或 fail narrative |
 | `POST /api/remix/drain-forward-plans` | 兜底：手动 redispatch 卡住的 forward plan 任务 |
 | `GET /api/remix/session-patches` | `?sessionId&episodeId` → 累积 patches 列表 |
-| `GET /api/remix/forward-plan-status` | `?remixId` → 3 个 plan 的状态 |
+| `GET /api/remix/forward-plan-status` | `?remixId` → forward plan 状态（2026-05-24 起单 plan，`plans` 数组 length=1，`batchRange === []`） |
+
+## Forward Planner — 整本两阶段（2026-05-24）
+
+每个成功 remix commit 触发**单**一 `RemixForwardPlan` 行（`batchRange: []`）+ 单 `remix.forward_plan` outbox event。worker `services/remix/forward-plan-service.ts` 的 `processForwardPlanJob` 跑线性 pipeline：
+
+```
+Stage 0 — fetch                Stage 1 — pick (≤5)            Stage 2 — write (parallel ≤3)
+────────────────────────       ─────────────────────          ────────────────────────────
+listFutureNonDream             forward-pick-llm               forward-write-llm
+Episodes (branch scope         (chunked by serialized         (one InsertPatch per pick,
+below) +                       bytes, ~320 KB per chunk)      anchor stepId verbatim,
+loadEpisodeMss (MSS first,     reads MSS-or-JSON content      2..6 whitelisted steps)
+JSON fallback)                 across non-dream branches
+                                                              │
+                                                              ▼
+                                                              group by episodeId →
+                                                              upsertSessionPatches
+                                                              → plan.completed
+```
+
+**Branch scope (Stage 0)**：
+
+- 所有非 dream 分支（`NOT branchKey LIKE 'dream/%'`）
+- remix 自身分支：只看 `seq > anchorSeq`
+- 其他每个非 dream 分支：每个 seq 都是 candidate future content（玩家未进入）
+- 每集优先 `Episode.mssUrl`，JSON 兜底；两条都失败就跳过该集
+
+**LLM 模块**：
+
+| 模块 | Stage | Prompt | 输出 |
+|---|---|---|---|
+| `services/remix/forward-pick-llm.ts` | 1 | `prompts/remix__forward_pick.txt` | `{ picks: Array<{ episodeId, intentHint }> }`，0..5 entry，跨 chunk 用 `priorPicks` 累加器保 cap |
+| `services/remix/forward-write-llm.ts` | 2 | `prompts/remix__forward_write.txt` | 一个 pick → 一个 `InsertPatch`（anchor stepId verbatim、`insert_after`、2..6 步），Stage 2 best-effort，单 pick 失败不阻塞剩余 |
+| `services/remix/forward-chunk.ts` | — | — | 纯 chunk packer，greedy by byte budget |
+
+**Deprecation kill switch**：旧 3-batch 流水线如果还有在飞 plan（`batchRange.length === 3`），`processForwardPlanJob` 直接标 `failed` + `errorReason: "deprecated_multi_batch_plan"`，不 retry。窗口仅秒到分钟级，每次 commit 都铸新 plan，无需迁移。
+
+**Frontend contract 不变**：`commitRemix` 仍返 `forwardPlanJobIds: string[]`（现 length=1），`/api/remix/forward-plan-status` 仍返 `plans: Array<{ batchRange: number[], status, ... }>`（现 length=1，`batchRange === []`）。
+
+Spec：[`docs/superpowers/specs/2026-05-24-remix-anywhere-whole-novel-forward-plan.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/superpowers/specs/2026-05-24-remix-anywhere-whole-novel-forward-plan.md)（取代 2026-04-24 spec 的 forward-plan 部分）。
 
 ## LLM 调用管线
 

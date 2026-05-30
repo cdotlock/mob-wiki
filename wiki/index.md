@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-05-24
+updated: 2026-05-30
 ---
 
 # Mob-Wiki Index
@@ -24,6 +24,7 @@ Welcome to the team knowledge base.
 - [[concepts/cli-gateway-protocol]] — Unified HTTP protocol for remote CLI command execution
 - [[concepts/codex-runtime-and-verification-layers]] — Moonshort IDE 里 codex 怎么起、auth 怎么传（`MOONSHORT_AGENT_API_KEY` + 本地 `codex-shim` HTTP bridge，**不**走 `~/.codex/auth.json`）；4 层验证（L0 单测 / L1a 离线 skill discovery / L1b Langfuse overlay / L2 LLM-in-the-loop）+ 每层跑法 + 代码参考表
 - [[concepts/comfyui-modal-deploy]] — ComfyUI on Modal serverless deploy for assetctl `matting` (BiRefNet_toonOut) + `upscale-image` (Real-ESRGAN-anime)；单 Modal app 双 endpoint、阿里云 OSS 直传、IDE 端零改动只改 4 个 FC_* env var；spec 落在 `docs/design/2026-05-21-comfyui-modal-deploy-spec.md`
+- [[concepts/dream-bonus-only-op]] — 2026-05-26 dream entry-patch 大改：3 个 v1 ops 全废、单一 `bonus_only` op（terminal placement + template Continue + LLM 写的 ✦DREAM 文案 + 机械路由）；feed 入口直接落 dream E1；no-mainline-mutation invariant（三层 defense：writer/reviewer/backend）
 - [[concepts/dream-rec-component-1-tirt-estimator]] — dream-rec C1: Bayesian TIRT estimator. Laplace MAP + (user, story) testlet random effect + LLM-confidence-weighted ψ² uniqueness. Replaces the choice-count stub.
 - [[concepts/dream-rec-component-3-genre-projection]] — dream-rec C3: per-genre projection matrix `M_g` (K_genre × K_global). Hybrid manual-seed + PCA refinement with shadow-swap versioning and identity-on-5-core cold-start fallback.
 - [[concepts/dream-rec-component-4-dream-ranker]] — dream-rec C4: axis_match × engagement × freshness additive ranker with continuous sharpness blending. Resolves Component 0 O5; adds `used_cold_start_matrix` to /recommend response.
@@ -38,12 +39,15 @@ Welcome to the team knowledge base.
 - [[concepts/mss-format]] — MoonShort Script (MSS) 脚本标记语言完整规范
 - [[concepts/novel-dream-artifact]] — `NovelDreamArtifact` 1:1 sidecar of Novel holds `characterArcs` (renamed from `characterBible`) + `assetMapping` + audit meta; 2026-05-24 抽表 to separate admin authoritative data from dream-pipeline regenerable derived data
 - [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
-- [[concepts/remix-anywhere]] — 玩家长按对白 → D20+DC → LLM 生成 InsertPatch 插入剧情（含 forward planner 跨集回响）
+- [[concepts/production-pipeline-two-phase]] — moonshort-backend 2026-05 Plan A + C1 重构：IDE submit → admin activate；`Novel.activeReleaseId` 唯一真相；L1/L2/L3 分层；删 `NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible`；release 状态机 `pending` / `live` / `superseded` / `failed`
+- [[concepts/remix-anywhere]] — 玩家长按对白 → D20+DC → LLM 生成 InsertPatch 插入剧情；Drama Remix 2026-05-05 整体摘除；forward planner 2026-05-24 改单 plan + 2-stage pick→write 跨非 dream 全分支
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access
 - [[concepts/sfx-pipeline]] — SFX pipeline design: `sfx-normalizer` skill + dramatizer integration for AI-generated sound effects via ElevenLabs
 - [[concepts/signal-int-backend]] — Backend 如何加载、持久化、求值、管理 MSS 的 `@signal int` 作者变量
 - [[concepts/stable-step-id]] — 内容寻址 cursor：每个 MSS step 编译期带稳定 ID，splice/replace 对 cursor 透明
+- [[concepts/supabase-backend-bootstrap]] — 2026-05-29 backend 生产 Postgres 切 Supabase；fresh-bootstrap 流程（`db push + raw contract SQL`，`BOOTSTRAP_TARGET_DB_NAME` 防呆）；migration 是增量补丁、不支持空库 replay（2026-04-27 option A 决策）；灾备走 DB 备份 / restore
 - [[concepts/unfolded-visual-novel]] — Unfolded 风格互动视觉小说展示形态与素材管线
+- [[concepts/villain-season-demo]] — 恶人季 Heart Signal NA otome 短剧 demo（3 EP + 1 dream，双语 EN+ZH 平行 novel，autoAssign + bonus_only 强制 dream，22 SFX/7 角色/6 BG/3 BGM，英文 Breeze 配音 + TTS 上 R2，机制全覆盖含 Remix/Dream/signal/affection/butterfly/achievement/trick/minigame）
 
 ## Entities
 

@@ -3,7 +3,7 @@ title: Dreaming Universe
 tags: [dreaming, remix, recommendation, agent]
 sources: []
 created: 2026-05-03
-updated: 2026-05-03
+updated: 2026-05-30
 ---
 
 Dreaming Universe is Moonshort's product and technical system for turning a player's accumulated remix and play signals into complete playable hidden episode branches, then recommending those branches to similar players as signed "Dream" content. It sits above [[concepts/remix-anywhere]]: Remix Anywhere handles immediate local intervention, while Dreaming Universe turns long-term player taste into reusable shared narrative assets.
@@ -82,20 +82,30 @@ The app main schema still owns player-facing `Episode`, `Novel`, `PlayerSession`
 
 ## Entry Patch
 
-`Dream.entryPatch` is not MSS and is not compiled by the MSS compiler. It is a JSON list of controlled operations, commonly described as `DreamEntryOperation[]`.
+`Dream.entryPatch` is not MSS and is not compiled by the MSS compiler. It is a JSON list of controlled operations stored as `DreamEntryOperation[]`.
 
-An entry patch may:
+**2026-05-26 cutover**：3 个 v1 ops (`choice_add_option` / `choice_replace_option` / `replace_gate`) 全部 disable，只允许单一新 op **`bonus_only`**。详见 [[concepts/dream-bonus-only-op]]。
 
-| Operation class | Purpose |
-|---|---|
-| Replace suffix | Replace source episode steps after a stable step ID with bridge content that routes into Dream. |
-| Replace step | Swap one source step with a Dream-aware entry step. |
-| Replace choice | Replace an entire choice node with a Dream-aware choice. |
-| Add option | Add a Dream-labeled option to an existing choice. |
-| Replace option body | Keep the option label but change its body. |
-| Replace gate | Extend or replace episode-level routing so the walker enters `dream/<dreamId>:01`. |
+| 当前唯一允许的 op | 形状 | 行为 |
+|---|---|---|
+| `bonus_only` | `{ op, optionFlavor }`（只两字段；`optionFlavor` 是 LLM 出力的 ≤120 字钩子） | applier 在 source EP N 末尾追加合成 choice：Option A `Continue` (i18n template) → 原 `gate.next`；Option B `<optionFlavor>` → `dream/<dreamId>:01` |
 
-The key correction from earlier design attempts is that entry patch is not a top-level MSS fragment. MSS top level only supports normal `@episode` structures, so trying to force `@replace_suffix` or similar directives through the Go compiler was a structural bug. Entry patch is validated and previewed as JSON by backend overlay tooling.
+旧 ops 在 `DreamEntryOperationSchema` 里仍能 parse（read back-compat），但 `WritableDreamEntryOperationSchema` 拒任何非 `bonus_only` 的 write。生产 + admin-inject 都过 writable 闸；read path（`dream-readonly-service` / presence overlay）仍 parse-tolerant。Legacy dream 由一次性 `scripts/cleanup-legacy-dream-ops.ts` 清。
+
+entry patch 不是 top-level MSS fragment。MSS top level 只支持正常 `@episode`，把 `@replace_suffix` 之类硬塞 Go compiler 是结构性 bug。entry patch 由 backend overlay tooling 以 JSON 验证、预览、应用。
+
+### autoAssign
+
+`Dream.entryPatch.autoAssign: true` 让 dream 在 `createSession` post-commit 阶段被 `app/services/dream-autoassign-service.ts` 自动挂载（`(sessionId, dreamId)` 幂等，best-effort 不阻塞 session 创建）。是 mini Phase-4 recommender 兜底，给 demo / 强制教学 dream 用（见 [[concepts/villain-season-demo]]）。
+
+### Feed Skip-to-E1
+
+home feed 点 dream 卡进游戏，`createReplaySession` 看 `entryPatch` 第一条 op：
+
+- `bonus_only` → 直接落 `dream.episodeIds[0]`（dream E1）
+- legacy → 走旧 `entryEpisodeId`（source 集）+ player 端 auto-pick
+
+auto-pick effect (`app/(player)/play/[sessionId]/page.tsx`) 和 `dream-source-detection` helper 保留作 legacy 兜底，不删。
 
 ## Dream Production Architecture
 
@@ -203,6 +213,11 @@ The app already has early player/admin surfaces in recent commits: player Dream 
 
 ## Cross-References
 
+- [[concepts/dream-bonus-only-op]] — 2026-05 起 entry-patch 唯一新 op + feed skip
+- [[concepts/dream-trigger-v2-mechanical]] — producer 侧 dream 触发器 v2（mechanical evaluator）
+- [[concepts/dream-rec-monorepo-migration]] — dream-rec 服务 subtree merge 进 backend monorepo
+- [[concepts/novel-dream-artifact]] — `characterArcs` / `assetMapping` 1:1 sidecar 抽表
+- [[concepts/villain-season-demo]] — 第一本 autoAssign + bonus_only 真用例
 - [[concepts/remix-anywhere]] explains the immediate player intervention system that feeds long-term Dream signals.
 - [[concepts/stable-step-id]] explains the content-addressed cursor system that makes entry overlays stable.
 - [[entities/moonshort-backend]] owns the backend APIs, job queue, episode storage, and player path.
