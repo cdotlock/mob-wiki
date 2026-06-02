@@ -45,6 +45,7 @@ Welcome to the team knowledge base.
 - [[concepts/sfx-pipeline]] — SFX pipeline design: `sfx-normalizer` skill + dramatizer integration for AI-generated sound effects via ElevenLabs
 - [[concepts/signal-int-backend]] — Backend 如何加载、持久化、求值、管理 MSS 的 `@signal int` 作者变量
 - [[concepts/stable-step-id]] — 内容寻址 cursor：每个 MSS step 编译期带稳定 ID，splice/replace 对 cursor 透明
+- [[concepts/style-langfuse-migration]] — 风格 prompt → Langfuse 权威源迁移（2026-06-02）：16 family style_*、IDE Workshop CRUD UI、render 三层兜底；CF-1010 需 User-Agent + 真凭据在 assets-produce/.env（backend 是占位）；skills-sync 的风格侧同构
 - [[concepts/supabase-backend-bootstrap]] — 2026-05-29 backend 生产 Postgres 切 Supabase；fresh-bootstrap 流程（`db push + raw contract SQL`，`BOOTSTRAP_TARGET_DB_NAME` 防呆）；migration 是增量补丁、不支持空库 replay（2026-04-27 option A 决策）；灾备走 DB 备份 / restore
 - [[concepts/unfolded-visual-novel]] — Unfolded 风格互动视觉小说展示形态与素材管线
 - [[concepts/villain-season-demo]] — 恶人季 Heart Signal NA otome 短剧 demo（3 EP + 1 dream，双语 EN+ZH 平行 novel，autoAssign + bonus_only 强制 dream，22 SFX/7 角色/6 BG/3 BGM，英文 Breeze 配音 + TTS 上 R2，机制全覆盖含 Remix/Dream/signal/affection/butterfly/achievement/trick/minigame）
