@@ -1,12 +1,31 @@
 ---
 title: 乙女逐剧本质量评分器设计（per-script quality gate）
-updated: 2026-06-04
+updated: 2026-06-05
 tags: [evaluation, otome, llm-as-judge, quality-gate, mss]
 ---
 
 # 乙女逐剧本质量评分器设计
 
 > 配套 [[concepts/otome-writing-benchmark-survey-2026-06]]。把"自建乙女 benchmark"拆成两层，本页只讲 **② 逐剧本质量门**。
+
+## ⚠️ 现状校正（2026-06-05）：pipeline 已覆盖大部分逐集层
+
+实地读了 IDE 写作 pipeline 的 skills（`agents/adaptation/skills/`）后，下面这份 L0/L1/L2 设计**很大程度是在重新发明已有的轮子**，如实标注：
+
+- **L0 客观硬门**：`episode-writer-reviewer` 第一步已强制跑确定性 Python validator（`check_narrator_pov.py` / `check_wardrobe_state.py`）当 fail-fast 门，理由与本设计一字不差。
+- **L1 逐场景评分**：`episode-writer-reviewer` 已有 6 维 0–10（Bible忠实 / Plan兑现 / 句子层 / 互动体感 / 选择设计含假选择检测 / MSS合规）。
+- **独立性 + 确定性**：三个 reviewer（bible / planner / episode）**全部强制 spawn 独立 sub-agent「不自审」**，并把确定性脚本前置——这两条本设计当卖点，pipeline 早已是一等原则。
+- **模拟试玩 / 跨路线**：`planner-reviewer` 已并发按路线 spawn sub-agent 组装「玩家只走这条线 E1→E末」打分 + 跨路线一致性。
+
+**结论改写：不要再建平行评分器。** 真正没被覆盖、值得做的只有三件，且都**复用现有 reviewer**：
+
+1. **跨集·成稿级叙事连贯 checker**（真·L2 缺口）：现有 reviewer 要么审上游产物（bible / plan）、要么单集（episode-writer-reviewer 明文「不读该集以外」）。最终多集 prose 作为整体的伏笔回收 / 跨集人设漂移落在缝里。
+2. **跨版本回归看板**（最高 ROI）：把现有 reviewer 的 0–10 沉淀成跨 pipeline 版本可比的校准分数，回答「v4.4 vs v4.3 是涨是跌」。复用 rubric，不重复评。
+3. **选底座模型基准**（① 层，完全独立需求）。
+
+下面的 L0/L1/L2 详细设计**保留作参考字典**（维度定义 / checklist 样例仍有用），但落地优先「复用 + 补缺口」，不要重写已有的东西。
+
+---
 
 ## 定位：① benchmark ≠ ② evaluator
 
