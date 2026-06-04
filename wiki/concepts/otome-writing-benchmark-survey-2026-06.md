@@ -19,6 +19,15 @@ tags: [benchmark, evaluation, otome, llm-as-judge, model-selection]
   - **恋爱弧推进 + 男主魅力 + 路线级浪漫兑现 → 真空白，必须原创。** 这是唯一需要从零造的层。
 - **结论**：自建乙女 benchmark = 复用现成 harness/维度 + 只原创"恋爱/魅力"层；不用从零。
 
+## 两层框架：① 测模型 vs ② 测作品
+
+容易混的一点：**benchmark（榜单）测的是模型，不是某一篇剧本的质量。** 自建拆成两层，按需求各取：
+
+- **① Benchmark（榜单）= 测模型**：固定题集 → N 个模型各写一遍 → 排名。选底座用。
+- **② Evaluator（评分器）= 测作品**：拿一篇**已写好**的剧本 → 打分 → 质量报告。**source-agnostic**，不挑来源（模型生成 / 手写 / pipeline 产出都行）。**QA / 回归 / 质量门用，这才是"测这个剧本好不好"。**
+
+榜单内部本就是"先逐篇打分(②) 再按模型聚合排名(①)"，所以 ② 的评分核心埋在每个 benchmark 里，拆出来即可单独作用于一篇。**逐剧本质量门的完整可落地设计见 [[concepts/otome-script-quality-evaluator]]。**
+
 ## Benchmark 全景
 
 ### A. 选模型（有 leaderboard / 排名）
