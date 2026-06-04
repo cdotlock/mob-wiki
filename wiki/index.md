@@ -40,6 +40,7 @@ Welcome to the team knowledge base.
 - [[concepts/mss-spec-redesign-2026-06]] — MSS 2026-06-04 redesign 决策记录：删除 ~半数旧指令冗余（show/hide/look/move/at、@ending、@label/@goto、influence、@cg block、@music play/crossfade/fadeout、@sfx play、@pause for N），新增同屏一人隐式 hide 规则、operand 出现在 comparison 两侧、MAX/MIN 聚合、变量对变量比较；Go 编译器 + 测试 + testdata + skills 全量对齐，5 个 commit pushed to moonshort-script@main
 - [[concepts/novel-dream-artifact]] — `NovelDreamArtifact` 1:1 sidecar of Novel holds `characterArcs` (renamed from `characterBible`) + `assetMapping` + audit meta; 2026-05-24 抽表 to separate admin authoritative data from dream-pipeline regenerable derived data
 - [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
+- [[concepts/otome-writing-benchmark-survey-2026-06]] — 乙女小说写作 benchmark 调研 + 自建指标草案（2026-06-04 deep-research + 补搜）：现成无乙女专用 benchmark；选模型用 EQ-Bench v3，方法论搬 HelloEval/RMTBench/ConStory/RPGBench；真空白只剩恋爱弧 + 男主魅力，自建只需原创这一层
 - [[concepts/production-pipeline-two-phase]] — moonshort-backend 2026-05 Plan A + C1 重构：IDE submit → admin activate；`Novel.activeReleaseId` 唯一真相；L1/L2/L3 分层；删 `NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible`；release 状态机 `pending` / `live` / `superseded` / `failed`
 - [[concepts/remix-anywhere]] — 玩家长按对白 → D20+DC → LLM 生成 InsertPatch 插入剧情；Drama Remix 2026-05-05 整体摘除；forward planner 2026-05-24 改单 plan + 2-stage pick→write 跨非 dream 全分支
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access
