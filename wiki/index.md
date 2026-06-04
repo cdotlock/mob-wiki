@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-05-30
+updated: 2026-06-04
 ---
 
 # Mob-Wiki Index
@@ -36,7 +36,8 @@ Welcome to the team knowledge base.
 - [[concepts/dreaming-universe]] — 玩家画像触发的共享 Dream 支线宇宙：Episode graph + assignment-gated overlay + Python dream-agent
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
 - [[concepts/moonshort-ide-ai-integration]] — Moonshort IDE 内 AI 集成架构:为什么改用 Cline 而非 VS Code 原生 chat(被 Copilot 闸住),最终两个表面 —— Tab 补全 + Moonshort Agent
-- [[concepts/mss-format]] — MoonShort Script (MSS) 脚本标记语言完整规范
+- [[concepts/mss-format]] — MoonShort Script (MSS) 脚本标记语言完整规范（2026-06-04 大幅 redesign 后的快照）
+- [[concepts/mss-spec-redesign-2026-06]] — MSS 2026-06-04 redesign 决策记录：删除 ~半数旧指令冗余（show/hide/look/move/at、@ending、@label/@goto、influence、@cg block、@music play/crossfade/fadeout、@sfx play、@pause for N），新增同屏一人隐式 hide 规则、operand 出现在 comparison 两侧、MAX/MIN 聚合、变量对变量比较；Go 编译器 + 测试 + testdata + skills 全量对齐，5 个 commit pushed to moonshort-script@main
 - [[concepts/novel-dream-artifact]] — `NovelDreamArtifact` 1:1 sidecar of Novel holds `characterArcs` (renamed from `characterBible`) + `assetMapping` + audit meta; 2026-05-24 抽表 to separate admin authoritative data from dream-pipeline regenerable derived data
 - [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
 - [[concepts/production-pipeline-two-phase]] — moonshort-backend 2026-05 Plan A + C1 重构：IDE submit → admin activate；`Novel.activeReleaseId` 唯一真相；L1/L2/L3 分层；删 `NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible`；release 状态机 `pending` / `live` / `superseded` / `failed`
