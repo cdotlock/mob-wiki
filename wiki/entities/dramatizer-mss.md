@@ -6,7 +6,9 @@ created: 2026-05-03
 updated: 2026-05-30
 ---
 
-> **⚠️ 2026-05-19 partial deprecation — upstream authoring 10 skills 整体迁到 [[entities/assets-produce]]**。novel → `.mss` 编剧前半（novel-evaluator / character-architect / bible-reviewer / entity-planner / planner-reviewer / entity-normalizer / entity-rename / rename-reviewer / episode-writer / episode-writer-reviewer / arc-reviewer）已 verbatim 迁到 `cdotlock/assets-produce` 的 `knowledge/novel-to-mss/<skill>/SKILL.md`，由那边的 `novel_to_mss` orchestration skill + `mss-validate` atomic tool 驱动，是唯一权威。每个被迁的 `SKILL.md` 顶部都加了 deprecation banner 警告"don't edit here — changes will not propagate"。本仓库这 10 个 skill 副本**保留作历史归档**。
+> **⚠️ 2026-06-05 修正 — assets-produce 已废弃，下面这条迁移说法作废。** novel→`.mss` 的 authoring skills（novel-evaluator / character-architect / bible-reviewer / entity-planner / planner-reviewer / entity-normalizer / episode-writer / episode-writer-reviewer 等）**权威副本现在在 [[entities/moonshort-ide]] 仓库的 `agents/adaptation/skills/<skill>/SKILL.md`**（已实地确认为完整 live skill，非归档桩），**IDE 是当前唯一标准**。本页下方所有"迁到 / 权威在 assets-produce"叙述（2026-05-19 写入）均已过期、待整体校订。
+>
+> ~~（历史记录，已作废）2026-05-19 partial deprecation — upstream authoring 10 skills 整体迁到 [[entities/assets-produce]]~~。novel → `.mss` 编剧前半（novel-evaluator / character-architect / bible-reviewer / entity-planner / planner-reviewer / entity-normalizer / entity-rename / rename-reviewer / episode-writer / episode-writer-reviewer / arc-reviewer）已 verbatim 迁到 `cdotlock/assets-produce` 的 `knowledge/novel-to-mss/<skill>/SKILL.md`，由那边的 `novel_to_mss` orchestration skill + `mss-validate` atomic tool 驱动，是唯一权威。每个被迁的 `SKILL.md` 顶部都加了 deprecation banner 警告"don't edit here — changes will not propagate"。本仓库这 10 个 skill 副本**保留作历史归档**。
 >
 > **仍在本仓维护**：downstream asset pipeline（`asset-prompt-generator` + `asset-renderer` + `asset-reviewer` + cg / outfit / wardrobe canonicalization 全套）+ `dramatizer/` 配套（pipeline / cg config / music normalizer / stage assets）+ NRBI 真实项目工作目录（`moonscripts/no-rules-in-bad-ideas/` 等）。
 >
