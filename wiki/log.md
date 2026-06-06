@@ -141,3 +141,4 @@ title: Operation Log
 [2026-06-06 19:17] INGEST: raw/2026-06-06-lunaverse-rename-recon.md — moonshort→Lunaverse / MSS→Lunascripts / .mss→.ls 全量改名勘察快照（13 顶层目录 / 9 git 仓 / 占用量表 / 扩展名三套并存核验 / 七桶高危项 / naive-sed 黑名单）。
 [2026-06-06 19:17] CREATE: syntheses/lunaverse-rename-migration — 改名迁移方案与建议（命名映射总表 + A/B 两类改动原则 + 高危项逐项策略 + 6 个待拍板决策 D1-D6 + 7 阶段带兼容执行顺序 + 静默失败清单 + wiki 自身在范围内）。
 [2026-06-06 19:17] UPDATE: wiki/index.md — register syntheses/lunaverse-rename-migration（Syntheses，按字母序插在 cloud-deployment-architecture 与 platform-onboarding-guide 之间）。
+[2026-06-06 19:23] UPDATE: syntheses/lunaverse-rename-migration — 落实用户两项决定：(1) D3 已定——扩展名三端统一到 `.ls`（编译器一起改），预览靠手动加 `.md` 成 `.ls.md`（编译器仍接受），decompiler 默认输出改 `.ls`；(2) 仓库改名纳入范围——按真实远端核验给出 5 个携旧名仓库的改名表（cdotlock/moonshort-{ide,script,backend}、AugustZAD/Dramatizer-MSS、Rydia-China/moonshort，跨 3 namespace），并标注 4 个不带旧名仓库（assets-produce/Dramatizer/mob*）待确认。同步更新 §1 映射表 / §3.1 / §3.5 / §4 D1·D3 / 摘要。
