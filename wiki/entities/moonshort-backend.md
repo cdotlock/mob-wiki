@@ -3,15 +3,16 @@ title: Moonshort Backend
 tags: [nextjs, game-engine, prisma, postgresql, supabase, r2, stripe, interactive-fiction]
 sources: [raw/2026-04-14-mobai-agent-memory.md, raw/2026-04-14-cli-gateway-server-layer-design.md, docs/superpowers/specs/2026-04-24-remix-anywhere-design.md, raw/2026-05-30-backend-production-pipeline-two-phase.md]
 created: 2026-04-14
-updated: 2026-05-30
+updated: 2026-06-06
 ---
 
 Next.js full-stack application serving as the game engine, story delivery platform, admin dashboard, Remix runtime, Dreaming Universe backend, and content release controller for Moonshort interactive fiction games. Handles player state management, story node delivery from upstream, D20 dice combat, economy systems, survival mechanics, minigames, achievements, payments via Stripe, remix/branching via LLM, Dream production/recommendation plumbing, and NPC character chat. The primary backend that [[entities/moonshort-client]] connects to for all gameplay operations.
 
-## 2026-05 Major Refactors（要点速查）
+## 2026-05/06 Major Refactors（要点速查）
 
 | 改 | 摘要 | 详细 |
 |---|---|---|
+| **MSS realignment 上线（2026-06-06）** | 新 MSS 契约的 consumer cutover 落 prod：删 influence / goto / label / CG sub-steps / 3-slot stage / `Session.resolvedInfluences`，single-sprite stage；零删库（additive-only，prod schema 已是 HEAD 超集）；同批带 soul dark-launch + TLWB co-op + second-chorus Sera + recommended 端点 | [[concepts/mss-spec-redesign-2026-06]] · 部署机制 [[concepts/railway-production-deploy]] |
 | **两阶段发布流程** | IDE submit → admin activate；`Novel.activeReleaseId` 是唯一真相；`NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible` 全删 | [[concepts/production-pipeline-two-phase]] |
 | **Dream `bonus_only` op** | 3 个旧 entry-patch ops 全废，换成单一 terminal `bonus_only`；feed 入口直接落 dream E1 | [[concepts/dream-bonus-only-op]] |
 | **Supabase 切换** | 生产 Postgres 从自管切到 Supabase；新库走专用 fresh-bootstrap，**不能** `migrate deploy` 从空库 replay | [[concepts/supabase-backend-bootstrap]] |

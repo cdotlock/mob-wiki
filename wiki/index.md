@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-04
+updated: 2026-06-06
 ---
 
 # Mob-Wiki Index
@@ -43,6 +43,7 @@ Welcome to the team knowledge base.
 - [[concepts/otome-script-quality-evaluator]] — 乙女逐剧本质量评分器设计（per-script quality gate，benchmark 的 ② 层）：输入一篇 MSS 剧本 → 输出分维度评分 + 定位问题清单 + PASS/WARN/FAIL；3 层架构（L0 结构客观校验仿 RPGBench / L1 逐场景 LLM 评分仿 HelloEval+RMTBench / L2 全篇一致性仿 ConStory）+ 5 个原创乙女维度 + Phase 0-3 落地分期
 - [[concepts/otome-writing-benchmark-survey-2026-06]] — 乙女小说写作 benchmark 调研 + 自建指标草案（2026-06-04 deep-research + 补搜）：现成无乙女专用 benchmark；选模型用 EQ-Bench v3，方法论搬 HelloEval/RMTBench/ConStory/RPGBench；真空白只剩恋爱弧 + 男主魅力，自建只需原创这一层
 - [[concepts/production-pipeline-two-phase]] — moonshort-backend 2026-05 Plan A + C1 重构：IDE submit → admin activate；`Novel.activeReleaseId` 唯一真相；L1/L2/L3 分层；删 `NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible`；release 状态机 `pending` / `live` / `superseded` / `failed`
+- [[concepts/railway-production-deploy]] — moonshort-backend 怎么上 Railway 生产：service 拓扑 + `railway-production-deploy.yml` workflow（confirm/skip_migrations/force_* inputs）+ account-token 鉴权（2026-06-05 CLI 回归 `railway up` 拒 project token 的复盘）+ 为何 skip in-CI migrate（prod 无 `_prisma_migrations` → P3005 + pooler 15-client 上限）+ **additive-only 零删库 cutover playbook**（merged-schema `migrate diff` 证 prod 已是 HEAD 超集 → 不 apply drop）+ 单本免 redeploy re-seed + TTS warmth 行级寻址；2026-06-06 MSS realignment 上线为 worked example
 - [[concepts/remix-anywhere]] — 玩家长按对白 → D20+DC → LLM 生成 InsertPatch 插入剧情；Drama Remix 2026-05-05 整体摘除；forward planner 2026-05-24 改单 plan + 2-stage pick→write 跨非 dream 全分支
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access
 - [[concepts/sfx-pipeline]] — SFX pipeline design: `sfx-normalizer` skill + dramatizer integration for AI-generated sound effects via ElevenLabs

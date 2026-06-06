@@ -137,5 +137,6 @@ pnpm smoke:production-release-service
 
 ## 相关
 
+- [[concepts/railway-production-deploy]] — 运行时部署面（CI workflow / 鉴权 / additive-only 零删库 cutover）；本页是其 DB / migration 政策依据
 - [[concepts/production-pipeline-two-phase]] — 写库的两阶段流程，依赖本页的 DB 结构 invariant
 - [[entities/moonshort-backend]] — 服务载体；Railway 上 5 个 service 全指向同一个 Supabase
