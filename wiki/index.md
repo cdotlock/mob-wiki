@@ -74,6 +74,7 @@ Welcome to the team knowledge base.
 ## Syntheses
 
 - [[syntheses/cloud-deployment-architecture]] — How Moonshort transitions from local to distributed cloud deployment
+- [[syntheses/lunaverse-rename-migration]] — moonshort→Lunaverse / MSS→Lunascripts / .mss→.ls 全量改名方案：9 仓 ~1万处 + ~575 文件物理改名；扩展名三套并存现状、七桶分类、6 个待拍板决策、带兼容垫片的 7 阶段切换、静默失败清单
 - [[syntheses/platform-onboarding-guide]] — MobAI 平台全景指南（游戏设计、数值系统、技术架构）
 - [[syntheses/product-strategy-decisions]] — 产品战略决策记录（为什么这样做而不是那样做）
 - [[syntheses/render-time-silent-drop-failure-class]] — VN Pipeline v4.1-v4.5 同构族（branch-architect + episode-writer 的"schema 正确 + render 丢规则"反复 bug 及四件套沉淀模式，含 v4.4/v4.5 结构对偶：first-contact vs last-contact agency）

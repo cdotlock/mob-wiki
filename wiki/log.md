@@ -137,3 +137,7 @@ title: Operation Log
 [2026-06-06 19:11] UPDATE: entities/moonshort-backend — Major Refactors 段标题改 "2026-05/06"，新增首行 "MSS realignment 上线（2026-06-06）" 指向 [[concepts/mss-spec-redesign-2026-06]] + 部署机制 [[concepts/railway-production-deploy]]；bump updated 2026-06-06。
 [2026-06-06 19:11] UPDATE: concepts/supabase-backend-bootstrap — 相关段加 [[concepts/railway-production-deploy]] 互链（运行时部署面 ↔ DB / migration 政策依据）。
 [2026-06-06 19:11] UPDATE: wiki/index.md — register concepts/railway-production-deploy（Concepts，按字母序插在 production-pipeline-two-phase 与 remix-anywhere 之间）+ bump updated 到 2026-06-06。
+
+[2026-06-06 19:17] INGEST: raw/2026-06-06-lunaverse-rename-recon.md — moonshort→Lunaverse / MSS→Lunascripts / .mss→.ls 全量改名勘察快照（13 顶层目录 / 9 git 仓 / 占用量表 / 扩展名三套并存核验 / 七桶高危项 / naive-sed 黑名单）。
+[2026-06-06 19:17] CREATE: syntheses/lunaverse-rename-migration — 改名迁移方案与建议（命名映射总表 + A/B 两类改动原则 + 高危项逐项策略 + 6 个待拍板决策 D1-D6 + 7 阶段带兼容执行顺序 + 静默失败清单 + wiki 自身在范围内）。
+[2026-06-06 19:17] UPDATE: wiki/index.md — register syntheses/lunaverse-rename-migration（Syntheses，按字母序插在 cloud-deployment-architecture 与 platform-onboarding-guide 之间）。

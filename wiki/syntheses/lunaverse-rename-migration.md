@@ -1,0 +1,121 @@
+---
+title: Lunaverse 全量改名迁移方案（moonshort → Lunaverse / MSS → Lunascripts / .mss → .ls）
+tags: [rename, migration, lunaverse, lunascripts, decision-record]
+sources: [raw/2026-06-06-lunaverse-rename-recon.md]
+created: 2026-06-06
+updated: 2026-06-06
+---
+
+本页是 "moonshort → **Lunaverse**"、"MSS（MoonShort Script）→ **Lunascripts**，扩展名 `.mss`/`.mss.md`/`.md` → **.ls**" 全量改名的执行方案与建议。改名横跨 **9 个独立 git 仓库**、约 **1 万处字符串占用** + **~575 个脚本文件需物理改名**，且文件扩展名当前是「三套并存」。本方案的核心主张：**把改动分成"安全文本层"与"高危身份/状态/契约层"两类，前者机械批量、后者带兼容垫片分阶段切换，外部不可变身份默认保留为 legacy**。证据见 [source](../raw/2026-06-06-lunaverse-rename-recon.md)。
+
+## 1. 命名映射总表（替换的唯一真相）
+
+| 旧 | 新 | 适用范围 |
+|---|---|---|
+| `MoonShort` / `Moonshort` / `moonshort`（项目、平台、品牌） | **Lunaverse** | 人可见品牌、显示名 |
+| `moonshort`（小写 slug / 标识符） | **lunaverse** | 代码标识符、命名空间、目录 slug |
+| `MoonShort Script` / `MSS`（语言/格式名） | **Lunascripts** | 语言名、文档、aliases |
+| `MSS` / `mss`（缩写，作标识符前缀如 `mssUrl`） | **LS** / `ls`（`lsUrl`） | 代码标识符缩写 |
+| `.mss` / `.mss.md` / `.md`(作脚本) | **.ls** | 统一脚本文件扩展名 |
+| `moonscripts/`（内容根目录） | **lunascripts/** | 内容根、OSS 路径段 |
+| `mss`（Go CLI 二进制名） | **lsc**（见 §4 决策 D4，**不要用 `ls`**） | 命令名 |
+| repo `moonshort-ide` | **lunaverse-ide** | GitHub repo + 本地目录 |
+| repo `moonshort-script` | **lunascripts**（见 D2） | GitHub repo + Go module |
+| repo `dramatizer-mss` | **dramatizer-ls** | GitHub repo + 本地目录 |
+| repo/dir `moonshort cocos client` | **lunaverse-cocos-client** | 顺手去掉空格 |
+| `packages/mss-*`（IDE 6 包） | `packages/ls-*` | 包目录 + 包名 |
+| `skills/mss-*`（backend 5 技能） | `skills/ls-*` | 技能目录 + SKILL.md `name:` + Langfuse 名 |
+
+> 缩写用 `ls` 还是 `lunascript`？建议：**代码标识符用 `ls`**（短、与 `.ls` 一致），**人可见文档/类名用 `Lunascript(s)`**。
+
+## 2. 改动分两类（决定"怎么切"的根本原则）
+
+**A 类 — 安全文本层（机械批量，仓库本地，不需协调）**：品牌字串、UI 文案、注释、README/文档、纯代码标识符。改错了顶多编译报错或显示不对，可见、可回滚。
+**B 类 — 高危层（必须带兼容/迁移，常需跨仓或外部协调，会"静默失败"）**：① 文件扩展名 + 物理文件；② App/包身份（bundle id、包名、Go module）；③ 持久化状态（DB 列、存档 JSON 键、localStorage、用户设置）；④ 外部耦合（域名、URL scheme、API 路由、env var、OSS bucket、Firebase、Railway）；⑤ 仓库/目录名。
+
+A 类怎么做都行；**所有风险都在 B 类**。下面 §3 专讲 B 类。
+
+## 3. 高危项（B 类）逐项策略
+
+### 3.1 文件扩展名 `.ls`（全项目最易踩坑）
+现状三套并存（详见 [recon §2](../raw/2026-06-06-lunaverse-rename-recon.md)）：IDE 用 `.mss`、编译器只认 `.md`、backend 生产内容是 `.mss.md`（263 个）。统一到 `.ls` 必须**同时**改：
+- 编译器入口 `moonshort-script/cmd/mss/main.go:243` 的 `HasSuffix(".md")`；decompiler 输出 `decompiler.go:132,140` 的 `".mss.md"`；`api_server.py:190` 的收文件判断。
+- IDE 语言注册 `mss-lang/package.json`（`.mss`/`source.mss`/`onLanguage`/`workspaceContains`）+ `mss.tmLanguage.json` 全部 scope 名 + `mss-studio` 的 `filenamePattern`。
+- dramatizer-mss `compile_mss.py:78` 的 `glob("*.md")`。
+- 物理改名 ~575 个脚本文件（backend 263 `.mss.md` + dramatizer 336 `.md` + IDE fixtures + moonshort-script testdata）。
+
+**建议切换法（带兼容窗口，避免一刀切静默）**：
+1. 先让编译器/IDE/管线**同时接受 `.ls` 与旧后缀**（`.ls` || `.md` || `.mss.md` || `.mss`）。
+2. 用 `git mv` 批量改文件后缀（保留历史），默认产出后缀翻到 `.ls`。
+3. 全链路（编译→播放→快照测试）跑绿后，再移除对旧后缀的接受。
+- **权衡须知**：`.md` 当初是**刻意**选的（GitHub 直接预览、无需自定义编辑器）。切 `.ls` 会丢这个收益——可接受，但要让团队知道；IDE 既然已有 `.ls` 语法支持就不影响编辑体验。
+
+### 3.2 App/包身份
+- **macOS bundle id `com.moonshort.ide` / Windows AppUserModelId / MSI GUID / `win32MutexName` / `dataFolderName .moonshort-ide`**：改 bundle id = 对用户变成**新 app**（孤立旧设置、断自动更新、断文件关联）；改 mutex 名会**多开实例并存→数据损坏**。**建议默认保留**，只改显示名（`nameShort/nameLong`、菜单、关于）。若坚持改，必须出**迁移构建**：读旧 `.moonshort-ide` userData → 迁到新目录；并接受一段时间双 URL scheme。
+- **Android bundle id `com.mobai.moonshort` + Firebase 项目 `moonshort-1`**：受 Google Play / Firebase 控制台控制，改 = 重新注册 + 新签名 + 新 `google-services.json` + 数据迁移。**强烈建议保留为 legacy**，只改显示名。
+- **npm 包名**（`moonshort-ide`、`@moonshort-ide/*`、`@moonshort/mob-agent-foundation`、cocos `moonshort`）与 **IDE 扩展 `publisher: moonshort`**：内部未发布的可随仓库改；已发布/被 workspace 引用的要同步所有引用方。
+- **Go module `github.com/cdotlock/moonshort-script` / `.../moonshort-ide/minigamectl`**：改 module path 要同步**所有 import + 所有 vendored 副本 + `lsp-server/go.mod` 的本地 replace**，否则 build 挂。建议与 GitHub repo 改名放同一个窗口做。
+
+### 3.3 持久化状态（绝不原地改，走增量迁移）
+- **Prisma 列 `Episode.mssUrl`/`mssAssetId`**：参照本团队 [[concepts/railway-production-deploy]] 的 **additive-only 零删库 cutover**——加 `lsUrl`/`lsAssetId`、双写、回填、确认后再删旧列。**不要**在生产 rename-in-place。
+- **存档 JSON 键 `mssKey` / 会话 `san` 槽位**（`attribute-slots.ts`/`save-service.ts`）：键名写进了玩家存档；改名要么保留旧键、要么写存档迁移脚本，否则旧档读不出。
+- **localStorage 前缀 `moonshort_`**（cocos `AppSession.ts`）：客户端启动时做一次 `moonshort_* → lunaverse_*` 键迁移。
+- **VS Code 配置键 `moonshort.*`**：扩展激活时迁移 `moonshort.* → lunaverse.*`（或读时双键兜底），否则用户丢 API key/路径设置。
+
+### 3.4 外部耦合
+- **API 路由 `/api/internal/compile-mss`、`/decompile-mss`**：先**新增** `/compile-lunascript` 并让旧路由 alias 转发 → 迁调用方（dream-agent/admin/测试）→ 再下线旧路由。
+- **env var**（`MSS_API_*`、`MOONSHORT_*`、`R2_BUCKET`、`POSTGRES_DB`、`MSS_PATH`、`MOONSHORT_SCRIPT_DIR`）：代码读新名、`os.environ.get(NEW) or get(OLD)` 兜底一段时间，再清旧名。
+- **域名 `gateway.moonshort.com` / `app.moonshort.ai`**、**Railway 服务 `moonshort-script-production`**：属 DNS/Ops，需运维窗口；建议**最后做或保留**，与 repo 改名解耦。
+- **OSS bucket `moonshort-resource` / R2 `moonshort` / OSS 路径段 `/moonshort-script/testdata/`**：bucket 改名通常不可逆/代价高；**建议保留 bucket 名**（它只是存储位置，不是品牌门面），只在新写入时用新前缀，或建镜像双写后切。快照测试里 baked 的 OSS 路径**随重新生成而变，不手改**。
+
+### 3.5 仓库/目录名
+- 9 个独立 git 仓库各自改名；顶层 `/Users/Clock/moonshort/` **不是** git 仓库，没有"一把梭"的单次提交，必须逐仓做。
+- GitHub repo 改名（`cdotlock/moonshort-* → ...`）会自动保留旧名重定向，但**本地 remote + Go module path + CI 引用**要手动更新。
+- 目录/文件改名一律 `git mv` 保留历史。`moonshort cocos client` 改名顺手去掉空格。
+
+## 4. 执行前必须拍板的决策（建议默认值已给）
+
+- **D1 外部不可变身份是否改？**（macOS/Android bundle id、Firebase `moonshort-1`、OSS/R2 bucket、域名、Railway 服务）
+  **建议默认：保留为 legacy，只改人可见显示名。** 它们改动代价是"用户数据迁移 + 商店/平台重注册 + 运维窗口"，与品牌收益不成比例。
+- **D2 语言仓库 `moonshort-script` 叫什么？** 建议 **`lunascripts`**（与语言名一致、最干净）；备选 `lunaverse-script`（与 `lunaverse-ide` 成系列）。**二选一会改动所有 Go import + OSS 路径，需先定。**
+- **D3 扩展名是否统一吞掉 `.md`？** 建议**是**（三套→`.ls` 一套），代价是丢 GitHub 预览（见 §3.1）。若想保留 `.md` 预览，则只改 `.mss`/`.mss.md`、`.md` 留作源——但会维持碎片化，不推荐。
+- **D4 CLI 二进制 `mss` → ?** 建议 **`lsc`**（lunascript compiler）。**不要用裸 `ls`**（与 Unix `ls` 冲突）。
+- **D5 backend 的 "Noval" 品牌是否一并改？** "Noval" 与 "MoonShort" 是两个品牌；本次指令只点名 MoonShort。**建议默认：Noval 不在本次范围**（DB `noval_demo`、CLI `noval`、容器 `noval-*` 保留），除非另行确认。
+- **D6 代码缩写用 `ls` 可接受吗？** 建议接受（`mssUrl→lsUrl`、`scan_mss→scan_ls`、`compile_mss→compile_ls`）。
+
+## 5. 推荐执行顺序（按"先安全、后高危、带兼容"分阶段）
+
+> 每个阶段在**每个仓库内**用**原子提交**，按全局规则 push 到各仓 main（IDE 仓有专属分支约定，见其 CLAUDE.md）。先定 §4 决策再开工。
+
+- **Phase 0 决策冻结**：拍板 D1–D6，锁定 §1 映射表。
+- **Phase 1 安全文本层（A 类，可并行所有仓）**：品牌字串、UI 文案、注释、README/docs 的 `MoonShort→Lunaverse`、`MSS→Lunascripts`。不碰扩展名/身份/键名。零协调、可立即上。
+- **Phase 2 仓库内代码标识符（A 类，逐仓）**：`moonshort→lunaverse`、`mss→ls` 标识符；IDE `packages/mss-*→ls-*`、backend `skills/mss-*→ls-*`（含 SKILL.md `name:`、测试断言、Langfuse 名）。
+- **Phase 3 扩展名统一（B 类①，跨仓协调）**：编译器/IDE/管线**先双收** `.ls`+旧 → `git mv` 物理改名 ~575 文件 + `moonscripts/→lunascripts/` → 全链路跑绿 → 去旧后缀接受。
+- **Phase 4 跨仓契约（B 类②④，一个窗口内）**：Go module path、CLI 二进制名、API 路由 alias、env var 兜底、npm 包名 + 引用方；GitHub repo 改名同窗口做。
+- **Phase 5 持久化迁移（B 类③，按 additive-only）**：DB 加列双写回填、存档/ localStorage / VS Code 设置迁移脚本。生产参照 [[concepts/railway-production-deploy]] / [[concepts/supabase-backend-bootstrap]]。
+- **Phase 6 外部身份（B 类，仅当 D1=改）**：bundle id / Firebase / 域名 / bucket，需 Ops + 商店协调，放最后；IDE 改身份后要重打 `.app`（≈20 分钟，且安装路径 `/Applications/Moonshort IDE.app` 与扩展目录名都变）。
+- **Phase 7 知识库自身**：见 §7。
+
+## 6. 提醒：所有东西怎么切 + 容易静默失败的点
+
+1. **逐仓操作**：9 个 git 仓各自改、各自 commit/push；顶层目录非 git，无单次全局提交。
+2. **一律 `git mv`** 改文件/目录名以保留历史，尤其 ~575 个脚本与 `moonscripts/`。
+3. **不要 naive `sed -i`**：排除 `node_modules/.git/dist/build/.next/out/__pycache__/.venv/vendor/*.lock/*.map`；用 `\bmss\b` 与 `\.mss` 限定词边界，避免误伤英文单词/URL/GUID 里的 `mss` 子串；`moonscripts` 要整体改成 `lunascripts`（不是把 "moonshort" 抠出来）。
+4. **不要动 MSS 指令词汇**：`@episode/@choice/@gate/@signal/@affection/@butterfly/@cg/@minigame` 是语言语义，不是品牌；改了破坏所有现存脚本。
+5. **带兼容窗口的项**：编译器双收扩展名、env var 双读、API 路由 alias、URL scheme 双注册、DB additive 双写、设置/存档迁移——都遵循"先加新、跑绿、再删旧"。
+6. **会静默失败的清单**：扩展名漏改 → 编译器扫不到 / 高亮失效；Go module path 漏改 → vendored 副本 build 挂；存档键 `mssKey`/`san` 改了无迁移 → 旧档读不出；技能目录改了但 Langfuse 名 / 测试断言没同步 → agent 取不到技能；快照 JSON 里 OSS 路径手改 → 快照测试挂。
+7. **测试同步**：fixture 改名、硬编码技能名断言、含 OSS 路径的快照——随改名一起更新或重新生成。
+8. **Langfuse 重传**：backend dream-agent 技能改名后需用新名重新上传。
+9. **顺手收益**：`moonshort cocos client` 去空格；三套扩展名收敛成一套。
+
+## 7. 这份知识库（mob-wiki）本身也在范围内
+
+wiki 里这些页**文件名与内容都含旧名**，改名时要同步（建议 Phase 1 一起做）：
+- 实体页：[[entities/moonshort-script]]、[[entities/moonshort-ide]]、[[entities/moonshort-backend]]、[[entities/moonshort-client]]、[[entities/dramatizer-mss]]、[[entities/mobai-agent]]（描述含 "Moonshort platform"）。
+- 概念页：[[concepts/mss-format]]、[[concepts/mss-spec-redesign-2026-06]]、[[concepts/moonshort-ide-ai-integration]]、[[concepts/signal-int-backend]]、[[concepts/stable-step-id]] 等含 MSS/moonshort 的页。
+- 综合页：[[syntheses/cloud-deployment-architecture]]（"How Moonshort transitions..."）。
+- 改 wiki 页名会改变 `[[wikilinks]]` 与 `index.md` 条目，需一并更新（属 wiki lint 范畴）。
+
+## Sources
+- [2026-06-06 Lunaverse 改名勘察报告](../raw/2026-06-06-lunaverse-rename-recon.md)
+- 相关：[[concepts/railway-production-deploy]]、[[concepts/supabase-backend-bootstrap]]、[[concepts/four-layer-philosophy]]
