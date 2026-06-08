@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-06
+updated: 2026-06-08
 ---
 
 # Mob-Wiki Index
@@ -38,6 +38,7 @@ Welcome to the team knowledge base.
 - [[concepts/lunaverse-ide-ai-integration]] — Lunaverse IDE 内 AI 集成架构:为什么改用 Cline 而非 VS Code 原生 chat(被 Copilot 闸住),最终两个表面 —— Tab 补全 + Lunaverse Agent
 - [[concepts/ls-format]] — Lunascripts (LS) 脚本标记语言完整规范（2026-06-04 大幅 redesign 后的快照）
 - [[concepts/ls-spec-redesign-2026-06]] — LS 2026-06-04 redesign 决策记录：删除 ~半数旧指令冗余（show/hide/look/move/at、@ending、@label/@goto、influence、@cg block、@music play/crossfade/fadeout、@sfx play、@pause for N），新增同屏一人隐式 hide 规则、operand 出现在 comparison 两侧、MAX/MIN 聚合、变量对变量比较；Go 编译器 + 测试 + testdata + skills 全量对齐，5 个 commit pushed to lunascripts@main
+- [[concepts/mp-cross-signal-author-guidance]] — 多人模式（MP）小说写作 Agent 设计指引：@choice 自动铸造 cross-signal 但只有对方 @if 引用才晋升为 checkpoint；3 类该 cross-reference + 4 类不该 + 节奏建议（每幕 1-2 个）+ 模板 + 5 类常见错误 + 完整因果链。锚定 2026-06-08 lunaverse-backend save/checkpoint/revival/MP redesign spec 与 lunascripts PR #1 §4.7
 - [[concepts/novel-dream-artifact]] — `NovelDreamArtifact` 1:1 sidecar of Novel holds `characterArcs` (renamed from `characterBible`) + `assetMapping` + audit meta; 2026-05-24 抽表 to separate admin authoritative data from dream-pipeline regenerable derived data
 - [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
 - [[concepts/otome-script-quality-evaluator]] — 乙女逐剧本质量评分器设计（per-script quality gate，benchmark 的 ② 层）：输入一篇 LS 剧本 → 输出分维度评分 + 定位问题清单 + PASS/WARN/FAIL；3 层架构（L0 结构客观校验仿 RPGBench / L1 逐场景 LLM 评分仿 HelloEval+RMTBench / L2 全篇一致性仿 ConStory）+ 5 个原创乙女维度 + Phase 0-3 落地分期
