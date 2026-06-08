@@ -1,6 +1,6 @@
 ---
 title: Stable Step ID & Content-Addressed Cursor
-tags: [moonshort, backend, mss, cursor, remix, addressing]
+tags: [lunaverse, backend, ls, cursor, remix, addressing]
 sources: [docs/superpowers/specs/2026-04-26-stable-step-id-design.md]
 created: 2026-04-27
 updated: 2026-04-27
@@ -8,7 +8,7 @@ updated: 2026-04-27
 
 # Stable Step ID & Content-Addressed Cursor
 
-2026-04-27 上线。把 `Session.cursor` 从「位置寻址」改为「内容寻址」——每个 MSS step 在编译期带上稳定字符串 ID（如 `0021_dlg`、`0021p0001p0001_char`），cursor segment 用 ID 而非数组下标。Splice / replace 类结构变更对 cursor 透明：cursor 唯一会失败的方式是指向被删除的 step，且失败 fail-fast（lookup miss → undefined），不再静默错位。
+2026-04-27 上线。把 `Session.cursor` 从「位置寻址」改为「内容寻址」——每个 LS step 在编译期带上稳定字符串 ID（如 `0021_dlg`、`0021p0001p0001_char`），cursor segment 用 ID 而非数组下标。Splice / replace 类结构变更对 cursor 透明：cursor 唯一会失败的方式是指向被删除的 step，且失败 fail-fast（lookup miss → undefined），不再静默错位。
 
 ## 为什么需要
 
@@ -34,9 +34,9 @@ Cursor drift 是这个 codebase 反复出现的 bug 类。2026-04 月就被同�
 
 ### type tag（2-4 字母）
 
-固定映射，由 [[entities/moonshort-script]] 编译器从 MSS step type 派生：
+固定映射，由 [[entities/lunascripts]] 编译器从 LS step type 派生：
 
-| MSS type | tag | MSS type | tag |
+| LS type | tag | LS type | tag |
 |---|---|---|---|
 | `dialogue` | `dlg` | `bg` | `bg` |
 | `narrator` | `nar` | `char_show` / `char_hide` / `char_look` / `char_move` / `bubble` | `char` |
@@ -98,19 +98,19 @@ Backend 在 `apply-patches.ts` 注入（不是 LLM 生成）：
 明天: ["0012_ch", "options", "opt_marry", "steps", "0003_dlg"]
 ```
 
-容器 escape segment（`"options"` / `"steps"` / `"then"` / `"else"` / `"messages"`）不变——它们本来就是字符串、本来就稳定。option 索引 `2` 改用 option 自身的 semantic id（如 `"opt_marry"`），这个 id 早就存在于 MSS（之前只用作 `Session.choiceHistory` 的 key），现在提升到 cursor 系统。
+容器 escape segment（`"options"` / `"steps"` / `"then"` / `"else"` / `"messages"`）不变——它们本来就是字符串、本来就稳定。option 索引 `2` 改用 option 自身的 semantic id（如 `"opt_marry"`），这个 id 早就存在于 LS（之前只用作 `Session.choiceHistory` 的 key），现在提升到 cursor 系统。
 
 ## AchievementStep.id 改名
 
 新的统一 `id` 字段和 `AchievementStep` 已有的语义 `id`（如 `"RARE_COURAGE"`）冲突。Code review 在 Task 1 抓到这个 bug——会让所有 achievement 在同一容器位置坍缩到 `0001_ach`。
 
-解决：`AchievementStep.id` → `AchievementStep.achievement_id`，对齐 `MinigameStep.game_id` 命名习惯。MSS 源语法 `@achievement RARE_COURAGE { ... }` 不变；只是 JSON 字段名改了。这是唯一一处冲突——`ChoiceOption.id`（"opt_marry"）在 step 内部一层，不冲突。
+解决：`AchievementStep.id` → `AchievementStep.achievement_id`，对齐 `MinigameStep.game_id` 命名习惯。LS 源语法 `@achievement RARE_COURAGE { ... }` 不变；只是 JSON 字段名改了。这是唯一一处冲突——`ChoiceOption.id`（"opt_marry"）在 step 内部一层，不冲突。
 
 ## 实现责任分工
 
 | Step 来源 | 谁注入 ID | 何时 |
 |---|---|---|
-| 原始 episode step | MSS 编译器（[[entities/moonshort-script]]） | 编译期，写入 `compiled.json` |
+| 原始 episode step | LS 编译器（[[entities/lunascripts]]） | 编译期，写入 `compiled.json` |
 | Remix patch step | Backend `apply-patches.ts` | apply 时；LLM 不生成 ID |
 | Forward plan patch step | 同上 | 同上 |
 
@@ -118,7 +118,7 @@ LLM 永远不生成 ID。它返回 id-less 的 IncomingPatch，apply-patches 在
 
 ## Engine 层改动
 
-[[entities/moonshort-backend]] 的 `app/core/cursor.ts` 和 `engine/cursor.ts` 双胞胎：
+[[entities/lunaverse-backend]] 的 `app/core/cursor.ts` 和 `engine/cursor.ts` 双胞胎：
 
 - `resolvePath(steps, path)`：从 `steps[N]` 改为 `findStepInContainer(steps, id)` ——逐项扫描，遇到 concurrent group 数组就深入找匹配 id 的 step
 - `advanceSibling(root, path)`：以前是 `[..., last+1]` 纯路径运算；现在签名变成 `(root, path) → CursorPath | null`，需要查父容器结构才能知道下一个 sibling 是谁
@@ -130,7 +130,7 @@ Walker 和 StepPlayer 的算法结构不变，只是底层 helper 变了。视�
 
 项目 test phase（无线上用户），cutover 一次到位：
 
-1. **Recompile：**重新编译所有 MSS 源 → 新的 `compiled.json` 带 IDs。Vendored fixture 和 OSS-hosted JSON 都需要刷新。
+1. **Recompile：**重新编译所有 LS 源 → 新的 `compiled.json` 带 IDs。Vendored fixture 和 OSS-hosted JSON 都需要刷新。
 2. **Migrate state：**`scripts/migrate-step-ids.ts` 翻译 dev DB：
    - `Session.cursor`：用旧位置算法在新（带 ID）episode 里找到对应 step，读它的新 ID，写新 cursor
    - `Remix.anchorStepId`：同样翻译
@@ -159,14 +159,14 @@ Walker 和 StepPlayer 的算法结构不变，只是底层 helper 变了。视�
 
 ## 不做的
 
-- **Episode 版本管理 / 源 MSS 重排保护：**重排源 MSS 后重编 → 已有 session 的 cursor 失效（IDs 是源序确定）。这是 episode versioning 问题，不是 cursor 问题，留给将来
-- **Source MSS 双向同步：**作者不需要看到 ID
+- **Episode 版本管理 / 源 LS 重排保护：**重排源 LS 后重编 → 已有 session 的 cursor 失效（IDs 是源序确定）。这是 episode versioning 问题，不是 cursor 问题，留给将来
+- **Source LS 双向同步：**作者不需要看到 ID
 - **CDN 缓存失效策略：**ops 关心，本设计不管
 - **string compare 性能：**集合规模 negligible
 
 ## 关联
 
-- [[concepts/mss-format]] —— Step JSON 现在每个都带 `id` 字段，type tag table 写在 `docs/JSON-OUTPUT.md §4.0`
+- [[concepts/ls-format]] —— Step JSON 现在每个都带 `id` 字段，type tag table 写在 `docs/JSON-OUTPUT.md §4.0`
 - [[concepts/remix-anywhere]] —— Remix patch 走 `IncomingPatch` 写入 → `apply-patches` mint ID → 玩家加载时 `applyPatches` 重新 mint 同样的 IDs（确定性）
-- [[entities/moonshort-script]] —— 编译器在 `internal/emitter/emitter.go` 注入 IDs（`stepTypeTag` + `assignStepID` helpers）。frozen contract：算法一旦改动需要数据迁移
-- [[entities/moonshort-backend]] —— Engine 双胞胎、apply-patches、migration 脚本都在 backend
+- [[entities/lunascripts]] —— 编译器在 `internal/emitter/emitter.go` 注入 IDs（`stepTypeTag` + `assignStepID` helpers）。frozen contract：算法一旦改动需要数据迁移
+- [[entities/lunaverse-backend]] —— Engine 双胞胎、apply-patches、migration 脚本都在 backend

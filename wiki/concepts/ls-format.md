@@ -1,19 +1,19 @@
 ---
-title: MoonShort Script (MSS) 格式规范
-tags: [mss, script-format, visual-novel, specification]
+title: Lunascripts (LS) 格式规范
+tags: [ls, script-format, visual-novel, specification]
 sources:
-  - /Users/Clock/moonshort/moonshort-script/MSS-SPEC.md
-  - /Users/Clock/moonshort/moonshort-script/docs/JSON-OUTPUT.md
-  - /Users/Clock/moonshort/moonshort-script/docs/ENGINE-INTEGRATION.md
+  - /Users/Clock/lunaverse/lunascripts/LS-SPEC.md
+  - /Users/Clock/lunaverse/lunascripts/docs/JSON-OUTPUT.md
+  - /Users/Clock/lunaverse/lunascripts/docs/ENGINE-INTEGRATION.md
 created: 2026-04-15
 updated: 2026-06-04
 ---
 
-MoonShort Script（MSS）是 MobAI 互动视觉小说的脚本标记语言。一个 `.md` 文件描述一集的全部内容——场景、角色、对话、音频、D20 检定、小游戏、分支路由——由 Go 解释器编译为 JSON 供前端播放器消费。
+Lunascripts（LS）是 MobAI 互动视觉小说的脚本标记语言。一个 `.md` 文件描述一集的全部内容——场景、角色、对话、音频、D20 检定、小游戏、分支路由——由 Go 解释器编译为 JSON 供前端播放器消费。
 
-> **2026-06-04 大幅 redesign**：删除约一半的旧指令冗余、统一 gate/ending、operand 出现在 comparison 两侧、新增 MAX/MIN 聚合、同屏一人 + 隐式 hide 规则。变更详情见 [[concepts/mss-spec-redesign-2026-06]]。本页是新规范的快照。
+> **2026-06-04 大幅 redesign**：删除约一半的旧指令冗余、统一 gate/ending、operand 出现在 comparison 两侧、新增 MAX/MIN 聚合、同屏一人 + 隐式 hide 规则。变更详情见 [[concepts/ls-spec-redesign-2026-06]]。本页是新规范的快照。
 
-解释器实体见 [[entities/moonshort-script]]。
+解释器实体见 [[entities/lunascripts]]。
 
 ## 设计原则
 
@@ -26,7 +26,7 @@ MoonShort Script（MSS）是 MobAI 互动视觉小说的脚本标记语言。一
 
 ## 三种语法
 
-MSS 文件内交替使用三种语法：
+LS 文件内交替使用三种语法：
 
 **1. 顺序指令 `@`**：每个 `@` 开始一个新的执行步骤。
 ```
@@ -90,7 +90,7 @@ YOU: He hasn't called me that in eight years.
 
 ### 角色键一致性（speaker ↔ asset key 1:1）
 
-**核心原则**：`<NAME>:` 说话人标签必须等于 `uppercase(asset_key)`，asset_key 来自 `mapping.json` `assets.characters`。MSS 解释器靠**大小写不敏感的单 token 相等**把 `MAURICIO:` 匹配到 `@mauricio`，所以标签必须是单一 `[A-Z_]+` token——**不能有点、空格、敬称**。
+**核心原则**：`<NAME>:` 说话人标签必须等于 `uppercase(asset_key)`，asset_key 来自 `mapping.json` `assets.characters`。LS 解释器靠**大小写不敏感的单 token 相等**把 `MAURICIO:` 匹配到 `@mauricio`，所以标签必须是单一 `[A-Z_]+` token——**不能有点、空格、敬称**。
 
 | 错误 | 正确 | 原因 |
 |------|------|------|
@@ -116,14 +116,14 @@ awk '/^[[:space:]]*[A-Z][A-Z_. ]*:[[:space:]]/ {match($0,/^[[:space:]]*[A-Z][A-Z
 grep -oE '@[a-z_]+ ([a-z_]+|bubble [a-z_]+)' ep_NN.md | awk '{print $1}' | sort -u
 
 # 3. 取 mapping.json 的合法字符键
-jq -r '.assets.characters | keys[]' mss-build/mapping.json | sort
+jq -r '.assets.characters | keys[]' ls-build/mapping.json | sort
 
 # 三个集合相交：所有说话人标签的小写形式必须 ⊆ 字符键集合（除 NARRATOR/YOU），所有 @<char> 必须 ⊆ 字符键集合。
 ```
 
 **真实 bug 史**（沉淀于 2026-04-27 no-rules VN-cut trial）：
 
-- `MRS. KING:` 在 EP3 出现 8 次 → MSS parser 错误 → JSON 输出里 0 条 mrs_king dialogue → 前端跳过整段戏。修复：sed 替换为 `MRS_KING:`，重新编译，8 条 dialogue 节点全部 emit。
+- `MRS. KING:` 在 EP3 出现 8 次 → LS parser 错误 → JSON 输出里 0 条 mrs_king dialogue → 前端跳过整段戏。修复：sed 替换为 `MRS_KING:`，重新编译，8 条 dialogue 节点全部 emit。
 - `@mama_reyes` 在 EP1 结尾出现 → mapping.json 里没有 mama_reyes 字符键 → 编译时静默忽略（或渲染时抓不到 PNG 报 404）。修复：替换为 `@sfx mama_calls_dinner`。
 
 ### 同屏一人 + 说话即显形（与旧规则的核心差异）
@@ -145,7 +145,7 @@ jq -r '.assets.characters | keys[]' mss-build/mapping.json | sort
 
 **潜在意图坑**：希望角色看到对方的反应。例如：
 
-```mss
+```ls
 @josie half_smile_smug
 JOSIE: 九月份穿高领。
 @malia red_lipstick_armored_senior     // ✓ 切到 malia
@@ -288,7 +288,7 @@ grep -oE '@[a-z_]+ [a-z_]+' ep_NN.md | sort | uniq -c | sort -rn
 
 **Coverage 规则**：gate 必须有完整覆盖——要么单个无条件 leaf，要么完整 if/else 链（最后一个 route 必须是无条件 `@else`）。否则 validator 报 `INCOMPLETE_GATE`。
 
-**JSON shape**：见 [[concepts/mss-spec-redesign-2026-06]] "JSON 输出 Breaking Changes / Gate 形态" 一节。
+**JSON shape**：见 [[concepts/ls-spec-redesign-2026-06]] "JSON 输出 Breaking Changes / Gate 形态" 一节。
 
 ## 命名与寻址
 
@@ -308,7 +308,7 @@ XP、SAN/HP 等数值由游戏引擎内部管理，脚本不能 mutate，只能�
 
 ## 历史变更
 
-- **2026-06-04** 大幅 redesign：详见 [[concepts/mss-spec-redesign-2026-06]]
+- **2026-06-04** 大幅 redesign：详见 [[concepts/ls-spec-redesign-2026-06]]
 - **2026-05-19** trick/minigame redesign：trick 锁 6 种、minigame 改 leaf prose-driven、删 rating condition
 - **2026-04-27** stable step-id：内容寻址 cursor，AchievementStep id 改名
 - **2026-04-23** signal int 后台支持

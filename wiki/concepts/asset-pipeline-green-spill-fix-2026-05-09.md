@@ -3,7 +3,7 @@ title: Asset Pipeline — Green-Spill Root Cause + RGB Unspill Fix (2026-05-09)
 updated: 2026-05-09
 related:
   - concepts/asset-matting-hybrid
-  - entities/dramatizer-mss
+  - entities/dramatizer-ls
 ---
 
 # Green-Spill Root Cause + RGB Unspill Fix
@@ -107,7 +107,7 @@ selena_1ba8 单张 BEFORE → AFTER（G-unspill）：
 
 ## 落地位置
 
-- **脚本**：`moonshort-backend/generate-upscale-matting/rgb_unspill.py`（133 行）
+- **脚本**：`lunaverse-backend/generate-upscale-matting/rgb_unspill.py`（133 行）
 - **CLI**：`python3 rgb_unspill.py --root <dir> --workers 8`
 - **2026-05-09 全本运行**：3289 张文件 → ok=3084 skip=189（RGB 模式自动跳过）err=16（PIL 打不开的 broken webp，跟 unspill 无关）。耗时 5.6 分钟。
 - **OSS sync**：`sync_to_oss.py --force` 推送 3173 个 task 到 `mobai-file/nrbi/`，全部成功（↑3173 ↻0 ✗0）
@@ -137,5 +137,5 @@ ep1/javier_casual_seated-holding-to_object_316b.webp
 ## 相关
 
 - [[concepts/asset-matting-hybrid]] — chromakey-hybrid pipeline 总体设计
-- [[entities/dramatizer-mss]] — novels-to-moonscript skill workflow
-- novels-to-moonscript：`docs/superpowers/plans/2026-05-09-recovery-status.md`（含 unspill 段补丁）
+- [[entities/dramatizer-ls]] — novels-to-lunascript skill workflow
+- novels-to-lunascript：`docs/superpowers/plans/2026-05-09-recovery-status.md`（含 unspill 段补丁）

@@ -1,12 +1,12 @@
 ---
-title: Moonshort Client
+title: Lunaverse Client
 tags: [cocos, game, typescript, testing, state-machine, interactive-fiction]
-sources: [raw/2026-04-14-moonshort-client-skill.md, raw/2026-04-14-mobai-agent-memory.md, raw/2026-04-14-cli-gateway-server-layer-design.md]
+sources: [raw/2026-04-14-lunaverse-client-skill.md, raw/2026-04-14-mobai-agent-memory.md, raw/2026-04-14-cli-gateway-server-layer-design.md]
 created: 2026-04-14
 updated: 2026-04-14
 ---
 
-Cocos Creator 3.8.8 game frontend for Moonshort interactive fiction. Features a three-layer architecture (AppCore / EventBus / AppRenderer) that cleanly separates pure game logic from the rendering engine, enabling fully headless testing from Node.js without the Cocos runtime. Connects to [[entities/moonshort-backend]] for all game data and server-side logic.
+Cocos Creator 3.8.8 game frontend for Lunaverse interactive fiction. Features a three-layer architecture (AppCore / EventBus / AppRenderer) that cleanly separates pure game logic from the rendering engine, enabling fully headless testing from Node.js without the Cocos runtime. Connects to [[entities/lunaverse-backend]] for all game data and server-side logic.
 
 ## Tech Stack
 
@@ -14,8 +14,8 @@ Cocos Creator 3.8.8 game frontend for Moonshort interactive fiction. Features a 
 - **Language:** TypeScript
 - **External Dependencies:** Zero (only firebase for analytics)
 - **Test Runtime:** Node.js (via tsx) with minimal Cocos mocks
-- **Location:** `/Users/Clock/moonshort backend/moonshort/`
-- **Backend Connection:** `http://localhost:3000` (the [[entities/moonshort-backend]])
+- **Location:** `/Users/Clock/lunaverse backend/lunaverse/`
+- **Backend Connection:** `http://localhost:3000` (the [[entities/lunaverse-backend]])
 
 ## Three-Layer Architecture
 
@@ -261,7 +261,7 @@ Provides minimal mocks for Cocos Creator APIs required by the AppRenderer layer:
 Located at `test/play.ts`. Runs the AutoPlayer from the command line without any Cocos Creator runtime.
 
 ```bash
-cd "/Users/Clock/moonshort backend/moonshort/test"
+cd "/Users/Clock/lunaverse backend/lunaverse/test"
 npx tsx --tsconfig tsconfig.test.json play.ts
 ```
 
@@ -281,7 +281,7 @@ npx tsx --tsconfig tsconfig.test.json play.ts
 ### run-tests.ts -- Test Suite Runner
 
 ```bash
-cd "/Users/Clock/moonshort backend/moonshort/test"
+cd "/Users/Clock/lunaverse backend/lunaverse/test"
 npx tsx --tsconfig tsconfig.test.json run-tests.ts
 ```
 
@@ -289,7 +289,7 @@ Runs all 4 test suites (AppCore, PhaseRegistry, Scenarios, UIEvents) and reports
 
 ## Backend Integration
 
-The game client connects to the [[entities/moonshort-backend]] at `http://localhost:3000`. Key API interactions:
+The game client connects to the [[entities/lunaverse-backend]] at `http://localhost:3000`. Key API interactions:
 
 | Client Operation | Backend Endpoint | Description |
 |-----------------|------------------|-------------|
@@ -304,13 +304,13 @@ The game client connects to the [[entities/moonshort-backend]] at `http://localh
 
 ## Related
 
-- [[entities/moonshort-backend]] -- Backend server that the client connects to
+- [[entities/lunaverse-backend]] -- Backend server that the client connects to
 - [[entities/mobai-agent]] -- Orchestrator agent that runs headless tests via CLI gateway
 - [[entities/cli-gateway]] -- CLI gateway for remote test execution
 - [[concepts/cli-gateway-protocol]] -- HTTP API specification
 
 ## Sources
 
-- [Client skill](../raw/2026-04-14-moonshort-client-skill.md)
+- [Client skill](../raw/2026-04-14-lunaverse-client-skill.md)
 - [Agent memory](../raw/2026-04-14-mobai-agent-memory.md)
 - [CLI Gateway design spec](../raw/2026-04-14-cli-gateway-server-layer-design.md)

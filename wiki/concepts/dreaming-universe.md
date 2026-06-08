@@ -6,7 +6,7 @@ created: 2026-05-03
 updated: 2026-05-30
 ---
 
-Dreaming Universe is Moonshort's product and technical system for turning a player's accumulated remix and play signals into complete playable hidden episode branches, then recommending those branches to similar players as signed "Dream" content. It sits above [[concepts/remix-anywhere]]: Remix Anywhere handles immediate local intervention, while Dreaming Universe turns long-term player taste into reusable shared narrative assets.
+Dreaming Universe is Lunaverse's product and technical system for turning a player's accumulated remix and play signals into complete playable hidden episode branches, then recommending those branches to similar players as signed "Dream" content. It sits above [[concepts/remix-anywhere]]: Remix Anywhere handles immediate local intervention, while Dreaming Universe turns long-term player taste into reusable shared narrative assets.
 
 ## Product Definition
 
@@ -18,7 +18,7 @@ The product rule is:
 |---|---|
 | Content | Visible and signed. Players can see that an entry is a Dream and who inspired it. |
 | Algorithm | Hidden. Trigger thresholds, matching weights, cooldowns, and ranking are intentionally not exposed. |
-| Experience | Dream branches must play like normal Moonshort episodes, not like detached prose summaries. |
+| Experience | Dream branches must play like normal Lunaverse episodes, not like detached prose summaries. |
 | Ownership | Producer identity is a product surface. The system should preserve credit and long-tail recognition. |
 | Recursion | Players can start Remix Anywhere inside Dream content, feeding future taste and hotness signals. |
 
@@ -28,7 +28,7 @@ The intended emotional moment is not "AI generated something"; it is "this branc
 
 | Concept | Meaning |
 |---|---|
-| Dream | A complete playable hidden branch graph under the same novel. In storage it is standard episode JSON/MSS output, not a special runtime format. |
+| Dream | A complete playable hidden branch graph under the same novel. In storage it is standard episode JSON/LS output, not a special runtime format. |
 | Producer | A player whose accumulated behavior triggers Dream production. Producer rules are black-box. |
 | Consumer | A player who receives an assigned Dream through recommendation. Most players are consumers. |
 | Universe library | The shared pool of live/probation Dreams, including future official seeded Dreams if needed. |
@@ -82,7 +82,7 @@ The app main schema still owns player-facing `Episode`, `Novel`, `PlayerSession`
 
 ## Entry Patch
 
-`Dream.entryPatch` is not MSS and is not compiled by the MSS compiler. It is a JSON list of controlled operations stored as `DreamEntryOperation[]`.
+`Dream.entryPatch` is not LS and is not compiled by the LS compiler. It is a JSON list of controlled operations stored as `DreamEntryOperation[]`.
 
 **2026-05-26 cutover**：3 个 v1 ops (`choice_add_option` / `choice_replace_option` / `replace_gate`) 全部 disable，只允许单一新 op **`bonus_only`**。详见 [[concepts/dream-bonus-only-op]]。
 
@@ -92,7 +92,7 @@ The app main schema still owns player-facing `Episode`, `Novel`, `PlayerSession`
 
 旧 ops 在 `DreamEntryOperationSchema` 里仍能 parse（read back-compat），但 `WritableDreamEntryOperationSchema` 拒任何非 `bonus_only` 的 write。生产 + admin-inject 都过 writable 闸；read path（`dream-readonly-service` / presence overlay）仍 parse-tolerant。Legacy dream 由一次性 `scripts/cleanup-legacy-dream-ops.ts` 清。
 
-entry patch 不是 top-level MSS fragment。MSS top level 只支持正常 `@episode`，把 `@replace_suffix` 之类硬塞 Go compiler 是结构性 bug。entry patch 由 backend overlay tooling 以 JSON 验证、预览、应用。
+entry patch 不是 top-level LS fragment。LS top level 只支持正常 `@episode`，把 `@replace_suffix` 之类硬塞 Go compiler 是结构性 bug。entry patch 由 backend overlay tooling 以 JSON 验证、预览、应用。
 
 ### autoAssign
 
@@ -114,8 +114,8 @@ The 2026-05-01 real-agent rearchitecture split production into three layers:
 | Layer | Implementation | Responsibility |
 |---|---|---|
 | Preheat workflow | Backend Node.js deterministic workflow | Build source context digests, rollups, and cacheable source bundles. |
-| Agent layer | Python `services/dream-agent/` | Produce plan, MSS episodes, entry patch, and arc review through multi-agent tool use. |
-| Backend gateway | Next.js internal APIs | Enforce database and episode write boundaries, compile MSS, preview overlays, and persist job progress. |
+| Agent layer | Python `services/dream-agent/` | Produce plan, LS episodes, entry patch, and arc review through multi-agent tool use. |
+| Backend gateway | Next.js internal APIs | Enforce database and episode write boundaries, compile LS, preview overlays, and persist job progress. |
 
 The Python service uses FastAPI and defaults to port `8765`. Backend workers call it through `POST /jobs/run`. Runtime prompts are meant to be pulled from Langfuse, while repository prompt files are upload sources.
 
@@ -138,7 +138,7 @@ The service has these important boundaries:
 
 | Boundary | Current rule |
 |---|---|
-| Manager | Must call specialist tools. It must not directly author final plan, MSS, entry operations, or arc review. |
+| Manager | Must call specialist tools. It must not directly author final plan, LS, entry operations, or arc review. |
 | Specialists | Produce narrow artifacts and save them into the controller checkpoint. |
 | Controller | Owns in-memory checkpoint, retry budget, hard gate stubs, and terminal markers. |
 | Backend | Is the only component allowed to write production episode rows and durable Dream service state. |
@@ -158,7 +158,7 @@ The Python dream-agent currently calls backend endpoints through `BackendClient`
 | `GET /api/internal/novels/:novelId/episodes` | List source episodes; used by preheat and available to Python tooling. |
 | `GET /api/internal/novels/:novelId/episodes/:episodeId/source` | Read compiled source episode packet for planning and entry patch work. |
 | `POST /api/internal/preview-overlay-apply` | Validate and preview entry patch operations without writing DB. |
-| `POST /api/internal/compile-mss` | Compile MSS to EpisodeJSON and content hash without writing DB or OSS. |
+| `POST /api/internal/compile-ls` | Compile LS to EpisodeJSON and content hash without writing DB or OSS. |
 | `POST /api/internal/preheat-bundle/:novelId` | Build or fetch a preheat source bundle. |
 
 Auth uses bearer tokens. Backend to dream-agent uses `DREAM_AGENT_BEARER`; dream-agent to backend uses `BACKEND_INTERNAL_BEARER`, which in dev maps to the backend cheat token.
@@ -174,7 +174,7 @@ The intended lifecycle is:
 5. Worker calls `POST /jobs/run` with `{ "job_id": "...", "attempt": 1 }`.
 6. Python JobRunner fetches the job snapshot and checks idempotency.
 7. Manager calls specialists until plan, writer drafts, entry patch, and arc review exist.
-8. Backend hard gates compile MSS and preview overlays.
+8. Backend hard gates compile LS and preview overlays.
 9. Backend persists episodes and Dream metadata.
 10. Assignment/recommendation makes the Dream visible to qualified sessions.
 
@@ -220,12 +220,12 @@ The app already has early player/admin surfaces in recent commits: player Dream 
 - [[concepts/villain-season-demo]] — 第一本 autoAssign + bonus_only 真用例
 - [[concepts/remix-anywhere]] explains the immediate player intervention system that feeds long-term Dream signals.
 - [[concepts/stable-step-id]] explains the content-addressed cursor system that makes entry overlays stable.
-- [[entities/moonshort-backend]] owns the backend APIs, job queue, episode storage, and player path.
-- [[entities/dramatizer-mss]] and [[entities/moonshort-script]] supply the MSS authoring and compilation concepts used by Dream writer specialists.
+- [[entities/lunaverse-backend]] owns the backend APIs, job queue, episode storage, and player path.
+- [[entities/dramatizer-ls]] and [[entities/lunascripts]] supply the LS authoring and compilation concepts used by Dream writer specialists.
 
 ## Sources
 
-This page was reconstructed from local repository history and files under `/Users/Clock/moonshort/backend`, especially:
+This page was reconstructed from local repository history and files under `/Users/Clock/lunaverse/backend`, especially:
 
 - `docs/superpowers/specs/2026-04-28-dreaming-universe-product.md`
 - `docs/superpowers/specs/2026-04-28-dreaming-design-v2.md`

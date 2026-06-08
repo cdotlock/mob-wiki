@@ -1,6 +1,6 @@
 ---
 title: Novel GameConfig — Per-Novel Attribute System
-tags: [moonshort, backend, schema, game-design]
+tags: [lunaverse, backend, schema, game-design]
 sources: [raw/2026-04-23-novel-game-config-design.md]
 created: 2026-04-23
 updated: 2026-04-23
@@ -8,7 +8,7 @@ updated: 2026-04-23
 
 # Novel GameConfig — Per-Novel Attribute System
 
-MoonShort 的角色属性配置分两层：**平台级**（跨剧本统一的数值常量）和 **per-novel 级**（每部剧本可以命名自己的连续变量与 4 个检定属性）。这套分层在 2026-04-23 取代了原先硬编码的 SAN/ATK/INT/CHA/WIL 布局，让剧本作者能把主角的"心智可崩溃变量"按剧本起名（理智 / HP / Fate / 心情 / 污秽度 ...），同时把所有跨剧本数值统一收拢到 `app/core/game-rules.ts` 单一文件里。
+Lunaverse 的角色属性配置分两层：**平台级**（跨剧本统一的数值常量）和 **per-novel 级**（每部剧本可以命名自己的连续变量与 4 个检定属性）。这套分层在 2026-04-23 取代了原先硬编码的 SAN/ATK/INT/CHA/WIL 布局，让剧本作者能把主角的"心智可崩溃变量"按剧本起名（理智 / HP / Fate / 心情 / 污秽度 ...），同时把所有跨剧本数值统一收拢到 `app/core/game-rules.ts` 单一文件里。
 
 ## 为什么要分两层
 
@@ -21,7 +21,7 @@ MoonShort 的角色属性配置分两层：**平台级**（跨剧本统一的数
 
 改造的两条目标：
 
-- **per-novel 可配置**：每部剧本可以改 1 个连续变量（SAN-slot）和 4 个检定变量的显示名、`mssKey`、初始值与上限，再加角色创建的 `freePoints`。
+- **per-novel 可配置**：每部剧本可以改 1 个连续变量（SAN-slot）和 4 个检定变量的显示名、`lsKey`、初始值与上限，再加角色创建的 `freePoints`。
 - **平台级数值整理**：其他所有数值保持"平台级单一来源"，但不再散落——全部收拢到 `app/core/game-rules.ts`，分 section 组织，admin UI 只读展示。
 
 ## Per-Novel 部分：`Novel.gameConfig`
@@ -35,7 +35,7 @@ MoonShort 的角色属性配置分两层：**平台级**（跨剧本统一的数
   version: "1.0",
   variables: {
     continuous: {
-      mssKey: string,         // MSS 引用连续变量用的 key（默认 "san"）
+      lsKey: string,         // LS 引用连续变量用的 key（默认 "san"）
       label: string,          // 显示名，如 "理智" / "HP" / "Fate" / "心情" / "污秽度"
       initial: number,        // 初始值
       max: number,            // 上限
@@ -43,7 +43,7 @@ MoonShort 的角色属性配置分两层：**平台级**（跨剧本统一的数
     },
     checking: [               // 恰好 4 项（位置固定为 slot 1~4）
       {
-        mssKey: string,       // 对应 MSS check.attr / minigame.attr（大小写不敏感）
+        lsKey: string,       // 对应 LS check.attr / minigame.attr（大小写不敏感）
         label: string,        // 显示名
         initial: number,
         max: number,          // 通常 = CHECK.attributeHardCap = 24
@@ -57,15 +57,15 @@ MoonShort 的角色属性配置分两层：**平台级**（跨剧本统一的数
 
 Zod 校验包含：
 
-- `mssKey` 必须匹配 `^[a-z][a-z0-9_]*$i`（字母数字下划线，不能含空格）。
-- 4 个 `checking[].mssKey` 不能重复（case-insensitive）。
-- `continuous.mssKey` 不能跟任何 `checking[].mssKey` 冲突。
+- `lsKey` 必须匹配 `^[a-z][a-z0-9_]*$i`（字母数字下划线，不能含空格）。
+- 4 个 `checking[].lsKey` 不能重复（case-insensitive）。
+- `continuous.lsKey` 不能跟任何 `checking[].lsKey` 冲突。
 - 每个变量 `initial <= max`。
 - `freePoints` ∈ [0, 20]。
 
-### Slot 绑定与 MSS 读取
+### Slot 绑定与 LS 读取
 
-MSS 契约不动（上游 dramatizer 定义，只读）：
+LS 契约不动（上游 dramatizer 定义，只读）：
 
 ```json
 { "type": "choice", "options": [
@@ -73,26 +73,26 @@ MSS 契约不动（上游 dramatizer 定义，只读）：
 ]}
 ```
 
-MSS 里 `check.attr: "cha"` 这个字符串由我方在 `app/lib/game-config.ts` 里解析：
+LS 里 `check.attr: "cha"` 这个字符串由我方在 `app/lib/game-config.ts` 里解析：
 
 ```ts
-export function resolveSlot(mssAttr: string, cfg: NovelGameConfig): 1 | 2 | 3 | 4 {
-  const normalized = mssAttr.trim().toLowerCase();
-  const idx = cfg.variables.checking.findIndex((v) => v.mssKey.toLowerCase() === normalized);
-  if (idx < 0) throw new UnknownMssKeyError(mssAttr);
+export function resolveSlot(lsAttr: string, cfg: NovelGameConfig): 1 | 2 | 3 | 4 {
+  const normalized = lsAttr.trim().toLowerCase();
+  const idx = cfg.variables.checking.findIndex((v) => v.lsKey.toLowerCase() === normalized);
+  if (idx < 0) throw new UnknownLsKeyError(lsAttr);
   return (idx + 1) as 1 | 2 | 3 | 4;
 }
 ```
 
-引擎拿到 slot 后就读 `session.checkingVariable{slot}`。大小写不敏感；未匹配抛 `UnknownMssKeyError`（code 4101）。
+引擎拿到 slot 后就读 `session.checkingVariable{slot}`。大小写不敏感；未匹配抛 `UnknownLsKeyError`（code 4101）。
 
 同名辅助：
 
-- `isContinuousKey(mssAttr, cfg)` — 判断是不是连续变量的 key。
-- `resolveAttr(mssAttr, cfg)` — 统一返 `{ kind: "continuous" }` 或 `{ kind: "checking"; slot }`。
-- `labelOf(mssAttr, cfg)` — 按剧本配置取显示名，未匹配兜底 `attr.toUpperCase()`。
+- `isContinuousKey(lsAttr, cfg)` — 判断是不是连续变量的 key。
+- `resolveAttr(lsAttr, cfg)` — 统一返 `{ kind: "continuous" }` 或 `{ kind: "checking"; slot }`。
+- `labelOf(lsAttr, cfg)` — 按剧本配置取显示名，未匹配兜底 `attr.toUpperCase()`。
 - `listCheckingSlots(cfg)` — HUD / 角色创建的 4 slot 元数据。
-- `attrsFromSession(session, cfg)` — 把 session 的 4 列转成 `{ mssKey: value }` 字典。
+- `attrsFromSession(session, cfg)` — 把 session 的 4 列转成 `{ lsKey: value }` 字典。
 - `checkingFieldsFromAttrs(attrs, cfg)` — 反向：把字典转成 Prisma 的 4 列 patch。
 
 ### Session 存储
@@ -103,10 +103,10 @@ export function resolveSlot(mssAttr: string, cfg: NovelGameConfig): 1 | 2 | 3 | 
 |---|---|---|
 | `continuousVariable` | `san` | 当前连续变量值 |
 | `continuousVariableMax` | `sanMax` | 连续变量上限 |
-| `checkingVariable1` | `attributes[cfg.checking[0].mssKey]` | Slot 1 当前值 |
-| `checkingVariable2` | `attributes[cfg.checking[1].mssKey]` | Slot 2 当前值 |
-| `checkingVariable3` | `attributes[cfg.checking[2].mssKey]` | Slot 3 当前值 |
-| `checkingVariable4` | `attributes[cfg.checking[3].mssKey]` | Slot 4 当前值 |
+| `checkingVariable1` | `attributes[cfg.checking[0].lsKey]` | Slot 1 当前值 |
+| `checkingVariable2` | `attributes[cfg.checking[1].lsKey]` | Slot 2 当前值 |
+| `checkingVariable3` | `attributes[cfg.checking[2].lsKey]` | Slot 3 当前值 |
+| `checkingVariable4` | `attributes[cfg.checking[3].lsKey]` | Slot 4 当前值 |
 
 迁移策略是单次 Prisma migration（`20260423010000_session_continuous_and_checking_variables`）：add new → backfill 用 canonical `atk → int → cha → wil` 顺序映射 attributes JSON → SET NOT NULL → drop old。16 个存量 Session 一次过完。
 
@@ -149,10 +149,10 @@ API 层（`SessionSnapshot` 返给 player）保持 `san / sanMax / attributes` �
 
 ### 编辑区
 
-- 连续变量 1 行（5 个输入）：`mssKey` / `label` / `initial` / `max` / `dailyReset`（`-1` = 不重置）。
-- 4 个检定变量（每个 4 个输入）：`mssKey` / `label` / `initial` / `max`。
+- 连续变量 1 行（5 个输入）：`lsKey` / `label` / `initial` / `max` / `dailyReset`（`-1` = 不重置）。
+- 4 个检定变量（每个 4 个输入）：`lsKey` / `label` / `initial` / `max`。
 - `freePoints` 1 个输入。
-- **[扫描 MSS]** 按钮：调 `POST /api/admin/novels/[id]/game-config/scan`，只覆盖 4 slot 的 `mssKey`，保留用户已编辑的 `label`。扫描后顶部出现 amber 提示条显示 episode 数 / 抽到 key / 频次 / 丢弃 / 补位。
+- **[扫描 LS]** 按钮：调 `POST /api/admin/novels/[id]/game-config/scan`，只覆盖 4 slot 的 `lsKey`，保留用户已编辑的 `label`。扫描后顶部出现 amber 提示条显示 episode 数 / 抽到 key / 频次 / 丢弃 / 补位。
 
 ### 只读卡片 + 可视化
 
@@ -176,7 +176,7 @@ SVG 折线图：60 集 DC mean 曲线，5 阶段用淡色背景带标出。
 - `attr: "SANMAX"` → `continuousVariableMax`
 - `attr: "XP"` / `"LEVEL"` → 同名列
 - 其他 `attr` 字符串 → `resolveSlot(attr, cfg)` 落 `checkingVariable{slot}`
-- 未匹配 → code `4101` `UnknownMssKeyError`，信息里附 `gameConfig.variables.checking[].mssKey` 全集
+- 未匹配 → code `4101` `UnknownLsKeyError`，信息里附 `gameConfig.variables.checking[].lsKey` 全集
 
 `GET /api/admin/cheat/status`：同时返老形状（`san / sanMax / attributes`）和新形状（`continuousVariable / continuousVariableMax / checkingVariable1~4 / gameConfig`）。
 
@@ -194,9 +194,9 @@ SVG 折线图：60 集 DC mean 曲线，5 阶段用淡色背景带标出。
 
 ## 设计记录
 
-### 为什么 MSS 保持只读？
+### 为什么 LS 保持只读？
 
-MSS 由 dramatizer 上游产出。改 MSS 契约要跨服务发版，成本太高。`mssKey` 让适配职责留在我方——scan 自动发现新 key 几乎零运维成本。
+LS 由 dramatizer 上游产出。改 LS 契约要跨服务发版，成本太高。`lsKey` 让适配职责留在我方——scan 自动发现新 key 几乎零运维成本。
 
 ### 为什么 Session 用 4 个扁平列而不是 JSON？
 
@@ -212,9 +212,9 @@ DC 曲线、XP 表、coins/gems/VIP 改动会冲击玩家经济平衡——不�
 
 ## 相关页面
 
-- [[concepts/mss-format]] — MoonShort Script 脚本格式
-- [[entities/moonshort-backend]] — 后端总览
-- [[entities/dramatizer]] — MSS 上游产出链
+- [[concepts/ls-format]] — Lunascripts 脚本格式
+- [[entities/lunaverse-backend]] — 后端总览
+- [[entities/dramatizer]] — LS 上游产出链
 
 ## Sources
 

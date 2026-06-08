@@ -1,6 +1,6 @@
 ---
 title: Remix Anywhere — Player Intervention via D20+DC Patch Injection
-tags: [moonshort, backend, remix, llm, mss, tabletop]
+tags: [lunaverse, backend, remix, llm, ls, tabletop]
 sources: [docs/superpowers/specs/2026-04-24-remix-anywhere-design.md]
 created: 2026-04-25
 updated: 2026-05-30
@@ -12,13 +12,13 @@ updated: 2026-05-30
 >
 > **2026-05-24**：forward planner 从 3-batch 流水线换成**单 plan、跨非 dream 全分支、两阶段 pick→write**（见 §forward-planner-whole-novel）。
 
-Remix Anywhere 是 moonshort-backend 在 2026-04-24 上线的核心玩家介入系统。玩家在播剧时可以**长按任意对白**或**点击角色立绘**，输入一段 ≤50 字的自由文本（如"抓住她的手"、"告诉他你说谎了"），由跑团式 D20 + DC 机制决定是否成功，成功则把 LLM 生成的一小段剧情（3-8 个 MSS step）直接 splice 进当前集，并在后续未来 episode 异步生成"回响"。
+Remix Anywhere 是 lunaverse-backend 在 2026-04-24 上线的核心玩家介入系统。玩家在播剧时可以**长按任意对白**或**点击角色立绘**，输入一段 ≤50 字的自由文本（如"抓住她的手"、"告诉他你说谎了"），由跑团式 D20 + DC 机制决定是否成功，成功则把 LLM 生成的一小段剧情（3-8 个 LS step）直接 splice 进当前集，并在后续未来 episode 异步生成"回响"。
 
 和旧的 Drama Remix（重新生成整集）根本不同：本系统**不生成新剧集**，只在现有剧本里插入小段 InsertPatch，写作成本 10%、叙事一致性强、延展性极好。
 
 ## 设计哲学
 
-1. **不生成新剧集**——旧的 Drama Remix（M7）通过 dramatizer 生成完整替代集，成本高延迟长；Remix Anywhere 在现有集里 splice 3-8 步 MSS，用既有 walker 消费。
+1. **不生成新剧集**——旧的 Drama Remix（M7）通过 dramatizer 生成完整替代集，成本高延迟长；Remix Anywhere 在现有集里 splice 3-8 步 LS，用既有 walker 消费。
 2. **服务器 authoritative 的 D20 预投骰**——`/remix/submit` 时服务器就用 `checkDC({attrValue, dc})` 决出胜负，客户端 `DiceModal` 只是播 ~1.5s 动画，反作弊天然成立。
 3. **失败点永久锁定是灵魂**——DC 失败后 `(episodeId, stepId)` 写入 `Session.failedRemixPoints`，该玩家永远无法再 remix 这个点。防止玩家"试到成功为止"。
 4. **Walker 单通道消费 patch**——patch 里的 `@signal` / `@butterfly` / `@affection` 不在 commit 时直写 session，而是玩家 **walk 到那一步**时由既有 foldStateEffects 自然写入。消除双写路径、保证 int 增量不会被扣两次。
@@ -83,7 +83,7 @@ spendGemsForRemix(userId, amount, remixId, sessionId)  // idempotent by remixId
 | 模块 | 职责 | 纯度 |
 |---|---|---|
 | `types.ts` | `InsertPatch` / `PatchAllowedStep` / `ButterflyRecord` / `FailedPointRecord` 类型 | TS-only |
-| `patch-schema.ts` | Zod schema。`InsertPatchSchema` 是 patch 白名单的权威（mirror MSS 排除 choice/gate/minigame/...） | 纯 |
+| `patch-schema.ts` | Zod schema。`InsertPatchSchema` 是 patch 白名单的权威（mirror LS 排除 choice/gate/minigame/...） | 纯 |
 | `dice-service.ts` | `preRoll({attrValue, dc}, rng?)` 服务器端 D20 + checkDC | 纯（rng 可注入） |
 | `failed-point-service.ts` | `isFailedPoint(list)` + `appendFailedPoint(sessionId, ep, step)` 事务幂等写 | 分离 |
 | `prescreen-llm.ts` | `remix__prescreen` → `{ooc, attr?, dc?}` | I/O |
@@ -117,7 +117,7 @@ Stage 0 — fetch                Stage 1 — pick (≤5)            Stage 2 — 
 listFutureNonDream             forward-pick-llm               forward-write-llm
 Episodes (branch scope         (chunked by serialized         (one InsertPatch per pick,
 below) +                       bytes, ~320 KB per chunk)      anchor stepId verbatim,
-loadEpisodeMss (MSS first,     reads MSS-or-JSON content      2..6 whitelisted steps)
+loadEpisodeLs (LS first,     reads LS-or-JSON content      2..6 whitelisted steps)
 JSON fallback)                 across non-dream branches
                                                               │
                                                               ▼
@@ -131,7 +131,7 @@ JSON fallback)                 across non-dream branches
 - 所有非 dream 分支（`NOT branchKey LIKE 'dream/%'`）
 - remix 自身分支：只看 `seq > anchorSeq`
 - 其他每个非 dream 分支：每个 seq 都是 candidate future content（玩家未进入）
-- 每集优先 `Episode.mssUrl`，JSON 兜底；两条都失败就跳过该集
+- 每集优先 `Episode.lsUrl`，JSON 兜底；两条都失败就跳过该集
 
 **LLM 模块**：
 
@@ -145,7 +145,7 @@ JSON fallback)                 across non-dream branches
 
 **Frontend contract 不变**：`commitRemix` 仍返 `forwardPlanJobIds: string[]`（现 length=1），`/api/remix/forward-plan-status` 仍返 `plans: Array<{ batchRange: number[], status, ... }>`（现 length=1，`batchRange === []`）。
 
-Spec：[`docs/superpowers/specs/2026-05-24-remix-anywhere-whole-novel-forward-plan.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/superpowers/specs/2026-05-24-remix-anywhere-whole-novel-forward-plan.md)（取代 2026-04-24 spec 的 forward-plan 部分）。
+Spec：[`docs/superpowers/specs/2026-05-24-remix-anywhere-whole-novel-forward-plan.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/docs/superpowers/specs/2026-05-24-remix-anywhere-whole-novel-forward-plan.md)（取代 2026-04-24 spec 的 forward-plan 部分）。
 
 ## LLM 调用管线
 
@@ -174,7 +174,7 @@ Spec：[`docs/superpowers/specs/2026-05-24-remix-anywhere-whole-novel-forward-pl
 # REMINDER（HARD RULES 再说一次）
 ```
 
-特别加了 **system-word hygiene invariant**：系统词（butterfly / signal / affection / remix / patch / anchor / MSS / stepId）禁止出现在用户可见的 step text 里，防止提示词里 salient 词泄漏到故事文本。这条规则是 2026-04-25 上线后发现实际污染案例（LLM 把"butterfly"塞进 you.text 编出"'Butterfly' 短信"伪剧情）后补上的。
+特别加了 **system-word hygiene invariant**：系统词（butterfly / signal / affection / remix / patch / anchor / LS / stepId）禁止出现在用户可见的 step text 里，防止提示词里 salient 词泄漏到故事文本。这条规则是 2026-04-25 上线后发现实际污染案例（LLM 把"butterfly"塞进 you.text 编出"'Butterfly' 短信"伪剧情）后补上的。
 
 ## BullMQ + Outbox 一致性
 
@@ -412,10 +412,10 @@ Remix 写入的 session 状态有两类，spec §8 严格区分：
 
 ## 与其他系统的关系
 
-- [[concepts/mss-format]] —— Remix patch 里的 step 必须是 MSS step 白名单子集（排除 choice/gate/minigame/...）
+- [[concepts/ls-format]] —— Remix patch 里的 step 必须是 LS step 白名单子集（排除 choice/gate/minigame/...）
 - [[concepts/signal-int-backend]] —— Remix 生成的 `signal` / `@signal int` step 走既有 walker 写入，不双写
 - [[concepts/novel-game-config]] —— Prescreen LLM 读 `attributeConfig.names` 判定 attr，DC 由玩家 attrValue 决定成功率
-- [[entities/moonshort-backend]] —— 本系统整体实装在 moonshort-backend，BullMQ + Outbox 基础设施复用自该项目
+- [[entities/lunaverse-backend]] —— 本系统整体实装在 lunaverse-backend，BullMQ + Outbox 基础设施复用自该项目
 
 ## 和旧 Drama Remix 的关系
 

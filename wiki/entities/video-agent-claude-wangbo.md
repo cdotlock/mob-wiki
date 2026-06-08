@@ -6,7 +6,7 @@ created: 2026-05-03
 updated: 2026-05-11
 ---
 
-Video Agent Claude Wangbo is the repository for the short-drama shot prompt production workflow used to turn Moonshort episode scripts into Seedance-ready video generation prompts. It is not a general Agent-Forge replacement; it is a focused Claude Code skill package plus a `works/` workspace convention, OSS validation scripts, gateway payload tooling, and an ablation record showing why the new skill package replaced the legacy workflow.
+Video Agent Claude Wangbo is the repository for the short-drama shot prompt production workflow used to turn Lunaverse episode scripts into Seedance-ready video generation prompts. It is not a general Agent-Forge replacement; it is a focused Claude Code skill package plus a `works/` workspace convention, OSS validation scripts, gateway payload tooling, and an ablation record showing why the new skill package replaced the legacy workflow.
 
 ## Repository Identity
 
@@ -170,7 +170,7 @@ This page complements [[entities/agent-forge]]. Agent-Forge is the broader video
 
 As of 2026-05-11, [[entities/assets-produce]] is the active consolidation target for this workflow. Assets-Produce absorbed the useful shot-prompt lessons into `knowledge/novel-to-video/`, replaced shell-driven prompt workflow checks with the local opencode `videoctl` tool, and removed its copied `video-agent-test/agent-skills/` tree from the active repository. Video Agent Claude Wangbo remains the historical source of the prompt craft and Seedance lessons; Assets-Produce is where those lessons are being made agent-native and launchable.
 
-It also depends on [[entities/dramatizer-mss]] and [[entities/moonshort-script]] for upstream narrative structure. The better the MSS and episode JSON encode scene continuity, character identity, and choice context, the less the video agent has to infer during Step 1.
+It also depends on [[entities/dramatizer-ls]] and [[entities/lunascripts]] for upstream narrative structure. The better the LS and episode JSON encode scene continuity, character identity, and choice context, the less the video agent has to infer during Step 1.
 
 ## Sources
 

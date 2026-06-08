@@ -6,7 +6,7 @@ created: 2026-05-30
 updated: 2026-05-30
 ---
 
-2026-05 在 [[entities/moonshort-backend]] 上线的 "Plan A + C1" 重构：把单阶段 "IDE 一键 publish 上线" 改成两阶段 **submit (IDE) → activate (admin)**，分离录入与对玩家可见，错版可 reject / rollback。配套大量 schema 收敛（`NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible` 全部移除），统一 manifest 入口写所有素材 + 语音 + episode + prompt 元信息。源文件契约：[`docs/ide-production-pipeline-migration.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/ide-production-pipeline-migration.md) + [`docs/operations/production-manifest-supabase-db.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/operations/production-manifest-supabase-db.md)。
+2026-05 在 [[entities/lunaverse-backend]] 上线的 "Plan A + C1" 重构：把单阶段 "IDE 一键 publish 上线" 改成两阶段 **submit (IDE) → activate (admin)**，分离录入与对玩家可见，错版可 reject / rollback。配套大量 schema 收敛（`NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible` 全部移除），统一 manifest 入口写所有素材 + 语音 + episode + prompt 元信息。源文件契约：[`docs/ide-production-pipeline-migration.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/docs/ide-production-pipeline-migration.md) + [`docs/operations/production-manifest-supabase-db.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/docs/operations/production-manifest-supabase-db.md)。
 
 ## 为什么改
 
@@ -21,7 +21,7 @@ updated: 2026-05-30
 
 | 层 | 写入方 | 内容 | 玩家代码读 |
 |---|---|---|---|
-| **L1** live | `activateRelease` | `Novel.title/coverUrl/synopsis`、`Episode.jsonUrl/mssUrl/contentHash`、`NovelCharacter.{displayName,role,avatarUrl,isProtagonist}`、唯一一行 `CharacterVoiceProfile.isActive=true` | ✅ |
+| **L1** live | `activateRelease` | `Novel.title/coverUrl/synopsis`、`Episode.jsonUrl/lsUrl/contentHash`、`NovelCharacter.{displayName,role,avatarUrl,isProtagonist}`、唯一一行 `CharacterVoiceProfile.isActive=true` | ✅ |
 | **L2** snapshot | `submitRelease` | `NovelProductionRelease.manifestJson`、`NovelAsset`、`CharacterAsset`、`EpisodeAssetUsage`、`PromptRun`、`CharacterVoiceProfile`（含 inactive 行） | admin 审核用 |
 | **L3** pointer | `activateRelease` / `rollbackToRelease` | `Novel.activeReleaseId` | 唯一 "what's live" 真相 |
 
@@ -86,7 +86,7 @@ Body: { "manifest": <NovelProductionManifest> }
 | `version` | `1` 字面量 |
 | `novel` | `{ id, title, subtitle?, description?, language, coverAssetLocalId? }` — `id` 必须等于路由 `novelId` |
 | `release` | `{ releaseKey, idempotencyKey, source: "ide", createdAt, ideVersion? }` |
-| `assets[]` | OSS 文件 + `localId` 做 join key（`kind` 枚举：`cover` / `character_image` / `bg` / `cg` / `music` / `sfx` / `episode_json` / `mss` / `tts_audition_audio`） |
+| `assets[]` | OSS 文件 + `localId` 做 join key（`kind` 枚举：`cover` / `character_image` / `bg` / `cg` / `music` / `sfx` / `episode_json` / `ls` / `tts_audition_audio`） |
 | `characters[]` | `slug` 为 join key；`role: MC \| lead \| supporting \| minor`；可挂 per-look `assets[]` |
 | `episodes[]` | `episodeId` + `branchKey` + `seq` + `jsonAssetLocalId` + `assetUsage[]`（usageKind ↔ 必须的 asset.kind 匹配） |
 | `voiceProfiles[]` | 直接落 `CharacterVoiceProfile`（**isActive=false** on submit）；activate 时翻一行 isActive=true |
@@ -105,7 +105,7 @@ Body: { "manifest": <NovelProductionManifest> }
 
 ## Admin 操作（IDE 不能调）
 
-REST 同一份 service 调用；CLI 等价命令在 [`scripts/release-cli.ts`](https://github.com/cdotlock/moonshort-backend/blob/main/scripts/release-cli.ts)：
+REST 同一份 service 调用；CLI 等价命令在 [`scripts/release-cli.ts`](https://github.com/cdotlock/lunaverse-backend/blob/main/scripts/release-cli.ts)：
 
 | 操作 | 路由 | CLI 等价 |
 |---|---|---|
@@ -141,7 +141,7 @@ pnpm tsx scripts/sync-active-release.ts --all --dry-run
 
 ## IDE 端配套改动
 
-[[entities/moonshort-ide]] 侧在同期同步改成两阶段：
+[[entities/lunaverse-ide]] 侧在同期同步改成两阶段：
 - preview / publish 走 submit endpoint
 - "submitted — pending admin review" 文案替代 "published"
 - 语音设计从直接 PATCH 改成进 manifest `voiceProfiles[]`（per-character voice casting workbench + audition cache + bible voice anchors）
@@ -162,8 +162,8 @@ ALLOW_PRODUCTION_RELEASE_SERVICE_SMOKE=yes pnpm smoke:production-release-service
 
 ## 相关
 
-- [[entities/moonshort-backend]] — 实施载体
-- [[entities/moonshort-ide]] — submit 上游
+- [[entities/lunaverse-backend]] — 实施载体
+- [[entities/lunaverse-ide]] — submit 上游
 - [[concepts/supabase-backend-bootstrap]] — DB 落地的 Supabase fresh bootstrap 流程
 - [[concepts/villain-season-demo]] — 第一本走全两阶段流程的双语 demo
 - [[concepts/novel-dream-artifact]] — characterArcs rename 的上游 spec

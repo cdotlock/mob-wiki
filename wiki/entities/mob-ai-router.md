@@ -7,7 +7,7 @@ created: 2026-05-28
 updated: 2026-05-28
 ---
 
-Public-facing LLM router that fronts Claude, DeepSeek, GPT, Jina, and image / video providers behind a single OpenAI-compatible HTTP surface. All Moonshort services that need a foundation model talk to this router instead of provider-native APIs, so virtual keys, quota, billing, and provider failover are managed in one place. Canonical machine-readable integration guide is the upstream HTML page at <https://ai.mob-ai.cn/integration.html> (mirrored verbatim into [raw/2026-05-25-mob-ai-router-integration.md](../raw/2026-05-25-mob-ai-router-integration.md), upstream last-modified 2026-05-25).
+Public-facing LLM router that fronts Claude, DeepSeek, GPT, Jina, and image / video providers behind a single OpenAI-compatible HTTP surface. All Lunaverse services that need a foundation model talk to this router instead of provider-native APIs, so virtual keys, quota, billing, and provider failover are managed in one place. Canonical machine-readable integration guide is the upstream HTML page at <https://ai.mob-ai.cn/integration.html> (mirrored verbatim into [raw/2026-05-25-mob-ai-router-integration.md](../raw/2026-05-25-mob-ai-router-integration.md), upstream last-modified 2026-05-25).
 
 ## Endpoint Surface
 
@@ -65,16 +65,16 @@ The full canonical curl + JavaScript + Python snippet pack is in [raw/2026-05-25
 
 ## Who Uses It
 
-Already wired into several Moonshort services (`https://ai.mob-ai.cn/api/v1` or its older `/v1` alias):
+Already wired into several Lunaverse services (`https://ai.mob-ai.cn/api/v1` or its older `/v1` alias):
 
-- [[concepts/codex-runtime-and-verification-layers]] — `MOONSHORT_AGENT_BASE_URL=https://ai.mob-ai.cn/api/v1` for codex chat backend (provider `mob-ai`, models `deepseek-v4-flash`, `claude-sonnet-4-6`, etc.); L2 smoke test traverses this router end-to-end.
+- [[concepts/codex-runtime-and-verification-layers]] — `LUNAVERSE_AGENT_BASE_URL=https://ai.mob-ai.cn/api/v1` for codex chat backend (provider `mob-ai`, models `deepseek-v4-flash`, `claude-sonnet-4-6`, etc.); L2 smoke test traverses this router end-to-end.
 - [[concepts/dream-rec-dev-runbook]] — `MOB_AI_BASE_URL=https://ai.mob-ai.cn/v1` for dream-rec offline LLM workflows.
 - [[concepts/dream-rec-component-2-llm-tagger]] — C2 tagger calls this gateway for novel tagging; described as "OpenAI-compatible" against the same `mob-ai gateway`.
 - [[entities/assets-produce]] — Same gateway covers asset-pipeline LLM calls (prompt synthesis, etc.).
 
 ## Operational Notes
 
-- **Virtual key, not provider key** — the whole point of this router is centralised quota / billing / provider rotation. Treat `mob-` keys as cross-provider creds and store them in the standard secret slots (`MOB_AI_KEY`, `MOONSHORT_AGENT_API_KEY`, `MOB_AI_BASE_URL`, etc. — names differ per consumer).
+- **Virtual key, not provider key** — the whole point of this router is centralised quota / billing / provider rotation. Treat `mob-` keys as cross-provider creds and store them in the standard secret slots (`MOB_AI_KEY`, `LUNAVERSE_AGENT_API_KEY`, `MOB_AI_BASE_URL`, etc. — names differ per consumer).
 - **`/v1` vs `/api/v1`** — both forms appear in existing wiki references. Treat `https://ai.mob-ai.cn/api` as the canonical base per the integration page; the bare `/v1` form is a historical alias still served.
 - **Schema drift** — the upstream page lists `unsupported_fields` for the generations endpoints (`referenceImageUrls`, `refUrls`, `media`, `skipDownload`, `imageUrl`, `image_urls`, `video_urls`, `sourceVideoUrls`). Old client code carrying these fields will 400 — strip before sending.
 

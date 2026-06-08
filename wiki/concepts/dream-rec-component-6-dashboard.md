@@ -15,9 +15,9 @@ See [[concepts/dream-rec-integration-architecture]] for Component 0 wiring. Comp
 ## Decisions locked
 
 - **Stack:** Streamlit (Python-native, matplotlib/arviz for IRT info curves and reliability diagrams). Grafana/Superset rejected — they can't render Cronbach α, Fisher information curves, or calibration plots natively.
-- **Audience:** dream-rec team + moonshort PM/research. **Authors** do not see this dashboard — their feedback goes through a separate Author Workbench (backlog item).
+- **Audience:** dream-rec team + lunaverse PM/research. **Authors** do not see this dashboard — their feedback goes through a separate Author Workbench (backlog item).
 - **Separation from `/health`:** the FastAPI `/health` endpoint stays a machine-read liveness probe. Dashboard is a separate Streamlit process, reuses `/health` fields for its system-health panel only.
-- **Data source:** direct read on `dream_rec` schema + materialized views for heavy recomputed metrics + a daily cron-pulled `author_funnel_snapshot` from moonshort `/api/internal/dream-rec/funnel`. No external OLAP / warehouse — single PG instance is enough at P0/P1 scale.
+- **Data source:** direct read on `dream_rec` schema + materialized views for heavy recomputed metrics + a daily cron-pulled `author_funnel_snapshot` from lunaverse `/api/internal/dream-rec/funnel`. No external OLAP / warehouse — single PG instance is enough at P0/P1 scale.
 - **Refresh cadence:** Loop A daily MV (02:00), Loop B/C weekly MV (Monday 03:00), system-health real-time. `REFRESH MATERIALIZED VIEW CONCURRENTLY` to avoid lock contention.
 - **Deployment:** same container as dream-rec, binds 127.0.0.1:8767. Auth via independent `DASHBOARD_BASIC_AUTH_USER/PASS` (separate token rotation from `DREAM_REC_BEARER` so PMs can be granted temporary view access). Nginx reverse proxy or VPN allowlist.
 - **Alerts:** Loop A red lines + system-health → Slack `#dream-rec-alerts` webhook (5-min poll). Loop B/C → daily email digest only (low recency value, high noise risk).
@@ -47,15 +47,15 @@ Loop B explicitly does **not** auto-refit `M_genre` — observation only at P0; 
 
 | Metric | Status |
 |---|---|
-| C1 genre × axis-bin × completion heatmap | needs `dream_play_snapshot` from moonshort puller |
+| C1 genre × axis-bin × completion heatmap | needs `dream_play_snapshot` from lunaverse puller |
 | C2 author retention by engagement tier | deferred to P1 |
 | C3 cold-start ramp | deferred until Component 5 produces data |
 
 ## Required new tables (write owners explicit)
 
 - **`dream_rec.recommend_log`** — every `GET /recommend` response, ranked items + score breakdown. Owner: `app/routes/recommend.py` writes; Loop B reads.
-- **`dream_rec.dream_play_snapshot`** — pulled from moonshort daily by `workers/loop_c_puller.py`. Owner: dashboard cron writes; ranker reads via `DreamSignature.engagement_stats` aggregation.
-- **`dream_rec.author_funnel_snapshot`** — pulled from moonshort `/api/internal/dream-rec/funnel`. Owner: dashboard cron writes; Loop C reads.
+- **`dream_rec.dream_play_snapshot`** — pulled from lunaverse daily by `workers/loop_c_puller.py`. Owner: dashboard cron writes; ranker reads via `DreamSignature.engagement_stats` aggregation.
+- **`dream_rec.author_funnel_snapshot`** — pulled from lunaverse `/api/internal/dream-rec/funnel`. Owner: dashboard cron writes; Loop C reads.
 - **`dream_rec.item_info_snapshot`** — written by Component 1 TIRT when item params change; dashboard reads.
 
 ## Streamlit layout
@@ -77,14 +77,14 @@ streamlit_app/
 
 Each page has `schema_version` and time-window selectboxes — metrics never mix across schema versions.
 
-## Cross-repo contract (moonshort)
+## Cross-repo contract (lunaverse)
 
-moonshort exposes `/api/internal/dream-rec/funnel` (read-only). dream-rec dashboard cron pulls daily (03:00). Push from moonshort rejected — cadence must stay dream-rec-controlled.
+lunaverse exposes `/api/internal/dream-rec/funnel` (read-only). dream-rec dashboard cron pulls daily (03:00). Push from lunaverse rejected — cadence must stay dream-rec-controlled.
 
 ## What's deliberately NOT done at MVP
 
 - Loop B M_genre auto-refit (waits for P2 — feedback loop too weak before then)
-- Loop C author retention (waits for moonshort funnel API)
+- Loop C author retention (waits for lunaverse funnel API)
 - P/E grade alerts (no PagerDuty — team size doesn't justify it)
 - BI-style slice-and-dice (Superset would be better; dream-rec's needs are psychometric, not BI)
 - IRT info-curve auto-anomaly detection (relies on A1 as cheap fallback signal)

@@ -12,7 +12,7 @@ Assets-Produce is the agent-native asset production platform that turns prompt w
 
 | Field | Value |
 |---|---|
-| Local path | `/Users/Clock/moonshort/assets-produce` |
+| Local path | `/Users/Clock/lunaverse/assets-produce` |
 | Remote | `https://github.com/cdotlock/assets-produce.git` |
 | Branch | `main` |
 | Latest documented cleanup commit | `a932935 chore: clean reference folders and add local videoctl` |

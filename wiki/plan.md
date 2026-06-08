@@ -11,10 +11,10 @@ updated: 2026-05-14
 
 | 方向 | 状态 | 负责 |
 |------|------|------|
-| 产品形态转型 | 已完成 MSS 脚本定义和解释器 | Clock |
-| Dramatizer 重构 | 待启动——需要对接 MSS 输出格式 | August |
+| 产品形态转型 | 已完成 LS 脚本定义和解释器 | Clock |
+| Dramatizer 重构 | 待启动——需要对接 LS 输出格式 | August |
 | Agent-Forge 转型 | 已 fork 重写为 [[entities/assets-produce]] (cdotlock/assets-produce, opencode-based) — Phase 0-6 完成,Phase 7 prompt-workflow parity 进行中 (2026-05-12 push) | Clock |
-| 前端播放器 | 待启动——消费 MSS JSON 的 Unfolded 风格播放器 | 待定 |
+| 前端播放器 | 待启动——消费 LS JSON 的 Unfolded 风格播放器 | 待定 |
 | 视频生产（现行） | 继续——雨佳和何莲保障视频生产 | 雨佳/何莲 |
 | UIUX | 待启动——运营和 UIUX 先行 | 待定 |
 | 运营 | 急需推进——4 个月了还没 demo，需要尽快上线测试 | 待定 |
@@ -24,10 +24,10 @@ updated: 2026-05-14
 ### 已完成
 
 - [x] 视觉形态论证（v3 调研 → Unfolded 风格确定）
-- [x] MSS 脚本格式设计 v2.1（完整指令集、Remix 兼容、gates 路由）
-- [x] MSS 解释器 Go 二进制（lexer/parser/validator/fixer/resolver/emitter）
-- [x] MSS Agent Skill（给 Dramatizer/Remix LLM 的写作指南）
-- [x] No Rules E1-E4 转换为 MSS 格式验证
+- [x] LS 脚本格式设计 v2.1（完整指令集、Remix 兼容、gates 路由）
+- [x] LS 解释器 Go 二进制（lexer/parser/validator/fixer/resolver/emitter）
+- [x] LS Agent Skill（给 Dramatizer/Remix LLM 的写作指南）
+- [x] No Rules E1-E4 转换为 LS 格式验证
 
 ### 进行中
 
@@ -36,9 +36,9 @@ updated: 2026-05-14
 
 ### 待启动
 
-- [ ] Dramatizer Phase 3 重构：ludify 输出从 JSON 改为 MSS 格式
+- [ ] Dramatizer Phase 3 重构：ludify 输出从 JSON 改为 LS 格式
 - [ ] ~~Agent-Forge 素材管线重构~~ → 已转为 assets-produce 重写,见状态快照;LoRA → 表情 Inpainting → LivePortrait → 背景 → CG 这条管线规划现归属 [[entities/assets-produce]]
-- [ ] 前端 Unfolded 播放器：消费 MSS JSON，实现 5 种叙事容器 + 嵌入式小游戏
+- [ ] 前端 Unfolded 播放器：消费 LS JSON，实现 5 种叙事容器 + 嵌入式小游戏
 - [ ] Remix 功能加速：剧情 Remix + 聊天 Remix + 结局 Remix + 角色支线 Remix
 - [ ] premium choice 支持（`@choice` 加 premium 参数）
 
@@ -52,7 +52,7 @@ updated: 2026-05-14
 
 - [ ] REMIX 管线独立化：从游戏后端拆出，做成单独服务，自己 mock 游戏侧体验，游戏侧只拿数据和校验
 - [ ] 素材映射表自动化：Agent-Forge 生成素材后自动更新 mapping.json
-- [ ] MSS 编译集成到 CI：Dramatizer 产出 → MSS 编译 → JSON → 部署到 OSS
+- [ ] LS 编译集成到 CI：Dramatizer 产出 → LS 编译 → JSON → 部署到 OSS
 
 ### 工具 / 基建
 
@@ -78,7 +78,7 @@ updated: 2026-05-14
 |------|------|------|
 | 2026-04 | 视频 → Unfolded VN | 视频模型不及预期，玩家体感最重剧本效果 |
 | 2026-04 | 保留 D20 + 小游戏 | 游戏性保证，嵌入阅读流而非独立阶段 |
-| 2026-04 | MSS 统一脚本格式 | Dramatizer + Remix 统一输出，解耦脚本与素材 |
+| 2026-04 | LS 统一脚本格式 | Dramatizer + Remix 统一输出，解耦脚本与素材 |
 | 2026-04 | 素材预生成 + LoRA | 角色一致性生死线，预生成绕过实时生成的核心痛点 |
 | 2026-04 | 双 Feed（Classic + Remix） | 官方正剧和玩家二创调性互相伤害，分开放 |
 

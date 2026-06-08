@@ -1,6 +1,6 @@
 ---
 title: to-final.py _raw Cache Trap
-tags: [asset-pipeline, bug, n2m, moonshort-backend]
+tags: [asset-pipeline, bug, n2m, lunaverse-backend]
 date: 2026-05-10
 ---
 
@@ -19,7 +19,7 @@ remi, OSS-served webp still shows old broken remi (long bangs, gold choker).
 
 ## Root Cause
 
-`moonshort-backend/generate-upscale-matting/to-final.py:160-167`:
+`lunaverse-backend/generate-upscale-matting/to-final.py:160-167`:
 
 ```python
 for src in targets:                         # gen-upscale upscaled.png (NEW)
@@ -50,7 +50,7 @@ If timestamps differ, the trap is active for that sprite.
 Delete stale backups for affected sprites:
 
 ```bash
-ASSETS=moonscripts/<book-slug>/assets
+ASSETS=lunascripts/<book-slug>/assets
 while read base; do
   rm -f "$ASSETS/asset-img-chromakey/_raw/ep_sprites/${base}.png"
   rm -f "$ASSETS/asset-img-chromakey/ep_sprites/${base}.png"
@@ -65,8 +65,8 @@ For small batches (≤50 sprites), skip the 50-min full to-final.py rerun
 (cutout/hole_fill/spill/unspill all process all 1500+ sprites).
 
 ```bash
-cd /Users/august/MobAI/moonshort-backend
-ASSETS=moonscripts/<book-slug>/assets
+cd /Users/august/MobAI/lunaverse-backend
+ASSETS=lunascripts/<book-slug>/assets
 GU=$ASSETS/gen-upscale/ep_sprites
 RAW=$ASSETS/asset-img-chromakey/_raw/ep_sprites
 CK=$ASSETS/asset-img-chromakey/ep_sprites

@@ -6,13 +6,13 @@ created: 2026-06-06
 updated: 2026-06-06
 ---
 
-How [[entities/moonshort-backend]] reaches production on **Railway**, end to end: the
+How [[entities/lunaverse-backend]] reaches production on **Railway**, end to end: the
 service topology, the GitHub Actions deploy workflow, how authentication works (and the CLI
 regression that broke it), why in-CI Prisma migrations are skipped, and — most importantly —
 the **additive-only "schema superset" cutover** that lands a breaking schema change on a live
 DB with zero data loss. This page is the operational complement to
 [[concepts/supabase-backend-bootstrap]] (which owns the DB / migration-policy side). The
-canonical worked example is the 2026-06-06 MSS-realignment deploy.
+canonical worked example is the 2026-06-06 LS-realignment deploy.
 
 ## One sentence
 
@@ -111,7 +111,7 @@ then deploy with `skip_migrations=true` so the gated step is a no-op.
 
 ## Zero-data-loss cutover playbook
 
-This is the procedure that landed the breaking MSS realignment without dropping data, and the
+This is the procedure that landed the breaking LS realignment without dropping data, and the
 template for any future breaking schema change against the live prod DB.
 
 1. **Build the merged schema.** `node scripts/build-deploy-prisma-schema.cjs <out>` concatenates
@@ -160,10 +160,10 @@ heuristic voice). The shared R2 bucket does not save you. The fix is to copy cur
 export from dev, import on prod via `railway run`, upsert by natural key. Gate on
 `wrong=0 / no-row=0 / objectKey-collision=0`, not on `COLD=0`. See project rule "改已 seed 的剧本必重对 TTS".
 
-## 2026-06-06 worked example — MSS realignment cutover
+## 2026-06-06 worked example — LS realignment cutover
 
-Shipped at HEAD `6d378ea0`: the MSS realignment consumer cutover (see
-[[concepts/mss-spec-redesign-2026-06]] for the contract; the realignment deletes influence /
+Shipped at HEAD `6d378ea0`: the LS realignment consumer cutover (see
+[[concepts/ls-spec-redesign-2026-06]] for the contract; the realignment deletes influence /
 goto / label / CG sub-steps / 3-slot stage and `Session.resolvedInfluences`), plus four
 co-shipped features — Player Soul-Memory dark-launch (flags default off), TLWB listed as a
 2-player co-op, second-chorus "Sera" migrated to the new spec + TTS, and the
@@ -177,8 +177,8 @@ matching dev fixtures and 0 cold episodes; schema confirmed a superset; 105 user
 ## Related
 
 - [[concepts/supabase-backend-bootstrap]] — prod DB bootstrap + the "migration = incremental patch, no fresh-replay" policy this page builds on
-- [[concepts/mss-spec-redesign-2026-06]] — the MSS contract the realignment cutover carries
-- [[entities/moonshort-backend]] — the service this deploys
+- [[concepts/ls-spec-redesign-2026-06]] — the LS contract the realignment cutover carries
+- [[entities/lunaverse-backend]] — the service this deploys
 - [[concepts/production-pipeline-two-phase]] — how content (releases) is written to the DB this deploy seeds
 
 ## Sources

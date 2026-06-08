@@ -2,7 +2,7 @@
 title: codex 运行时（IDE 内） — auth 模型 + 验证层级
 created: 2026-05-21
 updated: 2026-05-22
-tags: [moonshort-ide, codex, agent-adapter, auth, verification, codex-shim]
+tags: [lunaverse-ide, codex, agent-adapter, auth, verification, codex-shim]
 status: draft
 ---
 
@@ -10,26 +10,26 @@ status: draft
 
 把 IDE 里 codex 怎么起、auth 怎么传、各层怎么验证写清楚。**避免再有人按"独立 codex CLI"的思路去搞 `codex login` / `~/.codex/auth.json`**——IDE 里 codex 完全不走那条路。
 
-> 关联：[[concepts/assetctl-skills-sync-and-staging]]（codex 读到的 SKILL.md 怎么来的）· [[concepts/moonshort-ide-ai-integration]]（IDE 整体 AI 集成架构，Tab 补全 + Moonshort Agent 两个表面）
+> 关联：[[concepts/assetctl-skills-sync-and-staging]]（codex 读到的 SKILL.md 怎么来的）· [[concepts/lunaverse-ide-ai-integration]]（IDE 整体 AI 集成架构，Tab 补全 + Lunaverse Agent 两个表面）
 
 ## 一句话
 
-IDE spawn 一个 **vendored codex 0.130 二进制**，在它前面起一个**本地 `codex-shim` HTTP 服务**当 OpenAI Responses API ↔ chat-completions 协议桥；通过环境变量 `MOONSHORT_AGENT_API_KEY` 注入 provider key；codex 连本地 shim，不连外网；CODEX_HOME 是**每次 run 现 stage 的 temp 目录**，跑完即清。
+IDE spawn 一个 **vendored codex 0.130 二进制**，在它前面起一个**本地 `codex-shim` HTTP 服务**当 OpenAI Responses API ↔ chat-completions 协议桥；通过环境变量 `LUNAVERSE_AGENT_API_KEY` 注入 provider key；codex 连本地 shim，不连外网；CODEX_HOME 是**每次 run 现 stage 的 temp 目录**，跑完即清。
 
 ## 反直觉的事
 
 | 直觉 | 真相 |
 |---|---|
-| codex 应该走 `codex login` / `~/.codex/auth.json` | ❌ IDE 完全绕过这套；auth 走 env var `MOONSHORT_AGENT_API_KEY` |
+| codex 应该走 `codex login` / `~/.codex/auth.json` | ❌ IDE 完全绕过这套；auth 走 env var `LUNAVERSE_AGENT_API_KEY` |
 | codex 0.130 应该直连 OpenAI / DeepSeek 等 provider | ❌ codex 连 **localhost shim**；shim 负责调 provider |
-| codex CODEX_HOME 应该是 `~/.codex/` | ❌ IDE 用 **run-private CODEX_HOME**：`/tmp/moonshort-codex-<runId>-XXXXXX/`，每次 run 起新的 |
+| codex CODEX_HOME 应该是 `~/.codex/` | ❌ IDE 用 **run-private CODEX_HOME**：`/tmp/lunaverse-codex-<runId>-XXXXXX/`，每次 run 起新的 |
 | 跑 `codex exec` 命令行就能验证 IDE 链路 | ❌ 那条路径走 OpenAI Responses API 公网，会要 OpenAI 凭据；IDE 实际链路用的 shim+DeepSeek，**两条路径不重合** |
 
 ## Auth 模型（`packages/agent-adapter/src/backends/codex.ts:11-66`）
 
 ```typescript
 // 文件: packages/agent-adapter/src/backends/codex.ts
-const CODEX_API_KEY_ENV = "MOONSHORT_AGENT_API_KEY";
+const CODEX_API_KEY_ENV = "LUNAVERSE_AGENT_API_KEY";
 
 function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env, [CODEX_API_KEY_ENV]: config.apiKey };
@@ -42,11 +42,11 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 
 `config.apiKey` 来自三层 fallback（最高优先 → 最低）：
 
-1. **host 注入的 `moonshort.agent.apiKey`** — VS Code settings 之类的 settings lookup
-2. **process env** — `MOONSHORT_AGENT_API_KEY` 已经在父进程环境里
+1. **host 注入的 `lunaverse.agent.apiKey`** — VS Code settings 之类的 settings lookup
+2. **process env** — `LUNAVERSE_AGENT_API_KEY` 已经在父进程环境里
 3. **workspace 根的 gitignored `.env`** — 仅本机配置，永不入仓（spec §7.4）
 
-> 详见 `packages/mss-workshop/src/agent-config.ts` 里的 `loadAgentConfig` 实现。
+> 详见 `packages/ls-workshop/src/agent-config.ts` 里的 `loadAgentConfig` 实现。
 
 ## codex-shim 的角色（`packages/agent-adapter/src/codex-shim.ts`）
 
@@ -85,14 +85,14 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 /opt/homebrew/lib/node_modules/cline/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex/codex
 ```
 
-`tools/verify-skill-discovery.mjs` 接受 `MOONSHORT_AGENT_CODEX_PATH=<path>` 覆盖，开发期可直接用这个跑离线 verify，不必先 build `.app`。
+`tools/verify-skill-discovery.mjs` 接受 `LUNAVERSE_AGENT_CODEX_PATH=<path>` 覆盖，开发期可直接用这个跑离线 verify，不必先 build `.app`。
 
 ## CODEX_HOME staging（spec §3.1 + §5.6）
 
 **run-private**：每次 codex run 现 stage 一个 temp 目录：
 
 ```
-/tmp/moonshort-codex-<runId>-XXXXXX/
+/tmp/lunaverse-codex-<runId>-XXXXXX/
 ├── skills/
 │   ├── <skill-1>/SKILL.md   ← Pass 1 cp local + Pass 2 Langfuse overlay
 │   ├── <skill-1>/references/...
@@ -101,7 +101,7 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 └── AGENTS.md  ← agent identity + 一行 "your skills are in skills/..."
 ```
 
-`packages/mss-workshop/src/codex-home.ts` 的 `stageCodexHome(agent, agentDir, sharedDir, runId, options)`：
+`packages/ls-workshop/src/codex-home.ts` 的 `stageCodexHome(agent, agentDir, sharedDir, runId, options)`：
 
 1. `mkdtemp` 一个 temp CODEX_HOME
 2. `stageSkills(agentDir, sharedDir, codexHome, options)`：
@@ -117,9 +117,9 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 | 层 | 跑什么 | 需要什么 | 验什么 |
 |---|---|---|---|
 | **L0 单测** | `pnpm test`（覆盖 `test/workshop-codex-home.test.mjs`、`test/workshop-cli.test.mjs`、`test/agent-adapter*.test.mjs`） | 无 | stageSkills / stageCodexHome / agent-adapter 函数级正确性；用 fake assetctl 二进制走 spawn 接口 |
-| **L1a 离线 skill discovery** | `MOONSHORT_AGENT_CODEX_PATH=<codex> node tools/verify-skill-discovery.mjs` | 真 codex 二进制 + 仓库 `agents/asset/` + `agents/_shared/`；**不需要 API key** | codex 0.130 真的扫 `$CODEX_HOME/skills/` + 把目录吐进 model-visible prompt input；新 skill folder drop-in 不改 `agent.json` 也立即被发现 |
+| **L1a 离线 skill discovery** | `LUNAVERSE_AGENT_CODEX_PATH=<codex> node tools/verify-skill-discovery.mjs` | 真 codex 二进制 + 仓库 `agents/asset/` + `agents/_shared/`；**不需要 API key** | codex 0.130 真的扫 `$CODEX_HOME/skills/` + 把目录吐进 model-visible prompt input；新 skill folder drop-in 不改 `agent.json` 也立即被发现 |
 | **L1b Langfuse overlay 字节落地** | 设 `LANGFUSE_HOST`/`PUBLIC_KEY`/`SECRET_KEY` 再跑 L1a；之后 diff `<staged>/skills/<name>/SKILL.md` vs `agents/<id>/skills/<name>/SKILL.md` | Langfuse staging 或 production 凭据 | overlay 真把字节换了（确认 assetctl spawn + Langfuse 拉取 + 写盘整条链） |
-| **L2a LLM-in-the-loop auth+transport** | `tools/verify-l2-smoke.mjs` — 跑两段：ChatBackend 直连 chat-completions + CodexBackend 经 codex-shim bridge | `MOONSHORT_AGENT_API_KEY` + `_BASE_URL` + `_MODEL` + `_CODEX_PATH`（可选） | 验 provider 接受 key+model、codex-shim Responses↔chat-completions 桥工作 |
+| **L2a LLM-in-the-loop auth+transport** | `tools/verify-l2-smoke.mjs` — 跑两段：ChatBackend 直连 chat-completions + CodexBackend 经 codex-shim bridge | `LUNAVERSE_AGENT_API_KEY` + `_BASE_URL` + `_MODEL` + `_CODEX_PATH`（可选） | 验 provider 接受 key+model、codex-shim Responses↔chat-completions 桥工作 |
 | **L2b LLM-in-the-loop agentic 任务** | `tools/verify-workshop-agent.mjs`（Workshop EXECUTE stage 端到端：executeInstruction → ChatBackend → extractJson → applyPromptMap） | 同 L2a 但 ChatBackend only（不需要 codex 二进制） | agent 真推理 → 返回 JSON prompt map → runner 解析并写回每个 asset 的 prompt + status |
 | **L2b-deeper codex 真 agentic** | `tools/verify-codex-host.mjs` — 同 L2b 但 backend 换成 CodexBackend，CODEX_HOME 用 `stageCodexHome` 真起，agents/asset 全部 15 个 skill 全部 stage 进去 | 同 L2a；codex 二进制必须存在；模型支持 thinking + non-thinking 双路径（claude-sonnet-4-6 ✅；deepseek-v4-flash 在 reasoning_content bridge 修了之后**也走得通**，但模型本身在结构化 JSON 输出上稳定性差，命中率较低） | codex 真跑 shell 工具 read SKILL.md、推理、回 JSON prompt map；端到端验证 host 端 staging + codex-shim 多 turn agentic 链路 |
 | **L2c codex shell → assetctl** | `tools/verify-codex-assetctl.mjs` — CodexBackend + 暴露 `agents/asset/cli/assetctl/bin/assetctl` 到 codex 子进程 PATH，让模型从 shell 工具调 `assetctl run cutout --input '{...,"dryRun":true}'` 然后报告 envelope.ok | 同 L2b-deeper；**额外** assetctl 二进制必须先 `cd vendor/assetctl && go build -o ../../agents/asset/cli/assetctl/bin/assetctl ./cmd/assetctl` 编译出来 | codex 0.130 的 workspace-write shell loop 真能把 vendored Go CLI 当 tool 用、读 stdout JSON envelope；断言 `tool.start name=shell` 至少出现一次 detail 含 `assetctl run`，且最终 assistant message 包含 `L2c VERIFIED ok=true tool=cutout` |
@@ -127,14 +127,14 @@ function codexEnv(config: AgentConfig): NodeJS.ProcessEnv {
 ### L0 跑法
 
 ```
-cd /Users/august/MobAI/moonshort-ide
+cd /Users/august/MobAI/lunaverse-ide
 pnpm test
 ```
 
 ### L1a 跑法（已验，2026-05-21）
 
 ```
-MOONSHORT_AGENT_CODEX_PATH=/opt/homebrew/lib/node_modules/cline/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex/codex \
+LUNAVERSE_AGENT_CODEX_PATH=/opt/homebrew/lib/node_modules/cline/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex/codex \
 node tools/verify-skill-discovery.mjs
 ```
 
@@ -156,7 +156,7 @@ Verification PASSED — the capability-folder model works end to end.
 export LANGFUSE_HOST=https://prompt.mobai-game.com
 export LANGFUSE_PUBLIC_KEY=pk-lf-...
 export LANGFUSE_SECRET_KEY=sk-lf-...
-MOONSHORT_AGENT_CODEX_PATH=<codex> node tools/verify-skill-discovery.mjs
+LUNAVERSE_AGENT_CODEX_PATH=<codex> node tools/verify-skill-discovery.mjs
 
 # 然后从输出里的 staged CODEX_HOME 路径 diff 至少一个 SKILL.md
 # vs agents/asset/skills/<name>/SKILL.md，确认字节被换
@@ -165,11 +165,11 @@ MOONSHORT_AGENT_CODEX_PATH=<codex> node tools/verify-skill-discovery.mjs
 ### L2a 跑法（已验，2026-05-21 — 团队实际用 mob-ai 而非 DeepSeek）
 
 ```
-export MOONSHORT_AGENT_API_KEY=<MOB_AI_API_KEY 的值>   # 在 assets-produce/.env 里
-export MOONSHORT_AGENT_BASE_URL=https://ai.mob-ai.cn/api/v1
-export MOONSHORT_AGENT_PROVIDER=mob-ai
-export MOONSHORT_AGENT_MODEL=deepseek-v4-flash       # 也可 deepseek-v4-pro / claude-sonnet-4-6 / gpt-5.5:free
-export MOONSHORT_AGENT_CODEX_PATH=<codex 二进制>      # 没 build .app 时填，可借 cline 同版本
+export LUNAVERSE_AGENT_API_KEY=<MOB_AI_API_KEY 的值>   # 在 assets-produce/.env 里
+export LUNAVERSE_AGENT_BASE_URL=https://ai.mob-ai.cn/api/v1
+export LUNAVERSE_AGENT_PROVIDER=mob-ai
+export LUNAVERSE_AGENT_MODEL=deepseek-v4-flash       # 也可 deepseek-v4-pro / claude-sonnet-4-6 / gpt-5.5:free
+export LUNAVERSE_AGENT_CODEX_PATH=<codex 二进制>      # 没 build .app 时填，可借 cline 同版本
 
 node tools/verify-l2-smoke.mjs
 ```
@@ -224,7 +224,7 @@ L2b smoke PASSED — EXECUTE stage produced usable per-asset prompts.
 
 ```
 # 同 L2a 的 env，但 model 选非 thinking 的（claude-sonnet-4-6 已验通）：
-export MOONSHORT_AGENT_MODEL=claude-sonnet-4-6
+export LUNAVERSE_AGENT_MODEL=claude-sonnet-4-6
 node tools/verify-codex-host.mjs
 ```
 
@@ -235,8 +235,8 @@ L2b deeper smoke — Workshop EXECUTE through CodexBackend + staged CODEX_HOME
 config: {"provider":"mob-ai","baseUrl":"https://ai.mob-ai.cn/api/v1","model":"claude-sonnet-4-6",...}
 runId: verify-54eca437
 
-[stage] CODEX_HOME = /var/folders/.../moonshort-codex-verify-54eca437-XXXX
-[stage] catalog (15): asset-prompt-generator, asset-renderer, asset-reviewer, cg-render-spec, character-portrait-spec, cover-spec, cutout-spec, ep-sprite-spec, matting-spec, music-spec, outfit-anchor-spec, scene-bg-spec, sfx-spec, shot-image-from-mss, upscale-spec
+[stage] CODEX_HOME = /var/folders/.../lunaverse-codex-verify-54eca437-XXXX
+[stage] catalog (15): asset-prompt-generator, asset-renderer, asset-reviewer, cg-render-spec, character-portrait-spec, cover-spec, cutout-spec, ep-sprite-spec, matting-spec, music-spec, outfit-anchor-spec, scene-bg-spec, sfx-spec, shot-image-from-ls, upscale-spec
 
 --- Workshop EXECUTE backgrounds segment → codex live ---
   session: agent-...-0
@@ -270,17 +270,17 @@ L2b deeper smoke PASSED — codex produced usable per-asset prompts through stag
 
 ```
 # 先编译 assetctl 到 canonical vendored path（agentToolPaths 会自动捡到）：
-cd /Users/august/MobAI/moonshort-ide/vendor/assetctl
+cd /Users/august/MobAI/lunaverse-ide/vendor/assetctl
 go build -o ../../agents/asset/cli/assetctl/bin/assetctl ./cmd/assetctl
 
 # 同 L2b-deeper 的 env（claude-sonnet-4-6 ✅）：
-export MOONSHORT_AGENT_API_KEY=<MOB_AI_API_KEY>
-export MOONSHORT_AGENT_BASE_URL=https://ai.mob-ai.cn/api/v1
-export MOONSHORT_AGENT_PROVIDER=mob-ai
-export MOONSHORT_AGENT_MODEL=claude-sonnet-4-6
-export MOONSHORT_AGENT_CODEX_PATH=<codex 二进制>
+export LUNAVERSE_AGENT_API_KEY=<MOB_AI_API_KEY>
+export LUNAVERSE_AGENT_BASE_URL=https://ai.mob-ai.cn/api/v1
+export LUNAVERSE_AGENT_PROVIDER=mob-ai
+export LUNAVERSE_AGENT_MODEL=claude-sonnet-4-6
+export LUNAVERSE_AGENT_CODEX_PATH=<codex 二进制>
 
-cd /Users/august/MobAI/moonshort-ide
+cd /Users/august/MobAI/lunaverse-ide
 node tools/verify-codex-assetctl.mjs
 ```
 
@@ -290,12 +290,12 @@ node tools/verify-codex-assetctl.mjs
 L2c smoke — codex → assetctl shell-out via CodexBackend + staged CODEX_HOME
 config:      {"provider":"mob-ai","baseUrl":"https://ai.mob-ai.cn/api/v1","model":"claude-sonnet-4-6","apiKey":"<redacted:…dd2f>","codexPath":"..."}
 codexPath:   /opt/homebrew/lib/node_modules/cline/.../codex/codex
-assetctl:    /Users/august/MobAI/moonshort-ide/agents/asset/cli/assetctl/bin/assetctl
+assetctl:    /Users/august/MobAI/lunaverse-ide/agents/asset/cli/assetctl/bin/assetctl
 runId:       verify-l2c-f56795a2
 
-[stage] CODEX_HOME = /var/folders/.../moonshort-codex-verify-l2c-f56795a2-XXXX
+[stage] CODEX_HOME = /var/folders/.../lunaverse-codex-verify-l2c-f56795a2-XXXX
 [stage] catalog (15): asset-prompt-generator, asset-renderer, asset-reviewer, ...
-[stage] cwd  = /var/folders/.../moonshort-l2c-cwd-XXXX
+[stage] cwd  = /var/folders/.../lunaverse-l2c-cwd-XXXX
 
 --- codex EXECUTE — single assetctl shell-out ---
   session: agent-mpexc0oh-0
@@ -326,9 +326,9 @@ L2c 验到 L2b-deeper 不验的：
 
 ## 老 RESUME 笔记的坑
 
-历史 RESUME-next-phase.md 里有一行"**codex 端到端实跑验证仍卡在 `~/.codex/auth.json` 不存在**"——**这是误判**。`codex exec` 在终端直接跑会走 OpenAI 公网 + 需要 OpenAI 凭据；那条路径 IDE 完全不用。正确的 L2 入口是 `tools/verify-l2-smoke.mjs`（L2a auth+transport）或 `tools/verify-workshop-agent.mjs`（L2b workshop EXECUTE stage）或 IDE UI，需要的是 `MOONSHORT_AGENT_API_KEY`（team 实际配 mob-ai 的 key），不是 OpenAI key。
+历史 RESUME-next-phase.md 里有一行"**codex 端到端实跑验证仍卡在 `~/.codex/auth.json` 不存在**"——**这是误判**。`codex exec` 在终端直接跑会走 OpenAI 公网 + 需要 OpenAI 凭据；那条路径 IDE 完全不用。正确的 L2 入口是 `tools/verify-l2-smoke.mjs`（L2a auth+transport）或 `tools/verify-workshop-agent.mjs`（L2b workshop EXECUTE stage）或 IDE UI，需要的是 `LUNAVERSE_AGENT_API_KEY`（team 实际配 mob-ai 的 key），不是 OpenAI key。
 
-2026-05-21 已在 `~/.config/superpowers/worktrees/moonshort-ide/RESUME-next-phase.md` 第 494 行修正。
+2026-05-21 已在 `~/.config/superpowers/worktrees/lunaverse-ide/RESUME-next-phase.md` 第 494 行修正。
 
 ## 代码参考表
 
@@ -336,9 +336,9 @@ L2c 验到 L2b-deeper 不验的：
 |---|---|---|
 | codex spawn / env / args | `packages/agent-adapter/src/backends/codex.ts` | `CodexBackend`, `codexCommand`, `codexEnv`, `codexArgs`, `CODEX_API_KEY_ENV` |
 | codex-shim HTTP bridge | `packages/agent-adapter/src/codex-shim.ts` | `startCodexShim`, `handleRequest`, `toChatRequest`, `inputItemToMessages`, `extractReasoningText`, `mergeContiguousAssistantTurn`, `emitCompletion` |
-| Agent config 三层 fallback | `packages/mss-workshop/src/agent-config.ts` | `loadAgentConfig`, `bundledCodexPath`, `parseDotEnv` |
-| CODEX_HOME staging | `packages/mss-workshop/src/codex-home.ts` | `stageCodexHome`, `stageSkills`, `discoverSkills`, `agentsMd` |
-| assetctl overlay spawn + TTL 缓存 | `packages/mss-workshop/src/assetctl-bridge.ts` | `loadSkillsViaAssetctl`, `clearAssetctlLoadCache` |
+| Agent config 三层 fallback | `packages/ls-workshop/src/agent-config.ts` | `loadAgentConfig`, `bundledCodexPath`, `parseDotEnv` |
+| CODEX_HOME staging | `packages/ls-workshop/src/codex-home.ts` | `stageCodexHome`, `stageSkills`, `discoverSkills`, `agentsMd` |
+| assetctl overlay spawn + TTL 缓存 | `packages/ls-workshop/src/assetctl-bridge.ts` | `loadSkillsViaAssetctl`, `clearAssetctlLoadCache` |
 | Vendored codex 打包 | `fork/build.mjs` | `stageVendoredCodex`, `CODEX_TRIPLES` |
 | L0 单测 | `test/workshop-codex-home.test.mjs`、`test/workshop-cli.test.mjs`、`test/agent-adapter*.test.mjs` | `stageSkills` / `stageCodexHome` / `CodexBackend` / `loadAgentConfig` |
 | L1a 离线 verify | `tools/verify-skill-discovery.mjs` | `resolveCodex`, `promptInput`, `expectSurfaced` |
@@ -358,14 +358,14 @@ L2c 验到 L2b-deeper 不验的：
 - ✅ **L2b-deeper codex 真 agentic 链路** — 2026-05-22 `tools/verify-codex-host.mjs` 跑通（mob-ai / **claude-sonnet-4-6** / cline-bundled codex 0.130）；codex 真跑 shell tool 读 SKILL.md、多 turn 推理、回 JSON prompt map；`stageCodexHome` 真起 run-private CODEX_HOME，15 个 asset skill 全 stage 进去
 - ✅ **L2c codex shell-out 到 assetctl** — 2026-05-22 `tools/verify-codex-assetctl.mjs` 首跑通过（mob-ai / claude-sonnet-4-6 / cline-bundled codex 0.130）；codex 0.130 通过 `/bin/zsh -lc "..."` shell tool 真调 vendored `assetctl run cutout --dryRun`，单 turn 完成，envelope `{"ok":true,...}` 被消费，final assistant 报 `L2c VERIFIED ok=true tool=cutout`；`AgentConfig.toolPaths` PATH 前置生效（agentToolPaths 实际生产链路同形）；commit `1d52a35` (script) + `6cf1dde`/`6f72424` (wiki) 已落
 - ✅ **codex-shim reasoning_content 桥** — 2026-05-22 commit `ebc9147` + `70efdd0` 修了 thinking-mode 多 turn agentic 的 `reasoning_content` 回传 bug。10 个新单测 + 双 model 端到端验过；L2c + deepseek-v4-flash 多 turn shell call 完整跑过（修前 100% HTTP 400，修后 ok）
-- ⏸️ L2c 之后：真写 shadow workspace + diff mss 链路 — 仍需 IDE Workshop UI 跑真业务（未启动）
+- ⏸️ L2c 之后：真写 shadow workspace + diff ls 链路 — 仍需 IDE Workshop UI 跑真业务（未启动）
 
 ## 后续
 
 - ~~修 3 个 stale verify 脚本~~ **2026-05-21 做完**：`verify-shadow-codex.mjs` 和 `verify-agent.mjs` 删除（shadow workspace 已删 / PONG 部分被 verify-l2-smoke 取代）；`verify-workshop-agent.mjs` 重写到 `executeInstruction` + `applyPromptMap` 并跑通 L2b。同时修了 `extractJson` 对 trailing comma 的容错（fix `037a2db`）
-- 把 L1b 加进 `verify-skill-discovery.mjs`：可选 env `MOONSHORT_VERIFY_LANGFUSE=1` 时自动 diff overlay vs source 字节
+- 把 L1b 加进 `verify-skill-discovery.mjs`：可选 env `LUNAVERSE_VERIFY_LANGFUSE=1` 时自动 diff overlay vs source 字节
 - 把 L2a 改装成 CI smoke：用一个最小 stub provider 或 record/replay fixture，避开真 LLM 调用费用（可选）
 - 把 codex 二进制路径默认值从 hardcoded `/Users/Clock/...` 改成相对仓库 path 探测（`tools/verify-skill-discovery.mjs:34`）—— `verify-l2-smoke.mjs` 已经按 vendored 路径探测了，可以照抄
 - ~~**codex-shim 修 reasoning_content 桥**~~ — **2026-05-22 做完**：commit `ebc9147` fix + `70efdd0` chore。两边都漏（request 侧 inputItemToMessages 把 reasoning 丢；response 侧 callChatCompletions 不抽 + emitCompletion 不发 reasoning output item），加合并算法把同 turn 的 reasoning + message + function_call 三件事合成一条 chat-completions assistant message。L2c + deepseek-v4-flash 多 turn shell call 端到端通了
 - ~~L2b-deeper 再深一层：codex 真 shell 调 `assetctl run cutout ...`~~ — **L2c 起点**：`tools/verify-codex-assetctl.mjs` 已落（`feat(tools): add verify-codex-assetctl.mjs for L2c smoke`，commit `1d52a35`）。脚本断言 `tool.start name=shell` 至少一次出现 `assetctl run`，并在 final assistant message 里找 `L2c VERIFIED ok=true tool=cutout`。下次拿到 provider env 直接 `node tools/verify-codex-assetctl.mjs` 即可
-- L2c 之上：真写 shadow workspace + 真 diff mss 这条链路依然没动，要靠 IDE Workshop UI 跑真业务或别的更上层 smoke 来覆盖
+- L2c 之上：真写 shadow workspace + 真 diff ls 这条链路依然没动，要靠 IDE Workshop UI 跑真业务或别的更上层 smoke 来覆盖

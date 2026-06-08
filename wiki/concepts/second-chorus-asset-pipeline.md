@@ -9,15 +9,15 @@ updated: 2026-06-01
 端到端生成全部立绘/背景/音效 → 超分抠图 → 传阿里云 OSS → 产出 `mapping.json`
 （素材名→OSS URL）。可在本机或 **Claude Code 云端 Routine** 跑。
 
-代码在 `cdotlock/moonshort-ide` 仓库 `tools/second-chorus-pipeline/`，分支
+代码在 `cdotlock/lunaverse-ide` 仓库 `tools/second-chorus-pipeline/`，分支
 `feat/assetctl-foundation`。后续换别的小说复用这套，主要换"输入源"，代码几乎不动。
 
 ## 全局数据流
 
 ```
 小说原文
- └─【上游 authoring（dramatizer-mss，AI agent 生成，不在本流水线）】
-      02 角色 bible（人设+服装） / 03 剧情结构 / 05 分集 MSS 脚本
+ └─【上游 authoring（dramatizer-ls，AI agent 生成，不在本流水线）】
+      02 角色 bible（人设+服装） / 03 剧情结构 / 05 分集 LS 脚本
       06 资产清单（从脚本抽取每个角色每表情一行 + 背景 + 音乐 + 音效）
         ├ 02-ep-character-sprites/ep-character-sprites.review.csv
         ├ 01-series-characters/series-character-prompts.md（角色 appearance）
@@ -29,7 +29,7 @@ updated: 2026-06-01
       render_all.py   分阶段渲染（series→anchors→sprites→bg→sfx）
       finalize.py     收尾 → mapping.json（素材名→OSS URL）+ MORNING_SUMMARY.txt
  └─ mapping.json + 所有素材在 OSS
- └─【再下游，本轮未做】mss compile（脚本+mapping→episode JSON）→ 提交后端 → admin 上线
+ └─【再下游，本轮未做】ls compile（脚本+mapping→episode JSON）→ 提交后端 → admin 上线
 ```
 
 ## 五个渲染阶段（render_all.py，严格按依赖顺序）
@@ -56,18 +56,18 @@ updated: 2026-06-01
    dump 的快照，打包进 repo，云端不连内网。换画风改这个文件 / 重 dump。Webtoon 家族 =
    `Webtoon_01` / `Webtoon_01-outfits` / `Webtoon_01-edit`；还有 Arcane / Kyoto_Animation / YA_Impasto。
 3. **密钥全 env**：mob-ai 出图 / OSS / Modal(FC) 超分抠图 / ElevenLabs / Wavespeed —— 本机读
-   `moonshort-backend/.env`+`moonshort-ide/.env`，云端读 Routine 环境变量。脚本自动把
+   `lunaverse-backend/.env`+`lunaverse-ide/.env`，云端读 Routine 环境变量。脚本自动把
    `MOB_AI_API_KEY` 映射成 assetctl 要的 `MOB_AI_KEY`。
 
 ## normalize.py（04 实体名归一化）
 
-把"MSS 脚本 ↔ 06 清单 ↔ mapping"三者实体名对齐。**检测全机械、零 LLM，判定权在人**。
+把"LS 脚本 ↔ 06 清单 ↔ mapping"三者实体名对齐。**检测全机械、零 LLM，判定权在人**。
 
 - `audit --scripts <脚本目录> --source <06目录>`：抽脚本所有实体引用（角色 look / @bg / @sfx /
   &music）+ 机械检测别名候选（大小写/下划线/前后缀包含/编辑距离1）+ 查"脚本引用 vs 06 清单"对齐缺口。
 - `check --scripts --source`：对齐闸 —— 脚本每个引用必须在清单里有，否则非零退出（发布前/CI 闸）。
 - `apply --scripts --alias-map <json> [--write]`：按人确认的 `alias_map.json`（别名→正名）
-  **改写 MSS 脚本**用正名（即"标准名称替换回 mss"），默认 dry-run，`--write` 才改且备份 .bak。
+  **改写 LS 脚本**用正名（即"标准名称替换回 ls"），默认 dry-run，`--write` 才改且备份 .bak。
 
 注意：audit 的"前后缀包含"会把真·变体（`practice_room` vs `practice_room_a`、走廊白天/凌晨）
 也列为候选 —— 这是预期噪音，人判为"不合并"即可，工具绝不自动合并。
@@ -78,7 +78,7 @@ updated: 2026-06-01
 > 监控/拿结果走 git（云端把 state/mapping commit 回分支，`git fetch` 即可看进度）或
 > `RemoteTrigger` API。详见 repo 内 `ROUTINE_SETUP.md`。
 
-- **Repo**：`cdotlock/moonshort-ide`；prompt 里第一句 `git checkout feat/assetctl-foundation`
+- **Repo**：`cdotlock/lunaverse-ide`；prompt 里第一句 `git checkout feat/assetctl-foundation`
   （默认 clone main，但 assetctl 的 `process-cutout` 只在 feat 分支）。
 - **Setup script**：只留 `#!/bin/bash` + `echo ok`。**不能在 setup 里跑 git/build** —— setup 在
   repo clone **之前**执行，git 操作会 `fatal: not a git repository` exit 128。build assetctl 交给
@@ -105,7 +105,7 @@ updated: 2026-06-01
 
 ## 换新小说怎么复用
 
-1. 新小说重跑上游 02→06 authoring（dramatizer-mss），产出该剧 06 资产清单。
+1. 新小说重跑上游 02→06 authoring（dramatizer-ls），产出该剧 06 资产清单。
 2. 把新剧 `06-asset-prompt-generator/` 放进 `source/`（或改 `SC_SOURCE_DIR`）。
 3. `normalize.py audit` 看命名漂移 + 对齐缺口；有真别名就填 `alias_map.json` → `apply --write`。
 4. 改 `build_tasks.py` 的 `SLUG`（OSS 路径前缀）；若角色清单完整删掉 `cha` 兜底。

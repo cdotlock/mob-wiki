@@ -1,23 +1,23 @@
 ---
-title: MSS Spec Redesign (2026-06-04)
-tags: [mss, redesign, spec-change, decision-record, breaking-change]
+title: LS Spec Redesign (2026-06-04)
+tags: [ls, redesign, spec-change, decision-record, breaking-change]
 sources:
-  - /Users/Clock/moonshort/moonshort-script/MSS-SPEC.md
-  - /Users/Clock/moonshort/moonshort-script/docs/JSON-OUTPUT.md
-  - /Users/Clock/moonshort/moonshort-script/docs/ENGINE-INTEGRATION.md
+  - /Users/Clock/lunaverse/lunascripts/LS-SPEC.md
+  - /Users/Clock/lunaverse/lunascripts/docs/JSON-OUTPUT.md
+  - /Users/Clock/lunaverse/lunascripts/docs/ENGINE-INTEGRATION.md
 created: 2026-06-04
 ---
 
-# MSS Spec Redesign (2026-06-04)
+# LS Spec Redesign (2026-06-04)
 
-一次性大幅简化 MSS 源语言 + JSON 输出形态。Go 编译器、所有测试、testdata、skills 已全量对齐。落地 commit 5 个，pushed to `cdotlock/moonshort-script@main`：
+一次性大幅简化 LS 源语言 + JSON 输出形态。Go 编译器、所有测试、testdata、skills 已全量对齐。落地 commit 5 个，pushed to `cdotlock/lunascripts@main`：
 
 ```
-35a6721 Sync skills + reference docs with new MSS spec
-155dff8 Regenerate testdata for new MSS spec
-321cb9e Refactor Go compiler for new MSS spec
-95b7ff3 Fix 'assests' typo in mss decompile output filename
-aeaacb1 Rewrite MSS spec: unify gate/ending, operand AST, MAX/MIN aggregate
+35a6721 Sync skills + reference docs with new LS spec
+155dff8 Regenerate testdata for new LS spec
+321cb9e Refactor Go compiler for new LS spec
+95b7ff3 Fix 'assests' typo in lsc decompile output filename
+aeaacb1 Rewrite LS spec: unify gate/ending, operand AST, MAX/MIN aggregate
 ```
 
 ## 为什么 redesign
@@ -171,10 +171,10 @@ Gate routing 现在只读 signal mark / signal int / affection / choice 状态�
 
 | 仓库 / 文件 | 改动方向 |
 |---|---|
-| `moonshort-backend/engine/StepPlayer.ts` | 删除旧 step type case；新增 bubble/music/music_stop/sfx case；char_show 实现隐式 hide；从 gamestate.MC 派生位置；cg_show 视为 leaf；pause 不读 clicks；comparison.right 用 operand evaluator；删 influence |
-| `moonshort-backend/app/core/episode-overlay/apply-overlays.ts`（~1000 行，30+ gate 引用）| `GateRoute.Target` 字段没了，改为 `Leaf` interface（next 或 end）；遍历每条 route 时检查 leaf kind |
-| `moonshort-backend/app/services/save-action-service.ts` | `resolveGate` 内部要处理 end leaf 终结 episode 的逻辑 |
-| Dramatizer / Remix Executor / Dream 提示词 | 改成新语法；butterfly 角色重述；引用 root `MSS-SPEC.md` |
+| `lunaverse-backend/engine/StepPlayer.ts` | 删除旧 step type case；新增 bubble/music/music_stop/sfx case；char_show 实现隐式 hide；从 gamestate.MC 派生位置；cg_show 视为 leaf；pause 不读 clicks；comparison.right 用 operand evaluator；删 influence |
+| `lunaverse-backend/app/core/episode-overlay/apply-overlays.ts`（~1000 行，30+ gate 引用）| `GateRoute.Target` 字段没了，改为 `Leaf` interface（next 或 end）；遍历每条 route 时检查 leaf kind |
+| `lunaverse-backend/app/services/save-action-service.ts` | `resolveGate` 内部要处理 end leaf 终结 episode 的逻辑 |
+| Dramatizer / Remix Executor / Dream 提示词 | 改成新语法；butterfly 角色重述；引用 root `LS-SPEC.md` |
 | `api_server.py` | 二进制接口未变；若有引用 `assests_mapping.json` 旧名要改为 `assets_mapping.json`（CLI 输出文件名已修） |
 | agent-forge（CG 渲染管线）| CG 现在只有 `content` 字段，没有 duration/body；camera/timing 全由 content 文本驱动 |
 | 任何依赖 `Episode.ending` 字段的代码 | 仍然存在，但只在 Scheme-B 单 leaf 形态下被填，其他形态需要遍历 gate |
@@ -191,16 +191,16 @@ Gate routing 现在只读 signal mark / signal int / affection / choice 状态�
 ## 验证脚本
 
 ```bash
-cd ~/moonshort/moonshort-script
-go build -o bin/mss ./cmd/mss
+cd ~/lunaverse/lunascripts
+go build -o bin/lscc ./cmd/lscc
 go test ./... -count=1          # 全过（7 个 package）
 
 # round-trip 检验
-./bin/mss compile testdata/feature_parade/stress.md \
+./bin/lscc compile testdata/feature_parade/stress.md \
   --assets testdata/feature_parade/mapping.json \
   -o /tmp/a.json
-./bin/mss decompile /tmp/a.json -o /tmp/decomp/
-./bin/mss compile /tmp/decomp/mss.md \
+./bin/lscc decompile /tmp/a.json -o /tmp/decomp/
+./bin/lscc compile /tmp/decomp/ls.md \
   --assets /tmp/decomp/assets_mapping.json \
   -o /tmp/b.json
 diff /tmp/a.json /tmp/b.json     # identical
@@ -208,18 +208,18 @@ diff /tmp/a.json /tmp/b.json     # identical
 
 ## 权威文档
 
-- `MSS-SPEC.md` — 源语言完整规范
+- `LS-SPEC.md` — 源语言完整规范
 - `docs/JSON-OUTPUT.md` — JSON 结构 + step 类型表
 - `docs/ENGINE-INTEGRATION.md` — 引擎集成伪代码
-- `skills/mss-scriptwriting/SKILL.md` — 写作 skill（喂 Dramatizer / Remix）
+- `skills/ls-scriptwriting/SKILL.md` — 写作 skill（喂 Dramatizer / Remix）
 - `testdata/feature_parade/README.md` — 测试矩阵 [T##]
 
-`skills/mss-scriptwriting/references/MSS-SPEC.md` 现在是 root MSS-SPEC.md 的 verbatim mirror —— 改 root 即可，mirror 同步。
+`skills/ls-scriptwriting/references/LS-SPEC.md` 现在是 root LS-SPEC.md 的 verbatim mirror —— 改 root 即可，mirror 同步。
 
 ## 相关页面
 
-- [[concepts/mss-format]] — 当前规范（本次 redesign 后已重写）
-- [[entities/moonshort-script]] — Go 解释器实体
+- [[concepts/ls-format]] — 当前规范（本次 redesign 后已重写）
+- [[entities/lunascripts]] — Go 解释器实体
 - [[concepts/stable-step-id]] — step ID 寻址（未变）
 - [[concepts/cg-pipeline]] — CG 三层管线（CG 已改 leaf；需要确认 cg_collector 是否解析新形态）
 - [[concepts/signal-int-backend]] — signal int 后端（未变）

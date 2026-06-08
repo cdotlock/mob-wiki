@@ -8,7 +8,7 @@ status: shipped
 
 # dream-rec Component 5 — Cold-start questionnaire
 
-5-item forced-choice questionnaire shown during moonshort onboarding. Generates an informative `(μ₀, Σ₀)` prior on the new user's θ via the same Thurstonian likelihood [[concepts/dream-rec-component-1-tirt-estimator]] uses for live `ChoiceEvent` updates, then writes it as the seed `UserGlobalTheta` row.
+5-item forced-choice questionnaire shown during lunaverse onboarding. Generates an informative `(μ₀, Σ₀)` prior on the new user's θ via the same Thurstonian likelihood [[concepts/dream-rec-component-1-tirt-estimator]] uses for live `ChoiceEvent` updates, then writes it as the seed `UserGlobalTheta` row.
 
 See [[concepts/dream-rec-integration-architecture]] for Component 0 wiring.
 
@@ -62,7 +62,7 @@ POST /cold-start/submit
 → 409 if cold_start_done already true
 ```
 
-Sync (not fire-and-forget) — moonshort onboarding completion page waits for the prior to be written.
+Sync (not fire-and-forget) — lunaverse onboarding completion page waits for the prior to be written.
 
 ## P0 question set (5 items, hand-curated)
 
@@ -85,7 +85,7 @@ Item 6 (game agency) reserved as the R7 rotation pool starter.
 | Network retry of `/cold-start/submit` | `UNIQUE(user_id, item_id)` blocks dup; if `cold_start_done=true`, 409 + current prior |
 | `selected_option_id` not in `options` | 400 + `invalid_option_id`; no row written |
 | Laplace numerical instability | Ridge `H + 1e-3·I` retry; warning; prior still written |
-| `schema_version` mismatch on submit | 400; moonshort restarts wizard with active schema |
+| `schema_version` mismatch on submit | 400; lunaverse restarts wizard with active schema |
 
 ## Loop A / R7 hooks
 
@@ -96,7 +96,7 @@ Item 6 (game agency) reserved as the R7 rotation pool starter.
 
 - Adaptive item selection (CAT): N=5 is small enough that fixed order is fine.
 - `cold_start_done=false` rows with partial answers: skipped path uses absence-of-row, not row + flag.
-- Locale / i18n: handled in moonshort UI.
+- Locale / i18n: handled in lunaverse UI.
 - User migration on schema upgrade: covered in Loop C / Component 8 backlog.
 
 ## Cross-links

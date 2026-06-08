@@ -1,19 +1,19 @@
 ---
 title: dream-rec integration architecture (Component 0)
 updated: 2026-05-24
-tags: [dream-rec, recommendation, moonshort-backend, architecture, component-0, monorepo]
+tags: [dream-rec, recommendation, lunaverse-backend, architecture, component-0, monorepo]
 status: shipped
 ---
 
 # dream-rec integration architecture (Component 0)
 
-Independent Python FastAPI recommendation service that consumes choice events from `moonshort-backend` and returns ranked Dream sidequests for a (user, novel) pair. Built **alongside** the existing producer-side [[concepts/dream-trigger-v2-mechanical]] — they do not overlap: trigger v2 decides *when* a dream is triggered (1536-d UserNovelProfile.vector, deterministic); dream-rec decides *which* dream to recommend (5+1-axis Bayesian θ, personalized).
+Independent Python FastAPI recommendation service that consumes choice events from `lunaverse-backend` and returns ranked Dream sidequests for a (user, novel) pair. Built **alongside** the existing producer-side [[concepts/dream-trigger-v2-mechanical]] — they do not overlap: trigger v2 decides *when* a dream is triggered (1536-d UserNovelProfile.vector, deterministic); dream-rec decides *which* dream to recommend (5+1-axis Bayesian θ, personalized).
 
 ## Role
 
-- **Producer service:** `moonshort-backend` (Next.js, port 3000) — writes choice events, owns the player-facing API.
+- **Producer service:** `lunaverse-backend` (Next.js, port 3000) — writes choice events, owns the player-facing API.
 - **Consumer service:** `dream-rec` (FastAPI, port 8766) — Python, separate process, separate Postgres schema (`dream_rec`), same database instance.
-- **Communication:** HTTP only. dream-rec **never reads or writes** any `moonshort` table directly; cross-service data goes through `BackendClient.get_user_novel_profile / get_episode_source / get_dream` against `/api/internal/*` endpoints with bearer auth.
+- **Communication:** HTTP only. dream-rec **never reads or writes** any `lunaverse` table directly; cross-service data goes through `BackendClient.get_user_novel_profile / get_episode_source / get_dream` against `/api/internal/*` endpoints with bearer auth.
 - **Coexistence with trigger v2:** trigger v2 stays unchanged. dream-rec runs in parallel; recommend results are surfaced to the player after trigger v2 elects to trigger a dream.
 
 ## Theoretical base
@@ -25,13 +25,13 @@ Independent Python FastAPI recommendation service that consumes choice events fr
 - **Component 3:** [[concepts/dream-rec-component-3-genre-projection]] — shipped 2026-05-24. Hybrid (manual seed + PCA refinement) `M_g` matrices with shadow-swap versioning and cold-start identity-on-5-core fallback.
 - **Component 4:** [[concepts/dream-rec-component-4-dream-ranker]] — shipped 2026-05-24. `axis_match × engagement × freshness` ranker with continuous sharpness blending into popularity.
 - **Component 5:** [[concepts/dream-rec-component-5-cold-start]] — shipped 2026-05-24. 5-item forced-choice onboarding questionnaire feeding informative `(μ₀, Σ₀)` via the same TIRT likelihood.
-- **Component 6:** [[concepts/dream-rec-component-6-dashboard]] — deferred. Streamlit dashboard for the three calibration loops A/C/B; design locked, awaits `recommend_log` + moonshort funnel API.
+- **Component 6:** [[concepts/dream-rec-component-6-dashboard]] — deferred. Streamlit dashboard for the three calibration loops A/C/B; design locked, awaits `recommend_log` + lunaverse funnel API.
 
-Component 0 (this page) wires the seams so the sub-components can land without touching transport, schema, or moonshort-backend.
+Component 0 (this page) wires the seams so the sub-components can land without touching transport, schema, or lunaverse-backend.
 
 ## Database schema (`dream_rec`)
 
-Same Postgres instance as moonshort (local: `noval_demo` DB); logical isolation via dedicated schema.
+Same Postgres instance as lunaverse (local: `noval_demo` DB); logical isolation via dedicated schema.
 
 Tables (DDL in `alembic/versions/0001_initial_schema.py`):
 
@@ -58,7 +58,7 @@ All routes except `/health` require `Authorization: Bearer ${DREAM_REC_BEARER}`.
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/events/choice` | moonshort → dream-rec, fire-and-forget choice event (idempotent via `idempotency_key`) |
+| POST | `/events/choice` | lunaverse → dream-rec, fire-and-forget choice event (idempotent via `idempotency_key`) |
 | POST | `/tag/novel` | enqueue LLM tagging of a novel's choices (background task) |
 | POST | `/tag/dream` | enqueue LLM signature inference for a Dream (background task) |
 | GET | `/recommend` | ranked Dream list; honors `content_rating_max`, `progress_at`, `required_flags`, `exclude_dream_ids`, `fallback_on_low_sharpness` |
@@ -79,21 +79,21 @@ All routes except `/health` require `Authorization: Bearer ${DREAM_REC_BEARER}`.
 
 `/events/choice` writes a `choice_event` row inside the request, then calls `process_choice_event` synchronously inside the same transaction. If processing fails or no `item_tag` matches, the event is still durable in the table — the standalone `app/workers/outbox.py` worker picks up `pending|failed` events every 30s and retries. Idempotency key prevents duplicate inserts on retry from the client.
 
-## moonshort-backend integration (PR #3 merged 2026-05-24)
+## lunaverse-backend integration (PR #3 merged 2026-05-24)
 
-Three hook points feeding events live in `moonshort-backend`, re-authored on 2026-05-24 against the current `origin/main` after the original cherry-pick conflicted with [[concepts/dream-trigger-v2-mechanical|Dream Trigger v2]]'s overlapping changes at the same call sites (see [[concepts/dream-rec-trigger-v2-coexistence]] for the coexistence design). PR [#3](https://github.com/cdotlock/moonshort-backend/pull/3) **merged 2026-05-24 07:07 UTC** (merge commit `dc5d7e4d`). Patches archived in `services/dream-rec/docs/integration-patches/` as offline backup.
+Three hook points feeding events live in `lunaverse-backend`, re-authored on 2026-05-24 against the current `origin/main` after the original cherry-pick conflicted with [[concepts/dream-trigger-v2-mechanical|Dream Trigger v2]]'s overlapping changes at the same call sites (see [[concepts/dream-rec-trigger-v2-coexistence]] for the coexistence design). PR [#3](https://github.com/cdotlock/lunaverse-backend/pull/3) **merged 2026-05-24 07:07 UTC** (merge commit `dc5d7e4d`). Patches archived in `services/dream-rec/docs/integration-patches/` as offline backup.
 
 1. **`87360e66 feat(dream-rec): wire submitChoice to dream-rec service`** — adds `app/services/dream-rec-client.ts` (`postChoiceEvent / postTagNovel / postTagDream`), modifies `app/services/save-action-service.ts:submitChoice` to capture `action.id`, build `dreamRecPayload` inside the prisma tx, and fire `postChoiceEvent` after commit (side-by-side with v2's profile-vector update), and adds `DREAM_REC_URL / DREAM_REC_BEARER / DREAM_REC_ENABLED` to `.env.example`.
 2. **`67ea73eb feat(dream-rec): trigger dream signature on dream finalize`** — `app/api/internal/dream-production-jobs/[jobId]/checkpoint/route.ts` fires `postTagDream` when `finalizedDream` exists, alongside v2's producer-snapshot block.
 3. **`1a09a000 feat(dream-rec): trigger novel tagging after seed completes`** — `scripts/_seed-helpers/seed-runner.ts` fires `postTagNovel` at the end of `runSeed` so the LLM tagger ingests freshly-published episodes.
 
-Helper: `app/services/dream-rec-client.ts` with `postChoiceEvent / postTagNovel / postTagDream` reading `DREAM_REC_URL / DREAM_REC_BEARER / DREAM_REC_ENABLED` env vars. All calls are fire-and-forget — moonshort never blocks on dream-rec. Default `DREAM_REC_ENABLED=false` — safe rollback flag.
+Helper: `app/services/dream-rec-client.ts` with `postChoiceEvent / postTagNovel / postTagDream` reading `DREAM_REC_URL / DREAM_REC_BEARER / DREAM_REC_ENABLED` env vars. All calls are fire-and-forget — lunaverse never blocks on dream-rec. Default `DREAM_REC_ENABLED=false` — safe rollback flag.
 
 ## Monorepo migration (2026-05-24)
 
-dream-rec was migrated into the `moonshort-backend` monorepo at `services/dream-rec/` via `git subtree add` (full history preserved, no squash). Decision drivers: deployment simplification ("demo 阶段先合"), colleague handles single repo's ops, future plan to split out again as microservices when scale demands it.
+dream-rec was migrated into the `lunaverse-backend` monorepo at `services/dream-rec/` via `git subtree add` (full history preserved, no squash). Decision drivers: deployment simplification ("demo 阶段先合"), colleague handles single repo's ops, future plan to split out again as microservices when scale demands it.
 
-- **Branch:** `feat/dream-rec-monorepo` on `cdotlock/moonshort-backend` (pushed 2026-05-24, no PR opened yet — user pending decision)
+- **Branch:** `feat/dream-rec-monorepo` on `cdotlock/lunaverse-backend` (pushed 2026-05-24, no PR opened yet — user pending decision)
 - **Subtree merge:** `d816a19e` brings 100+ dream-rec history commits in as ancestors
 - **Monorepo commits added on top:**
   - `c219e44f` — Dockerfile (Python 3.12-slim + uv) + docker-entrypoint.sh (auto-runs `alembic upgrade head`)
@@ -117,7 +117,7 @@ Component 0 fully implemented; C1-C5 fully shipped; C6 deferred (design locked).
 
 Test count: 367 pytest passing, ruff clean across `app/tests/scripts`.
 
-**Path (canonical):** `cdotlock/moonshort-backend → services/dream-rec/` (FastAPI service)
+**Path (canonical):** `cdotlock/lunaverse-backend → services/dream-rec/` (FastAPI service)
 **Path (archive):** `AugustZAD/dream-rec @ pre-monorepo-2026-05-24` (read-only)
 **Plan:** `services/dream-rec/docs/superpowers/plans/2026-05-23-dream-rec-integration-architecture.md`
 **Spec:** `services/dream-rec/docs/superpowers/specs/2026-05-23-dream-rec-integration-architecture-design.md`

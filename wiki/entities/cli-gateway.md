@@ -6,7 +6,7 @@ created: 2026-04-14
 updated: 2026-04-14
 ---
 
-Lightweight HTTP microservice deployed alongside each Moonshort platform service. Enables remote CLI command execution while preserving the full CLI experience -- progressive discovery, help caching, and self-correction all work identically whether commands execute locally or remotely. The gateway is the key infrastructure piece that allows [[entities/mobai-agent]] to control distributed services as if they were local.
+Lightweight HTTP microservice deployed alongside each Lunaverse platform service. Enables remote CLI command execution while preserving the full CLI experience -- progressive discovery, help caching, and self-correction all work identically whether commands execute locally or remotely. The gateway is the key infrastructure piece that allows [[entities/mobai-agent]] to control distributed services as if they were local.
 
 ## Purpose
 
@@ -47,7 +47,7 @@ This preserves the [[concepts/four-layer-philosophy]] design: the agent continue
 
 ### Backend Gateway (TypeScript Implementation)
 
-- **Project:** [[entities/moonshort-backend]]
+- **Project:** [[entities/lunaverse-backend]]
 - **Implementation:** Identical TypeScript gateway structure in `cli-gateway/` directory
 - **Source files:** Same 7-file structure as Agent-Forge gateway
 - **Port:** 9002 (default)
@@ -56,13 +56,13 @@ This preserves the [[concepts/four-layer-philosophy]] design: the agent continue
 
 | Short Name | Binary | Base Args | Description |
 |-----------|--------|-----------|-------------|
-| `noval` | `npx` | `["tsx", "cli/bin/noval.ts"]` | Moonshort game CLI |
+| `noval` | `npx` | `["tsx", "cli/bin/noval.ts"]` | Lunaverse game CLI |
 
 - **Working directory:** `process.cwd()` (the backend project root)
 
-### Moonshort Client Gateway (TypeScript Implementation)
+### Lunaverse Client Gateway (TypeScript Implementation)
 
-- **Project:** [[entities/moonshort-client]]
+- **Project:** [[entities/lunaverse-client]]
 - **Implementation:** Identical TypeScript gateway structure in `cli-gateway/` directory
 - **Source files:** Same 7-file structure as Agent-Forge gateway
 - **Port:** 9003 (default)
@@ -74,7 +74,7 @@ This preserves the [[concepts/four-layer-philosophy]] design: the agent continue
 | `play` | `npx` | `["tsx", "--tsconfig", "test/tsconfig.test.json", "test/play.ts"]` | Headless AutoPlayer |
 | `test` | `npx` | `["tsx", "--tsconfig", "test/tsconfig.test.json", "test/run-tests.ts"]` | Test suite runner |
 
-- **Working directory:** `process.cwd()` (the moonshort project root)
+- **Working directory:** `process.cwd()` (the lunaverse project root)
 
 ## Full HTTP Protocol
 
@@ -254,7 +254,7 @@ Each request has a timeout (default 30000ms, configurable per request). If the p
 
 ## TypeScript Implementation Architecture
 
-The three TypeScript gateways (Agent-Forge, Backend, Moonshort Client) share identical code with project-specific configuration.
+The three TypeScript gateways (Agent-Forge, Backend, Lunaverse Client) share identical code with project-specific configuration.
 
 ### Directory Structure
 
@@ -394,8 +394,8 @@ The agent never sees gateway URLs, authentication tokens, or remote/local distin
 - [[entities/mobai-agent]] -- Orchestrator agent that routes commands through gateways
 - [[entities/dramatizer]] -- Go implementation of the gateway as `dram gateway`
 - [[entities/agent-forge]] -- TypeScript gateway wrapping `forge-eval`
-- [[entities/moonshort-backend]] -- TypeScript gateway wrapping `noval`
-- [[entities/moonshort-client]] -- TypeScript gateway wrapping `play` and `test`
+- [[entities/lunaverse-backend]] -- TypeScript gateway wrapping `noval`
+- [[entities/lunaverse-client]] -- TypeScript gateway wrapping `play` and `test`
 - [[syntheses/cloud-deployment-architecture]] -- How gateways fit into the cloud deployment topology
 
 ## Sources

@@ -78,7 +78,7 @@ tags: [benchmark, evaluation, otome, llm-as-judge, model-selection]
 
 不用从零。建议拼法：
 
-- **客观 harness（机制正确性）** = 仿 RPGBench：对生成剧本跑状态机校验——好感 / [[concepts/signal-int-backend|@signal 变量]]更新是否正确、门槛是否按 affection 触发、路线分叉是否一致。我们 MSS（[[entities/moonshort-script]]）本就编译成可程序化校验的结构，这块基本是"接现成校验器"。
+- **客观 harness（机制正确性）** = 仿 RPGBench：对生成剧本跑状态机校验——好感 / [[concepts/signal-int-backend|@signal 变量]]更新是否正确、门槛是否按 affection 触发、路线分叉是否一致。我们 LS（[[entities/lunascripts]]）本就编译成可程序化校验的结构，这块基本是"接现成校验器"。
 - **主观骨架（场景质量门）** = 仿 HelloEval：每类场景 4–6 个 yes/no checklist，权重用线性回归拟合人工分，之后自动打分做回归基线。
 - **裁判模型** = 按 LitBench，Claude（3.7-Sonnet 起）是最像人的 off-the-shelf 裁判；用 Judgemark 式"裁判质量校验"确认。**注意**：中文亲密恋爱内容 + 安全过滤会压低浪漫强度评分，选裁判要专门验。
 - **复用维度**：RMTBench 情感表达 / 情感理解 / 角色保持 + EQ-Bench 反面项（反紫色辞藻）+ WebNovelBench D4/D5/D8 + ConStory 5 大类一致性。
@@ -130,7 +130,7 @@ tags: [benchmark, evaluation, otome, llm-as-judge, model-selection]
 
 ## 相关页面
 
-- [[entities/moonshort-script]] — MSS 编译产物是可程序化校验的结构（客观 harness 的基础）
+- [[entities/lunascripts]] — LS 编译产物是可程序化校验的结构（客观 harness 的基础）
 - [[concepts/signal-int-backend]] — @signal 作者变量（好感 / 门槛校验对象）
 - [[concepts/novel-game-config]] — 每剧本数值系统（affection / 检定变量）
 - [[concepts/villain-season-demo]] — 现成 otome 短剧 demo（自建 benchmark 的标注语料候选）

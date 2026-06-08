@@ -8,7 +8,7 @@ updated: 2026-05-14
 
 > **Status (2026-05-14): historical reference.** Active asset production has moved to [[entities/assets-produce]] (`cdotlock/assets-produce`), an opencode-based rewrite that explicitly cites Agent-Forge's six底层问题 (prompt 构造 / context 管理 / 错误协议 / tool 配对 / provider 抽象 / subagent 实现) as the reason for a from-scratch rebuild rather than incremental refactor. Image / material prompt knowledge from Agent-Forge has been distilled into `knowledge/novel-to-video/image-style-presets.json` and `langfuse-draft.md` over there. This page is kept as the historical entity for the original platform; do not treat it as the current production system.
 
-Next.js application that converts interactive screenplays into video episodes using AI agents. Exposes 48 MCP tools via HTTP StreamableHTTP, a full REST API with 43 endpoint files, and an internal agent chat loop. Originally served as the video production brain of the Moonshort platform, taking story trees from [[entities/dramatizer]] and producing video assets. Superseded for new work by [[entities/assets-produce]].
+Next.js application that converts interactive screenplays into video episodes using AI agents. Exposes 48 MCP tools via HTTP StreamableHTTP, a full REST API with 43 endpoint files, and an internal agent chat loop. Originally served as the video production brain of the Lunaverse platform, taking story trees from [[entities/dramatizer]] and producing video assets. Superseded for new work by [[entities/assets-produce]].
 
 ## Tech Stack
 

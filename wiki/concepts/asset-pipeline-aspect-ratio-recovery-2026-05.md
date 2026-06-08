@@ -14,7 +14,7 @@ This page documents what went wrong, the fix shipped on 2026-05-09, and the oper
 
 ## Root cause #1 — mob-ai image-gpt aspect-ratio non-determinism
 
-`render-with-style.py` (in `moonshort-backend/generate-upscale-matting/`) calls the mob-ai image-gpt API with the prompt body containing a soft-constraint phrase like `"竖构图全身立绘，9:16"`. Two empirical findings:
+`render-with-style.py` (in `lunaverse-backend/generate-upscale-matting/`) calls the mob-ai image-gpt API with the prompt body containing a soft-constraint phrase like `"竖构图全身立绘，9:16"`. Two empirical findings:
 
 1. **The API silently ignores all body-level size hints.** A discriminating probe (`_local_tools/probe_mob_ai_size.py`) tested 6 schema hypotheses — `aspect_ratio`, `size`, `width`+`height`, both nested under `input` and at top level — by requesting `16:9` while the prompt asked for vertical. ALL 6 variants returned vertical output, proving the body-level hint never reaches the model. The API server appears to discard unknown fields silently, with no error.
 2. **Pure-prompt control hits a ~13% drift rate.** With only the prompt asking for 9:16, the model returns the requested 941×1672 (ratio 0.5625) most of the time, but ~13% of requests fall back to the 1024×1536 (2:3, ratio 0.667) default. A handful (~1%) come back as 1024×1024 (1:1).
@@ -79,7 +79,7 @@ The 2026-05-09 recovery executed the following tiered strategy after the user cl
 
 | Asset | Total | Strategy |
 |---|---|---|
-| character series 1× / _upscaled / final | 15 | 7 chars copied from human-reviewed `~/Downloads/moonscripts/no-rules-in-bad-ideas/` Downloads set; 8 chars left as-is (already 9:16 from 18:27 re-render, _upscaled drift accepted) |
+| character series 1× / _upscaled / final | 15 | 7 chars copied from human-reviewed `~/Downloads/lunascripts/no-rules-in-bad-ideas/` Downloads set; 8 chars left as-is (already 9:16 from 18:27 re-render, _upscaled drift accepted) |
 | outfit anchor | 79 | LI cascade for diego / luca / mariana / weston (17 anchors); spot-fix 2 ratio-broken non-LI (remi_casual_default + xiomara_casual_default); other 60 left as-is |
 | ep sprite | 1594 | LI cascade for diego / luca / mariana / weston (887 task entries → 667 unique); spot-fix 82 ratio-broken non-LI (camila / brielle / elena / hector / etc.); other 845 left as-is |
 
@@ -115,8 +115,8 @@ Sprite re-render must come AFTER anchor re-render. If sprites render first they 
 
 ## Related
 
-- Plan: `docs/superpowers/plans/2026-05-09-aspect-ratio-recovery.md` (in `~/MobAI/novels-to-moonscript`)
-- Probe results: `~/MobAI/moonshort-backend/_local_tools/probe_mob_ai_size_result.json`
-- Backup directory: `~/MobAI/moonshort-backend/moonscripts/new-no-rules-in-bad-ideas/assets/_backup_2026-05-09_pre-aspect-fix/`
-- Logs: `~/MobAI/moonshort-backend/logs/anchor-rerender-2026-05-09.log`, `logs/sprite-rerender-2026-05-09.log`
+- Plan: `docs/superpowers/plans/2026-05-09-aspect-ratio-recovery.md` (in `~/MobAI/novels-to-lunascript`)
+- Probe results: `~/MobAI/lunaverse-backend/_local_tools/probe_mob_ai_size_result.json`
+- Backup directory: `~/MobAI/lunaverse-backend/lunascripts/new-no-rules-in-bad-ideas/assets/_backup_2026-05-09_pre-aspect-fix/`
+- Logs: `~/MobAI/lunaverse-backend/logs/anchor-rerender-2026-05-09.log`, `logs/sprite-rerender-2026-05-09.log`
 - Project CLAUDE.md `Addendum (2026-05-08)` confirms render-with-style now outputs RGBA for sprites — applies to Layer E only; anchors (Layer A.5) stay RGB on green as i2i refs.

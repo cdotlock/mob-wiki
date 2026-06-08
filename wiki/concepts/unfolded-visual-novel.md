@@ -8,7 +8,7 @@ updated: 2026-04-15
 
 当前产品的展示形态是 Unfolded 风格互动视觉小说——一种面向竖屏移动端的沉浸式阅读体验。它不是"角色表演引擎"，而是"可视化阅读器"：用整屏背景图承载场景氛围，用放大角色 cutout 做情绪肖像，用悬浮式对话气泡承载文本，用点击推进节奏。
 
-脚本格式规范见 [[concepts/mss-format]]。解释器见 [[entities/moonshort-script]]。
+脚本格式规范见 [[concepts/ls-format]]。解释器见 [[entities/lunascripts]]。
 
 ## 与传统 Episode 风格的根本差异
 
@@ -103,6 +103,6 @@ MobAI 不是 Episode 那种"强舞台调度感的站位系统"。核心差异：
 
 ## 游戏机制集成
 
-D20 检定、小游戏、属性养成等游戏机制保留，嵌入阅读流而非独立阶段。通过 MSS 脚本的 `@minigame`、`@choice`、`@option brave/safe`、`check { attr / dc }` 指令集成。
+D20 检定、小游戏、属性养成等游戏机制保留，嵌入阅读流而非独立阶段。通过 LS 脚本的 `@minigame`、`@choice`、`@option brave/safe`、`check { attr / dc }` 指令集成。
 
-详见 [[concepts/mss-format]] 中的游戏机制章节。
+详见 [[concepts/ls-format]] 中的游戏机制章节。

@@ -1,12 +1,12 @@
 ---
 title: NovelDreamArtifact — Dream-Only LLM Artifact Sidecar Table
-tags: [moonshort-backend, dream, schema, novel, refactor]
+tags: [lunaverse-backend, dream, schema, novel, refactor]
 sources: [raw/2026-05-24-novel-dream-artifact-extraction-design.md]
 created: 2026-05-24
 updated: 2026-05-24
 ---
 
-1:1 sidecar of `Novel` holding the dream-only LLM-derived artifacts (`characterArcs`, `assetMapping`) that used to be inline columns on the main table. Landed 2026-05-24 to separate admin-maintained authoritative data from dream-pipeline-regenerable derived data, eliminate the V2-vs-V3 naming ambiguity in `characterBible` (renamed to `characterArcs` — the field actually carries V3-style character arcs, not V2 descriptive bios), and add per-artifact audit metadata. See [[entities/moonshort-backend]] for the host project; [[concepts/dreaming-universe]] for the consuming pipeline.
+1:1 sidecar of `Novel` holding the dream-only LLM-derived artifacts (`characterArcs`, `assetMapping`) that used to be inline columns on the main table. Landed 2026-05-24 to separate admin-maintained authoritative data from dream-pipeline-regenerable derived data, eliminate the V2-vs-V3 naming ambiguity in `characterBible` (renamed to `characterArcs` — the field actually carries V3-style character arcs, not V2 descriptive bios), and add per-artifact audit metadata. See [[entities/lunaverse-backend]] for the host project; [[concepts/dreaming-universe]] for the consuming pipeline.
 
 ## Why extract
 
@@ -91,4 +91,4 @@ Written by `regenerateCharacterArcsStep` (preheat-service) and `episode-bulk-ins
 
 - [[concepts/dreaming-universe]] — pipeline that consumes `characterArcs` for planner / writer / arc-reviewer prompts
 - [[concepts/dream-trigger-v2-mechanical]] — sister-concept: when to trigger a dream; the trigger doesn't touch `characterArcs` but the v2-mechanical Out-of-Scope note references this refactor
-- [[entities/moonshort-backend]] — host project
+- [[entities/lunaverse-backend]] — host project

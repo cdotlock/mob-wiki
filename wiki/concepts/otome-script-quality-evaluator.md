@@ -1,7 +1,7 @@
 ---
 title: 乙女逐剧本质量评分器设计（per-script quality gate）
 updated: 2026-06-05
-tags: [evaluation, otome, llm-as-judge, quality-gate, mss]
+tags: [evaluation, otome, llm-as-judge, quality-gate, ls]
 ---
 
 # 乙女逐剧本质量评分器设计
@@ -13,7 +13,7 @@ tags: [evaluation, otome, llm-as-judge, quality-gate, mss]
 实地读了 IDE 写作 pipeline 的 skills（`agents/adaptation/skills/`）后，下面这份 L0/L1/L2 设计**很大程度是在重新发明已有的轮子**，如实标注：
 
 - **L0 客观硬门**：`episode-writer-reviewer` 第一步已强制跑确定性 Python validator（`check_narrator_pov.py` / `check_wardrobe_state.py`）当 fail-fast 门，理由与本设计一字不差。
-- **L1 逐场景评分**：`episode-writer-reviewer` 已有 6 维 0–10（Bible忠实 / Plan兑现 / 句子层 / 互动体感 / 选择设计含假选择检测 / MSS合规）。
+- **L1 逐场景评分**：`episode-writer-reviewer` 已有 6 维 0–10（Bible忠实 / Plan兑现 / 句子层 / 互动体感 / 选择设计含假选择检测 / LS合规）。
 - **独立性 + 确定性**：三个 reviewer（bible / planner / episode）**全部强制 spawn 独立 sub-agent「不自审」**，并把确定性脚本前置——这两条本设计当卖点，pipeline 早已是一等原则。
 - **模拟试玩 / 跨路线**：`planner-reviewer` 已并发按路线 spawn sub-agent 组装「玩家只走这条线 E1→E末」打分 + 跨路线一致性。
 
@@ -36,8 +36,8 @@ tags: [evaluation, otome, llm-as-judge, quality-gate, mss]
 
 ## 输入 / 输出
 
-- **输入**：一篇 MSS 剧本（.md）。两种表示并用：
-  - 编译后 JSON（[[entities/moonshort-script]] 产出，含 step / 分支 / `@signal` op / `@gate` 条件 / episode-scoped step ID）→ 客观层用
+- **输入**：一篇 LS 剧本（.md）。两种表示并用：
+  - 编译后 JSON（[[entities/lunascripts]] 产出，含 step / 分支 / `@signal` op / `@gate` 条件 / episode-scoped step ID）→ 客观层用
   - 原始散文 / 对白文本 → 主观层用
 - **输出**：
   - 分维度评分（0–5）
@@ -47,7 +47,7 @@ tags: [evaluation, otome, llm-as-judge, quality-gate, mss]
 ## 架构：3 层 + 聚合
 
 ```
-MSS .md ──compile(moonshort-script)──► 结构化 JSON
+LS .md ──compile(lunascripts)──► 结构化 JSON
    │
    ▼
 L0 结构客观校验  (确定性, 无 LLM, 仿 RPGBench)
@@ -72,7 +72,7 @@ L2 全篇一致性检测  (LLM, evidence-grounded, 仿 ConStory-Checker)
 
 ## L0 — 结构客观校验（确定性，无 LLM）
 
-对编译后分支图 + 变量 op 做静态分析。`@gate` 是"变量 ≥ 整数"形式（见 [[concepts/mss-gate-no-variable-comparison]]），所以可达性是可判定的。
+对编译后分支图 + 变量 op 做静态分析。`@gate` 是"变量 ≥ 整数"形式（见 [[concepts/ls-gate-no-variable-comparison]]），所以可达性是可判定的。
 
 | 检查 | 判什么 |
 |---|---|
@@ -141,7 +141,7 @@ L2 全篇一致性检测  (LLM, evidence-grounded, 仿 ConStory-Checker)
 
 ## 落地分期
 
-- **Phase 0**（先上，高 ROI）：L0 纯静态分析，无 LLM、无标注，接 moonshort-script 编译产物即可跑。立刻抓结构 bug。
+- **Phase 0**（先上，高 ROI）：L0 纯静态分析，无 LLM、无标注，接 lunascripts 编译产物即可跑。立刻抓结构 bug。
 - **Phase 1**：L1 + L2 接 Claude 裁判 + 手设锚点，做 **WARN** 软信号。
 - **Phase 2**：标注 + 回归拟合权重 + 裁判校验 → L1 升硬门。
 - **Phase 3**（可选）：建真人乙女网文参考语料 → 加 WebNovelBench 式"百分位 / 有没有真人水准"模式。
@@ -149,15 +149,15 @@ L2 全篇一致性检测  (LLM, evidence-grounded, 仿 ConStory-Checker)
 ## 待定 / 依赖
 
 - 确认 RPGBench 的 Game-Simulation 校验 harness 能否直接移植（repo / license 待查）。
-- L0 静态分析具体接 moonshort-script 哪个产物字段（step 图 + signal op 表）。
+- L0 静态分析具体接 lunascripts 哪个产物字段（step 图 + signal op 表）。
 - 校准需要多少标注样本才稳（HelloEval 按子类标注；RMTBench ~500 对话 / 3 标注者）。
 - 中文亲密内容的裁判选型 + 安全过滤实测。
 
 ## 相关页面
 
 - [[concepts/otome-writing-benchmark-survey-2026-06]] — 全景调研 + ① 选模型那层
-- [[entities/moonshort-script]] — 编译产物（L0 静态分析的输入）
+- [[entities/lunascripts]] — 编译产物（L0 静态分析的输入）
 - [[concepts/signal-int-backend]] — `@signal` 变量（好感 / 门槛校验对象）
-- [[concepts/mss-gate-no-variable-comparison]] — `@gate` 整数阈值（可达性分析前提）
+- [[concepts/ls-gate-no-variable-comparison]] — `@gate` 整数阈值（可达性分析前提）
 - [[concepts/novel-game-config]] — 每剧本数值系统
 - [[concepts/villain-season-demo]] — 标注语料种子

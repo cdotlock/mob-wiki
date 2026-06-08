@@ -7,14 +7,14 @@ status: shipped
 
 # dream-rec dev runbook
 
-How to take the dream-rec recommendation service from a fresh checkout to a verified end-to-end run on a local machine. Covers (a) standalone dream-rec smoke (HTTP + Postgres only), (b) real-LLM tagger smoke (burns mob-ai credit), (c) cross-repo wire from moonshort-backend.
+How to take the dream-rec recommendation service from a fresh checkout to a verified end-to-end run on a local machine. Covers (a) standalone dream-rec smoke (HTTP + Postgres only), (b) real-LLM tagger smoke (burns mob-ai credit), (c) cross-repo wire from lunaverse-backend.
 
 System overview: [[concepts/dream-rec-integration-architecture]]. Sub-components: [[concepts/dream-rec-component-1-tirt-estimator]], [[concepts/dream-rec-component-2-llm-tagger]], [[concepts/dream-rec-component-3-genre-projection]], [[concepts/dream-rec-component-4-dream-ranker]], [[concepts/dream-rec-component-5-cold-start]].
 
 ## Prereqs
 
 - Python 3.12 + [uv](https://github.com/astral-sh/uv) at `$HOME/.local/bin/uv`
-- Local Postgres 16 reachable at `postgresql://postgres:postgres@localhost:5432/noval_demo` (NOT `moonshort` — the schema-version sample in `.env.example` is misleading)
+- Local Postgres 16 reachable at `postgresql://postgres:postgres@localhost:5432/noval_demo` (NOT `lunaverse` — the schema-version sample in `.env.example` is misleading)
 - `~/.config/<repo>/.env` populated from `.env.example` with at minimum:
   ```
   DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/noval_demo
@@ -39,7 +39,7 @@ PATH="$HOME/.local/bin:$PATH" \
   uv run ruff check app tests scripts    # clean
 ```
 
-## A. Standalone dream-rec smoke (no LLM, no moonshort-backend)
+## A. Standalone dream-rec smoke (no LLM, no lunaverse-backend)
 
 This is the cheapest path to verify the system runs.
 
@@ -128,7 +128,7 @@ PYTHONPATH=. PATH="$HOME/.local/bin:$PATH" \
 
 What it does:
 1. Loads `tests/fixtures/compiled_simple.json` (2-option choice: polite/safe vs sarcastic/brave).
-2. Mocks `BackendClient` so no moonshort-backend needed.
+2. Mocks `BackendClient` so no lunaverse-backend needed.
 3. Calls `tag_novel()` with real `LLMClient` → 1 chat completion to `claude-sonnet-4-6`.
 4. Reads back the resulting `ItemTag` rows and prints loadings.
 
@@ -146,9 +146,9 @@ Expected output (loadings will vary on rerun even at temp=0):
 
 mob-ai gateway fingerprints on User-Agent and blocks the default OpenAI SDK signature with `Your request was blocked.` — `LLMClient.from_settings()` overrides `User-Agent: dream-rec/0.1.0` to bypass. If you see `PermissionDeniedError: Your request was blocked.`, check that this header override is intact.
 
-## C. Cross-repo wire from moonshort-backend
+## C. Cross-repo wire from lunaverse-backend
 
-Verifies `app/services/dream-rec-client.ts` in moonshort-backend can talk to dream-rec.
+Verifies `app/services/dream-rec-client.ts` in lunaverse-backend can talk to dream-rec.
 
 ```bash
 # Terminal 1: dream-rec
@@ -156,8 +156,8 @@ cd ~/MobAI/dream-rec
 PATH="$HOME/.local/bin:$PATH" \
   uv run uvicorn app.main:app --port 8766 --host 127.0.0.1
 
-# Terminal 2: moonshort-backend smoke
-cd ~/MobAI/moonshort-backend
+# Terminal 2: lunaverse-backend smoke
+cd ~/MobAI/lunaverse-backend
 DREAM_REC_ENABLED=true \
 DREAM_REC_URL=http://127.0.0.1:8766 \
 DREAM_REC_BEARER=dev-secret-change-me \
@@ -175,7 +175,7 @@ Expected:
 [smoke] DONE
 ```
 
-Note: `postTagNovel` and `postTagDream` will accept-200 from dream-rec but their BackgroundTasks then try to call back to `:3000`/api/internal/... — that fails with `ConnectError` since moonshort-backend isn't running in this smoke. Harmless for verifying the wire.
+Note: `postTagNovel` and `postTagDream` will accept-200 from dream-rec but their BackgroundTasks then try to call back to `:3000`/api/internal/... — that fails with `ConnectError` since lunaverse-backend isn't running in this smoke. Harmless for verifying the wire.
 
 ## Files of interest
 
@@ -198,15 +198,15 @@ Note: `postTagNovel` and `postTagDream` will accept-200 from dream-rec but their
 
 | Symptom | Probable cause |
 |---|---|
-| `asyncpg.InvalidCatalogNameError: database "moonshort" does not exist` | `.env` `DATABASE_URL` still points at canonical `moonshort` instead of local `noval_demo`. Fix the local `.env`. |
+| `asyncpg.InvalidCatalogNameError: database "lunaverse" does not exist` | `.env` `DATABASE_URL` still points at canonical `lunaverse` instead of local `noval_demo`. Fix the local `.env`. |
 | `/recommend` returns `axis_match=0.5, engagement=0.5, used_fallback=true` | (a) `GenreProjection(genre="general")` not seeded → `used_cold_start_matrix=true` → `w_personal=0`. (b) `engagement_stats` JSONB keys not camelCase (`completionRate`/`replayRate`/`exitRate`). Run `scripts/seed_dev_dreams.py`. |
 | `/events/choice` returns `SKIPPED_NO_TAG` | No `ItemTag` block with ≥2 options for that `(novel, episode, choice_step)`. Seed via `scripts/seed_dev_dreams.py` (creates option a + b for `step-1`). |
 | `PermissionDeniedError: Your request was blocked.` from mob-ai | Gateway fingerprinted the OpenAI SDK UA. Confirm `LLMClient.from_settings` still sets `default_headers={"User-Agent": "dream-rec/0.1.0"}`. |
-| `pnpm tsx` in moonshort-backend tries to reinstall | Use `node_modules/.bin/tsx` directly. |
+| `pnpm tsx` in lunaverse-backend tries to reinstall | Use `node_modules/.bin/tsx` directly. |
 
 ## References
 
 - Repo: [AugustZAD/dream-rec](https://github.com/AugustZAD/dream-rec)
 - Spec: `docs/superpowers/specs/2026-05-23-dream-rec-integration-architecture-design.md`
 - Plan: `docs/superpowers/plans/2026-05-23-dream-rec-integration-architecture.md`
-- Cross-repo client (in moonshort-backend, local only): `app/services/dream-rec-client.ts`
+- Cross-repo client (in lunaverse-backend, local only): `app/services/dream-rec-client.ts`

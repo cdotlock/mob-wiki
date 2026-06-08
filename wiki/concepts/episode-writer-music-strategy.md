@@ -1,22 +1,22 @@
 ---
 title: Episode Writer · BGM 策略 & music-normalizer 流程
 updated: 2026-05-07
-tags: [novels-to-moonscript, dramatizer, music, normalization, mss]
+tags: [novels-to-lunascript, dramatizer, music, normalization, ls]
 ---
 
 # Episode Writer · BGM 策略 & music-normalizer 流程
 
-> 适用范围:novels-to-moonscript 系列(no-rules-in-bad-ideas + 后续 N 部小说)
+> 适用范围:novels-to-lunascript 系列(no-rules-in-bad-ideas + 后续 N 部小说)
 >
-> 关联仓库:`novels-to-moonscript`(skill + dramatizer 实现);`moonshort-script`(mss 二进制,本流程**不动**)
+> 关联仓库:`novels-to-lunascript`(skill + dramatizer 实现);`lunascripts`(ls 二进制,本流程**不动**)
 >
-> 完整设计:`novels-to-moonscript/docs/superpowers/specs/2026-05-07-music-normalizer-design.md`
+> 完整设计:`novels-to-lunascript/docs/superpowers/specs/2026-05-07-music-normalizer-design.md`
 
 ## TL;DR
 
 剧本里 LLM 给每个 BGM 起了几百个语义名(`theme_bedroom_late_night` 之类),但
 实际可用 BGM 只有 N 首(本系列默认 5 首)。本机制把语义名归一化到 N 类调色板,
-并实现"心动单次播放 → 自动切回 daily 兜底"的运行时行为,**不改 mss spec、
+并实现"心动单次播放 → 自动切回 daily 兜底"的运行时行为,**不改 ls spec、
 不改 Go 编译器、不改源 .md、不依赖前端实现细节**。
 
 新书接入(零代码改动):
@@ -32,7 +32,7 @@ tags: [novels-to-moonscript, dramatizer, music, normalization, mss]
    05-episode-writer (源剧本,353 个语义名)
         │
         ▼
-  ★ skills/music-normalizer + moonscripts/<slug>/05.5-music-normalizer/
+  ★ skills/music-normalizer + lunascripts/<slug>/05.5-music-normalizer/
         │  alias_map.json (name → category) + normalize_report.md
         ▼
    dramatizer/build.py(扩展 3 个 step)
@@ -41,7 +41,7 @@ tags: [novels-to-moonscript, dramatizer, music, normalization, mss]
    └─ music_postprocess : staging .md 注入 cleanup crossfade
         │
         ▼
-   compile_mss(照旧,完全不感知音频后处理)
+   compile_ls(照旧,完全不感知音频后处理)
 ```
 
 **关键边界**: skill 只产出数据(alias_map),dramatizer 消费数据。两边解耦。
@@ -62,19 +62,19 @@ tags: [novels-to-moonscript, dramatizer, music, normalization, mss]
 保留名字 + mapping 多对一可以让我们将来加 BGM 时再跑一次 normalizer
 而不必重写脚本。
 
-mss spec 的 mapping 是 `<name>` → URL string,允许"不同 name 指
+ls spec 的 mapping 是 `<name>` → URL string,允许"不同 name 指
 同一 URL"。多对一不破坏任何兼容契约。
 
-### 为什么 `once_then_default` 用 dramatizer 后处理而非 mss 新指令?
+### 为什么 `once_then_default` 用 dramatizer 后处理而非 ls 新指令?
 
 候选了 4 种实现:
 
 | 方案 | 改动面 | 否决理由 |
 |---|---|---|
-| 给 mss 加 `@music once` 指令 | mss spec + Go 二进制 | 跨仓库改动,作者要在 cdotlock/moonshort-script 重发 |
+| 给 ls 加 `@music once` 指令 | ls spec + Go 二进制 | 跨仓库改动,作者要在 cdotlock/lunascripts 重发 |
 | URL 加 `?loop=false` query | 仅 mapping | 依赖前端 player 实现,我们不可控 |
 | 脚本里手写 `play X → fadeout → crossfade daily` | 仅 .md | 把"播一次"语义和具体音乐绑死,LLM 写起来啰嗦 |
-| **dramatizer 编译前注入 cleanup**(选用) | dramatizer pipeline | 闭环在我们仓库内,不动 mss / 不动前端 / 不动源 .md |
+| **dramatizer 编译前注入 cleanup**(选用) | dramatizer pipeline | 闭环在我们仓库内,不动 ls / 不动前端 / 不动源 .md |
 
 后处理 = 改造 staging .md 临时副本 + 编译,源文件零改动,可关闭(空 yaml music 段)。
 
@@ -171,7 +171,7 @@ cp dramatizer/configs/_template.yaml dramatizer/configs/<slug2>.yaml
 python3 -m skills.music-normalizer <slug2>
 
 # 4. 人审 normalize_report.md(看 low / med-confidence 项)
-open moonscripts/<slug2>/05.5-music-normalizer/normalize_report.md
+open lunascripts/<slug2>/05.5-music-normalizer/normalize_report.md
 
 # 5. 跑完整 build
 python3 -m dramatizer.build <slug2>
@@ -208,8 +208,8 @@ pytest skills/music-normalizer/tests/ -v
 
 ## 引用
 
-- 完整设计文档:`novels-to-moonscript/docs/superpowers/specs/2026-05-07-music-normalizer-design.md`
-- 实现 plan:`novels-to-moonscript/docs/superpowers/plans/2026-05-07-music-normalizer.md`
-- skill SKILL.md:`novels-to-moonscript/skills/music-normalizer/SKILL.md`
-- mss-spec(指令格式):`novels-to-moonscript/skills/episode-writer/mss-spec.md`
-- 相关概念:[[concepts/mss-format]]、[[entities/dramatizer]]、[[entities/dramatizer-mss]]
+- 完整设计文档:`novels-to-lunascript/docs/superpowers/specs/2026-05-07-music-normalizer-design.md`
+- 实现 plan:`novels-to-lunascript/docs/superpowers/plans/2026-05-07-music-normalizer.md`
+- skill SKILL.md:`novels-to-lunascript/skills/music-normalizer/SKILL.md`
+- ls-spec(指令格式):`novels-to-lunascript/skills/episode-writer/ls-spec.md`
+- 相关概念:[[concepts/ls-format]]、[[entities/dramatizer]]、[[entities/dramatizer-ls]]

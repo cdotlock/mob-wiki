@@ -39,7 +39,7 @@ The Go-side atomic tools `matting` and `upscale-image` already POST to `FC_MATTI
 ## Repo layout
 
 ```
-moonshort-ide/
+lunaverse-ide/
 ├── docs/design/2026-05-21-comfyui-modal-deploy-spec.md   # the spec
 ├── docs/handoff/2026-05-21-fc-endpoint-backend-deploy-spec.md  # wire contract source-of-truth
 ├── modal-comfy/         # new; ~300 LOC Python + 2 workflow JSON
@@ -60,7 +60,7 @@ moonshort-ide/
 # (once) install + auth + secrets
 pip install modal && modal token new
 modal secret create alibaba-oss OSS_ACCESS_KEY_ID=... ...
-modal secret create moonshort-fc-token \
+modal secret create lunaverse-fc-token \
     FC_MATTING_TOKEN=$(openssl rand -hex 32) \
     FC_UPSCALE_IMAGE_TOKEN=$(openssl rand -hex 32)
 
@@ -74,7 +74,7 @@ go run ./cmd/assetctl run matting --input '{...}'
 go run ./cmd/assetctl run upscale-image --input '{...}'
 ```
 
-Full runbook + costs + testing matrix: see [`docs/design/2026-05-21-comfyui-modal-deploy-spec.md`](https://github.com/cdotlock/moonshort-ide/blob/feat/assetctl-foundation/docs/design/2026-05-21-comfyui-modal-deploy-spec.md).
+Full runbook + costs + testing matrix: see [`docs/design/2026-05-21-comfyui-modal-deploy-spec.md`](https://github.com/cdotlock/lunaverse-ide/blob/feat/assetctl-foundation/docs/design/2026-05-21-comfyui-modal-deploy-spec.md).
 
 ## Related
 

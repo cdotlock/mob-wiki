@@ -15,12 +15,12 @@ Recipe-style commands for the follow-up situations after `2026-05-09` G-unspill 
 After 2026-05-09 the `rgb_unspill` step is wired into `to-final.py:174` (post `green_spill_clear`). New `to-final` runs auto-unspill. If you suspect drift (e.g. someone reverted the patch or a pipeline produced unspilled files), run:
 
 ```bash
-cd ~/MobAI/moonshort-backend
+cd ~/MobAI/lunaverse-backend
 python3 generate-upscale-matting/rgb_unspill.py \
-  --root moonscripts/<book-slug>/assets/asset-img-chromakey/ep_sprites \
+  --root lunascripts/<book-slug>/assets/asset-img-chromakey/ep_sprites \
   --workers 8
 python3 generate-upscale-matting/rgb_unspill.py \
-  --root moonscripts/<book-slug>/assets/asset-img-chromakey/series \
+  --root lunascripts/<book-slug>/assets/asset-img-chromakey/series \
   --workers 8
 # Then re-encode any final.webp that came from unspilled chromakey:
 python3 generate-upscale-matting/to-final.py \
@@ -40,8 +40,8 @@ If chromakey/ PNGs are clean but final/ webp is 0-byte / missing, **don't re-run
 from PIL import Image
 import pathlib, os
 
-ck = pathlib.Path("moonscripts/<slug>/assets/asset-img-chromakey/<sub>")  # ep_sprites or series
-fn = pathlib.Path("moonscripts/<slug>/assets/final/<sub>")
+ck = pathlib.Path("lunascripts/<slug>/assets/asset-img-chromakey/<sub>")  # ep_sprites or series
+fn = pathlib.Path("lunascripts/<slug>/assets/final/<sub>")
 fn1 = fn / "ep1"  # if hardlink layout used
 fn1.mkdir(parents=True, exist_ok=True)
 
@@ -72,7 +72,7 @@ The `cutout.py feather=0.8` HSV chromakey loses ~5-15% of hair edge softness on 
 To run MODNet on every sprite + character series (~7 hours CPU on M2 Pro for ~1500 sprites, can be background-overnight):
 
 ```bash
-cd ~/MobAI/moonshort-backend
+cd ~/MobAI/lunaverse-backend
 
 # Verify MODNet is installed (run once):
 python3 -c "import sys; sys.path.insert(0, 'generate-upscale-matting'); from matting import matte_one; print('MODNet ✓')"
@@ -80,11 +80,11 @@ python3 -c "import sys; sys.path.insert(0, 'generate-upscale-matting'); from mat
 
 # Force-FAIL all sprites so detect_matting_failures.py routes everything to MODNet.
 # Easiest: stash the existing report, write a synthetic FAIL-everything report.
-RPT=moonscripts/new-no-rules-in-bad-ideas/assets/asset-img-chromakey/detect_report.json
+RPT=lunascripts/new-no-rules-in-bad-ideas/assets/asset-img-chromakey/detect_report.json
 [ -f $RPT ] && cp $RPT $RPT.bak
 python3 - <<'PY'
 import json, pathlib
-ck = pathlib.Path("moonscripts/new-no-rules-in-bad-ideas/assets/asset-img-chromakey")
+ck = pathlib.Path("lunascripts/new-no-rules-in-bad-ideas/assets/asset-img-chromakey")
 results = {}
 for sub in ("series", "ep_sprites"):
     for png in (ck / sub).glob("*.png"):

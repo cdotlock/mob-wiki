@@ -16,7 +16,7 @@ The CLI layer in the [[concepts/four-layer-philosophy]] provides four capabiliti
 
 **Progressive discovery.** An agent that has never interacted with a service before can learn its entire capability surface through a predictable sequence: `<tool> schema` to enumerate subcommands, `<tool> <subcommand> --help` to learn flags and arguments, `<tool> <subcommand> --dry-run` to preview execution, and finally `<tool> <subcommand> <args>` to execute. This discovery sequence is universal across CLI tools and does not require any pre-existing knowledge. MCP tools, by contrast, require the agent to already know the tool name and parameter schema before it can make a call.
 
-**Pipeline encapsulation.** A single CLI command can encapsulate a multi-step workflow that would otherwise require the agent to manage state across dozens of individual tool calls. The Dramatizer's `dram run <job-id>` command encapsulates a 15-stage pipeline; the Moonshort Backend's `noval play <novelId> --auto` encapsulates a full automated game session. Without CLI encapsulation, the agent must manage intermediate state, handle partial failures, and maintain ordering invariants manually.
+**Pipeline encapsulation.** A single CLI command can encapsulate a multi-step workflow that would otherwise require the agent to manage state across dozens of individual tool calls. The Dramatizer's `dram run <job-id>` command encapsulates a 15-stage pipeline; the Lunaverse Backend's `noval play <novelId> --auto` encapsulates a full automated game session. Without CLI encapsulation, the agent must manage intermediate state, handle partial failures, and maintain ordering invariants manually.
 
 **Cross-cutting concerns.** Authentication (API key management, token refresh, credential storage), error classification (transient versus permanent failures), audit logging (recording what was executed and by whom), and input correction (suggesting fixes for common mistakes) are solved once in the CLI implementation and applied uniformly to all invocations. Without CLI centralization, each agent must independently re-solve these concerns on every call.
 
@@ -32,7 +32,7 @@ This means that the [[concepts/four-layer-philosophy]]'s CLI layer works identic
 
 ## Endpoints
 
-The CLI Gateway Protocol defines four HTTP endpoints. All gateways across the Moonshort platform implement the same contract, regardless of the underlying service or implementation language.
+The CLI Gateway Protocol defines four HTTP endpoints. All gateways across the Lunaverse platform implement the same contract, regardless of the underlying service or implementation language.
 
 ### POST /exec -- Synchronous Execution
 
@@ -203,7 +203,7 @@ interface CliToolsResponse {
     description: string;
     // Human-readable description of the tool. Used by mobai-agent's
     // discover_cli to present remote tools alongside local ones.
-    // Examples: "Dramatizer CLI", "Moonshort game CLI",
+    // Examples: "Dramatizer CLI", "Lunaverse game CLI",
     // "Headless AutoPlayer".
 
     version?: string;
@@ -266,7 +266,7 @@ The Dramatizer uses `os.Executable()` as a self-reference: the gateway is part o
 "noval" --> spawn("npx", ["tsx", "cli/bin/noval.ts", ...userArgs], { cwd: projectRoot })
 ```
 
-**Moonshort Client (TypeScript):**
+**Lunaverse Client (TypeScript):**
 ```
 "play" --> spawn("npx", ["tsx", "--tsconfig", "test/tsconfig.test.json", "test/play.ts", ...userArgs], { cwd: projectRoot })
 "test" --> spawn("npx", ["tsx", "--tsconfig", "test/tsconfig.test.json", "test/run-tests.ts", ...userArgs], { cwd: projectRoot })

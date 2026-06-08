@@ -6,7 +6,7 @@ created: 2026-04-14
 updated: 2026-04-14
 ---
 
-Go binary that converts long novels into interactive mini-drama screenplays through a 15-stage LLM pipeline. Exposes four integration interfaces: CLI (Cobra), HTTP REST API (Chi), MCP server (mcp-go), and interactive TUI (Bubble Tea). Produces branching story trees with multiple endings, growth paths, and minigame integration points for the [[entities/moonshort-backend]] game engine.
+Go binary that converts long novels into interactive mini-drama screenplays through a 15-stage LLM pipeline. Exposes four integration interfaces: CLI (Cobra), HTTP REST API (Chi), MCP server (mcp-go), and interactive TUI (Bubble Tea). Produces branching story trees with multiple endings, growth paths, and minigame integration points for the [[entities/lunaverse-backend]] game engine.
 
 ## Tech Stack
 
@@ -51,7 +51,7 @@ Commands are organized by functional category.
 | `dram run <job-id>` | Run the full 15-stage pipeline for a job. Supports `--stage <name>` to start from a specific stage and `--restart` to re-run a completed stage. |
 | `dram pipeline status <job-id>` | Show pipeline progress with per-stage completion status. Supports `--json` for structured output. |
 | `dram pipeline list-stages` | List all 15 pipeline stages with descriptions and phase groupings. |
-| `dram export <job-id>` | Export the final story tree artifact as a standalone JSON file suitable for import into [[entities/moonshort-backend]]. |
+| `dram export <job-id>` | Export the final story tree artifact as a standalone JSON file suitable for import into [[entities/lunaverse-backend]]. |
 
 ### Integration Commands
 
@@ -123,7 +123,7 @@ The pipeline processes novels through three phases, each containing multiple sta
 
 **Stage 14: `ludify-route`** -- Independent subplots. Creates parallel storylines (maximum 2) that run alongside the main story. These are longer branches with their own narrative arcs.
 
-**Stage 15: `ludify-fusion`** -- Final merge. Combines all branches (main storyline, growth points, minor branches, bad endings, and routes) into the final v2.0 story tree. Produces the complete interactive screenplay JSON that can be exported for [[entities/moonshort-backend]].
+**Stage 15: `ludify-fusion`** -- Final merge. Combines all branches (main storyline, growth points, minor branches, bad endings, and routes) into the final v2.0 story tree. Produces the complete interactive screenplay JSON that can be exported for [[entities/lunaverse-backend]].
 
 ## All 14 MCP Tools
 
@@ -294,7 +294,7 @@ Integrated billing service that tracks LLM token usage per pipeline stage. The `
 ## Related
 
 - [[entities/mobai-agent]] -- Orchestrator agent that connects to Dramatizer via MCP
-- [[entities/moonshort-backend]] -- Game engine that imports Dramatizer's story tree output
+- [[entities/lunaverse-backend]] -- Game engine that imports Dramatizer's story tree output
 - [[entities/cli-gateway]] -- Protocol used by the `dram gateway` command
 - [[concepts/cli-gateway-protocol]] -- HTTP API specification
 - [[concepts/four-layer-philosophy]] -- Design framework positioning Dramatizer's CLI/MCP/API layers

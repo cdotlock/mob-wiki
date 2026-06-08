@@ -15,7 +15,7 @@ tags: [sfx, audio, pipeline, elevenlabs, normalizer]
 
 ## Problem
 
-Episode scripts use `@sfx play <name>` 53 times across 60 final MSS files with **43 unique semantic names** (`doorbell_chime_clean`, `phone_buzz_short`, `knuckle_door_knock_soft`, …). Today:
+Episode scripts use `@sfx play <name>` 53 times across 60 final LS files with **43 unique semantic names** (`doorbell_chime_clean`, `phone_buzz_short`, `knuckle_door_knock_soft`, …). Today:
 
 - No SFX alias map exists.
 - No SFX audio assets exist anywhere in the repo.
@@ -31,7 +31,7 @@ The `music-normalizer` skill (5.5b) solves the analogous problem for BGM by clus
    - **Phase 1 (normalize):** scan scripts → cluster semantic names into buckets via LLM → write `sfx_alias_map.json` + `sfx_buckets.json` + human-review report.
    - **Phase 2 (generate):** for each bucket, call ElevenLabs Sound Effects API → write `<bucket_id>.mp3` to `raw_audio/<slug>/sfx/`.
 3. Hard contract with `dramatizer.build`: if `sfx:` is configured but Phase 1 / Phase 2 products are missing, the build fails with a clear pointer to the missing subcommand.
-4. Zero changes to MSS spec, Go interpreter, or source `.md` scripts. The integration is a compile-time URL substitution exactly like music.
+4. Zero changes to LS spec, Go interpreter, or source `.md` scripts. The integration is a compile-time URL substitution exactly like music.
 5. Idempotent and incremental: re-running `normalize` only reclassifies low/medium-confidence entries; re-running `generate` skips buckets that already have a `generated` record (overridable via `--only`).
 
 ## Non-goals
@@ -75,7 +75,7 @@ ElevenLabs registration is a Phase 2 prerequisite; Phase 1 is unblocked.
 ### Directory layout
 
 ```
-novels-to-moonscript/
+novels-to-lunascript/
 ├── skills/
 │   └── sfx-normalizer/                        ← NEW
 │       ├── SKILL.md
@@ -93,7 +93,7 @@ novels-to-moonscript/
 │           ├── test_elevenlabs_generator.py
 │           └── test_orchestrator.py
 │
-├── moonscripts/no-rules-in-bad-ideas/
+├── lunascripts/no-rules-in-bad-ideas/
 │   └── 05.5c-sfx-normalizer/                  ← NEW (05.5b is music)
 │       ├── sfx_alias_map.json                  ← Phase 1 product
 │       ├── sfx_buckets.json                    ← Phase 1 + Phase 2 product
@@ -346,7 +346,7 @@ Before any API call, the generator computes `estimated_total_cost = sum_per_buck
 [2.1/6]  merge music mapping          (existing)
 [2.2/6]  merge sfx mapping            ← NEW
 [2.5/6]  music postprocess inject     (existing; does NOT touch @sfx)
-[3-6]    compile_mss / episodes       (existing; consumes augmented mapping.json)
+[3-6]    compile_ls / episodes       (existing; consumes augmented mapping.json)
 ```
 
 ### `stage_sfx.py`
@@ -388,9 +388,9 @@ if sfx_cfg:
 
 No silent fallbacks. If `sfx:` is configured, every prerequisite must be present. If `sfx:` is absent, the entire SFX pipeline is skipped — books without SFX are zero-impact.
 
-### MSS / Go engine changes
+### LS / Go engine changes
 
-**None.** `@sfx play <name>` syntax already exists in MSS spec. The Go engine already consumes `mapping.json[<name>]` for any reference. This pipeline operates purely at compile time as a URL substitution.
+**None.** `@sfx play <name>` syntax already exists in LS spec. The Go engine already consumes `mapping.json[<name>]` for any reference. This pipeline operates purely at compile time as a URL substitution.
 
 ### Interaction with `music_postprocess`
 
@@ -438,7 +438,7 @@ No silent fallbacks. If `sfx:` is configured, every prerequisite must be present
 1. Implement Phase 1 + tests. Run normalize end-to-end on no-rules-in-bad-ideas. Spot-check `normalize_report.md` low/med confidence entries.
 2. Implement dramatizer changes + tests. Run `dramatizer.build` and assert `mapping.json` lacks SFX entries because `generated: null` → expected SystemExit until Phase 2 completes. Adjust user onboarding wording in the SystemExit message.
 3. Implement Phase 2 generator + tests. User registers ElevenLabs Starter ($5). Run generate; review the 28 mp3s aurally; iterate via `--only`.
-4. Once all 28 buckets land, rerun `dramatizer.build`. Verify a sample compiled episode contains the SFX URLs and a smoke playback in the MSS engine plays the expected sound at the expected beat.
+4. Once all 28 buckets land, rerun `dramatizer.build`. Verify a sample compiled episode contains the SFX URLs and a smoke playback in the LS engine plays the expected sound at the expected beat.
 5. Wiki-ingest the final design (this doc) into `mob-wiki` under `wiki/concepts/sfx-pipeline.md`.
 
 ## Open questions / deferred
@@ -446,16 +446,16 @@ No silent fallbacks. If `sfx:` is configured, every prerequisite must be present
 - **Loudness normalization.** ElevenLabs outputs vary in loudness. If two adjacent SFX in a scene differ by >6dB it will feel uneven. Deferred: if review flags this, add a post-gen `ffmpeg-normalize` step in Phase 2.
 - **SFX deduplication across books.** A future second book might rebuild many of the same buckets (doorbell, knock, phone_buzz). Out of scope here; could be a cross-book bucket library later.
 - **Per-occurrence variants.** Right now `doorbell_two_chimes` and `doorbell_chime_clean` play the same mp3. If a scene needs the two-chimes variant to actually have two chimes, the bucket can be split manually by editing `sfx_buckets.json` and rerunning generate `--only`. Phase 1 LLM is told to keep duration-variant clusters together by default.
-- **MSS engine volume control.** SFX volume relative to BGM is engine-side; out of pipeline scope.
+- **LS engine volume control.** SFX volume relative to BGM is engine-side; out of pipeline scope.
 
 ## Onboarding for a second book
 
 ```
 1. Add a sfx: section to dramatizer/configs/<slug2>.yaml (copy from no-rules-in-bad-ideas.yaml)
 2. python -m skills.sfx-normalizer <slug2> normalize
-3. Review moonscripts/<slug2>/05.5c-sfx-normalizer/normalize_report.md
+3. Review lunascripts/<slug2>/05.5c-sfx-normalizer/normalize_report.md
 4. python -m skills.sfx-normalizer <slug2> generate
-5. Review moonscripts/<slug2>/05.5c-sfx-normalizer/generation_report.md and any failed buckets
+5. Review lunascripts/<slug2>/05.5c-sfx-normalizer/generation_report.md and any failed buckets
 6. python -m dramatizer.build <slug2>
 ```
 

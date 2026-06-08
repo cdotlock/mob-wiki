@@ -253,7 +253,7 @@ dig +short test.node.proxy.${DOMAIN} @8.8.8.8
 
 ## Relationship To Other Pages
 
-Mob Sandbox provides the remote development substrate for agents that work on [[entities/moonshort-backend]], [[entities/dramatizer-mss]], [[entities/video-agent-claude-wangbo]], and other Moonshort repositories. It is operational infrastructure, not content production logic.
+Mob Sandbox provides the remote development substrate for agents that work on [[entities/lunaverse-backend]], [[entities/dramatizer-ls]], [[entities/video-agent-claude-wangbo]], and other Lunaverse repositories. It is operational infrastructure, not content production logic.
 
 ## Sources
 

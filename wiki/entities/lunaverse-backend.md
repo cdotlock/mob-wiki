@@ -1,18 +1,18 @@
 ---
-title: Moonshort Backend
+title: Lunaverse Backend
 tags: [nextjs, game-engine, prisma, postgresql, supabase, r2, stripe, interactive-fiction]
 sources: [raw/2026-04-14-mobai-agent-memory.md, raw/2026-04-14-cli-gateway-server-layer-design.md, docs/superpowers/specs/2026-04-24-remix-anywhere-design.md, raw/2026-05-30-backend-production-pipeline-two-phase.md]
 created: 2026-04-14
 updated: 2026-06-06
 ---
 
-Next.js full-stack application serving as the game engine, story delivery platform, admin dashboard, Remix runtime, Dreaming Universe backend, and content release controller for Moonshort interactive fiction games. Handles player state management, story node delivery from upstream, D20 dice combat, economy systems, survival mechanics, minigames, achievements, payments via Stripe, remix/branching via LLM, Dream production/recommendation plumbing, and NPC character chat. The primary backend that [[entities/moonshort-client]] connects to for all gameplay operations.
+Next.js full-stack application serving as the game engine, story delivery platform, admin dashboard, Remix runtime, Dreaming Universe backend, and content release controller for Lunaverse interactive fiction games. Handles player state management, story node delivery from upstream, D20 dice combat, economy systems, survival mechanics, minigames, achievements, payments via Stripe, remix/branching via LLM, Dream production/recommendation plumbing, and NPC character chat. The primary backend that [[entities/lunaverse-client]] connects to for all gameplay operations.
 
 ## 2026-05/06 Major Refactors（要点速查）
 
 | 改 | 摘要 | 详细 |
 |---|---|---|
-| **MSS realignment 上线（2026-06-06）** | 新 MSS 契约的 consumer cutover 落 prod：删 influence / goto / label / CG sub-steps / 3-slot stage / `Session.resolvedInfluences`，single-sprite stage；零删库（additive-only，prod schema 已是 HEAD 超集）；同批带 soul dark-launch + TLWB co-op + second-chorus Sera + recommended 端点 | [[concepts/mss-spec-redesign-2026-06]] · 部署机制 [[concepts/railway-production-deploy]] |
+| **LS realignment 上线（2026-06-06）** | 新 LS 契约的 consumer cutover 落 prod：删 influence / goto / label / CG sub-steps / 3-slot stage / `Session.resolvedInfluences`，single-sprite stage；零删库（additive-only，prod schema 已是 HEAD 超集）；同批带 soul dark-launch + TLWB co-op + second-chorus Sera + recommended 端点 | [[concepts/ls-spec-redesign-2026-06]] · 部署机制 [[concepts/railway-production-deploy]] |
 | **两阶段发布流程** | IDE submit → admin activate；`Novel.activeReleaseId` 是唯一真相；`NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible` 全删 | [[concepts/production-pipeline-two-phase]] |
 | **Dream `bonus_only` op** | 3 个旧 entry-patch ops 全废，换成单一 terminal `bonus_only`；feed 入口直接落 dream E1 | [[concepts/dream-bonus-only-op]] |
 | **Supabase 切换** | 生产 Postgres 从自管切到 Supabase；新库走专用 fresh-bootstrap，**不能** `migrate deploy` 从空库 replay | [[concepts/supabase-backend-bootstrap]] |
@@ -27,13 +27,13 @@ Next.js full-stack application serving as the game engine, story delivery platfo
 - **Framework:** Next.js 16 (App Router + custom server.ts)
 - **Database:** PostgreSQL via Prisma ORM v6.6.0；生产托管在 **Supabase**（Railway 上 app/worker/tts/dream/dream-rec 5 个 service 全指向同一个 hosted DB），见 [[concepts/supabase-backend-bootstrap]]
 - **Storage:** **Cloudflare R2**（所有 asset / TTS 音频 / episode JSON 唯一 storage backend；Aliyun 兼容层 2026-05 完全摘除）
-- **Authentication:** 自家 JWT via `jose`（`app/lib/jwt-auth.ts`）；Supabase OAuth 作为 OAuth provider 但 backend 自签 JWT（[`docs/specs/supabase-auth.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/specs/supabase-auth.md)）；admin 走 HMAC cookie `noval_admin`（`requireAdmin`）；**项目不依赖 next-auth**
+- **Authentication:** 自家 JWT via `jose`（`app/lib/jwt-auth.ts`）；Supabase OAuth 作为 OAuth provider 但 backend 自签 JWT（[`docs/specs/supabase-auth.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/docs/specs/supabase-auth.md)）；admin 走 HMAC cookie `noval_admin`（`requireAdmin`）；**项目不依赖 next-auth**
 - **Payments:** Stripe (checkout, webhooks, subscription management)
 - **LLM Integration:** mob-ai LiteLLM gateway (`https://ai.mob-ai.cn/api/v1`) — influence-judge / Jina embeddings + rerank / dream-agent specialists / dream-rec tagger 全部通过 `MOB_AI_API_KEY` 鉴权
 - **Observability:** Langfuse (LLM call tracing via OpenTelemetry, 初始化在 `instrumentation.ts`)
 - **CLI Framework:** Commander 12
-- **Repository:** [github.com/cdotlock/moonshort-backend](https://github.com/cdotlock/moonshort-backend)
-- **Location:** `/Users/Clock/moonshort/backend/`
+- **Repository:** [github.com/cdotlock/lunaverse-backend](https://github.com/cdotlock/lunaverse-backend)
+- **Location:** `/Users/Clock/lunaverse/backend/`
 - **Port:** 3000
 
 ## Custom Server
@@ -130,7 +130,7 @@ Internal Dream APIs:
 | `GET` | `/api/internal/novels/:novelId/episodes` | Preheat / agent tools | List source episodes, excluding Dream branches. |
 | `GET` | `/api/internal/novels/:novelId/episodes/:episodeId/source` | Planner and entry-patch tools | Read compiled source episode JSON and metadata. |
 | `POST` | `/api/internal/preview-overlay-apply` | Entry-patch specialist | Apply `DreamEntryOperation[]` in memory and report applied/skipped operations. |
-| `POST` | `/api/internal/compile-mss` | Writer specialist | Compile MSS source into EpisodeJSON and content hash without writing DB. |
+| `POST` | `/api/internal/compile-ls` | Writer specialist | Compile LS source into EpisodeJSON and content hash without writing DB. |
 | `POST` | `/api/internal/preheat-bundle/:novelId` | Preheat client | Build or fetch cached source context bundle. |
 
 Python `dream-agent` integration:
@@ -144,7 +144,7 @@ Python `dream-agent` integration:
 | `BACKEND_INTERNAL_URL` | Python | Backend base URL for internal APIs. |
 | `BACKEND_INTERNAL_BEARER` | Python | Bearer token used by dream-agent -> backend calls; in dev it matches `CHEAT_TOKEN`. |
 
-The current implementation has an important limitation: the Python controller keeps many artifacts in memory (`planner_output_json`, `writer_drafts_json`, `reviewer_reports_json`, `mss_files`) and the backend `/progress` endpoint only persists selected fields. This means job inspection is improving, but durable checkpoint persistence is not yet complete.
+The current implementation has an important limitation: the Python controller keeps many artifacts in memory (`planner_output_json`, `writer_drafts_json`, `reviewer_reports_json`, `ls_files`) and the backend `/progress` endpoint only persists selected fields. This means job inspection is improving, but durable checkpoint persistence is not yet complete.
 
 ### Character Chat Routes (`/api/character-chat/*` and `/api/ccr/*`)
 
@@ -369,7 +369,7 @@ Players earn experience points (XP) through gameplay actions: completing episode
 
 ## Data Model
 
-> 2026-05 起 IDE 上游契约从 MSS-only 升级成 Production Manifest（含 asset / voice / prompt 元信息）。Schema 大改：见 [[concepts/production-pipeline-two-phase]] §4 的字段表。下面只列**当前**字段；2026-05 已删字段单独标出。
+> 2026-05 起 IDE 上游契约从 LS-only 升级成 Production Manifest（含 asset / voice / prompt 元信息）。Schema 大改：见 [[concepts/production-pipeline-two-phase]] §4 的字段表。下面只列**当前**字段；2026-05 已删字段单独标出。
 
 ### User
 
@@ -390,7 +390,7 @@ Story container. Fields: id, title, synopsis, coverUrl, coverVideo, coverVideoTh
 
 ### NovelAsset（新，2026-05）
 
-L2 asset 行，bind 到 release。Fields: id, novelId, releaseId, localId, kind (`cover` / `character_image` / `bg` / `cg` / `music` / `sfx` / `episode_json` / `mss` / `tts_audition_audio`), name, ossKey, ossUrl, contentHash, mimeType, sizeBytes, source (`ide` / `generated` / `uploaded`), promptRunId, metadata. 替代了已删的 `NovelDraftAsset` 表。
+L2 asset 行，bind 到 release。Fields: id, novelId, releaseId, localId, kind (`cover` / `character_image` / `bg` / `cg` / `music` / `sfx` / `episode_json` / `ls` / `tts_audition_audio`), name, ossKey, ossUrl, contentHash, mimeType, sizeBytes, source (`ide` / `generated` / `uploaded`), promptRunId, metadata. 替代了已删的 `NovelDraftAsset` 表。
 
 ### NovelDreamArtifact（新，2026-05-24）
 
@@ -420,7 +420,7 @@ Langfuse 元信息。Fields: id, releaseId, localId, provider (`langfuse`), prom
 
 ### Episode
 
-不可变 episode 行。Fields: id, novelId, episodeId, branchKey, seq, title, jsonUrl (R2), mssUrl (R2), contentHash, compiledAt.
+不可变 episode 行。Fields: id, novelId, episodeId, branchKey, seq, title, jsonUrl (R2), lsUrl (R2), contentHash, compiledAt.
 
 ### Session / Save
 
@@ -487,7 +487,7 @@ Slot → model mapping **三处镜像**，`pnpm lint:llm-registry` 强制三方�
 
 ## Upstream Integration
 
-The backend syncs novel content from upstream via [[entities/moonshort-ide]] submitting production manifests（[[concepts/production-pipeline-two-phase]]）。**已弃** legacy upstream 47.98.225.71 拉取路径（IDE 还自己跑分仓的旧 noval CLI 时用，现在 IDE 走 submit endpoint 直接 PUSH 内容）。
+The backend syncs novel content from upstream via [[entities/lunaverse-ide]] submitting production manifests（[[concepts/production-pipeline-two-phase]]）。**已弃** legacy upstream 47.98.225.71 拉取路径（IDE 还自己跑分仓的旧 noval CLI 时用，现在 IDE 走 submit endpoint 直接 PUSH 内容）。
 
 `noval sync` CLI 命令仍支持但仅作 dev 内部 debug。
 
@@ -502,8 +502,8 @@ The backend syncs novel content from upstream via [[entities/moonshort-ide]] sub
 - [[concepts/novel-dream-artifact]] — characterArcs / assetMapping 抽表
 - [[concepts/dream-rec-monorepo-migration]] — dream-rec subtree merged 进 `services/dream-rec/`
 - [[entities/mobai-agent]] — Orchestrator agent that manages backend operations via CLI
-- [[entities/moonshort-client]] — Cocos game frontend that connects to this backend
-- [[entities/moonshort-ide]] — Upstream IDE that submits production manifests
+- [[entities/lunaverse-client]] — Cocos game frontend that connects to this backend
+- [[entities/lunaverse-ide]] — Upstream IDE that submits production manifests
 - [[entities/mob-ai-router]] — LLM gateway used for all calls
 - [[entities/cli-gateway]] — CLI gateway for remote noval CLI execution
 - [[concepts/cli-gateway-protocol]] — HTTP API specification

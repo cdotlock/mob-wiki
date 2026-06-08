@@ -39,7 +39,7 @@ MobAI 的机会：
 
 评级影响后续检定：S = +3 修正 +2 XP、A = +1 修正 +1 XP、B = +0 修正 +1 XP、C/D = -1 修正 +0 XP。
 
-**新版变化**：小游戏嵌入视觉小说阅读流内部（不再是独立阶段），脚本通过 `@minigame` 指令触发。见 [[concepts/mss-format]]。
+**新版变化**：小游戏嵌入视觉小说阅读流内部（不再是独立阶段），脚本通过 `@minigame` 指令触发。见 [[concepts/ls-format]]。
 
 ### 第三步：剧情选择 + D20 检定
 
@@ -110,7 +110,7 @@ MobAI 的机会：
 
 **Phase 3 互动化**：ludify 系列（分支点规划、互动剧本生成、角色成长路线、最终合并）
 
-输出格式为 MSS（MoonShort Script），见 [[concepts/mss-format]]。解释器见 [[entities/moonshort-script]]。
+输出格式为 LS（Lunascripts），见 [[concepts/ls-format]]。解释器见 [[entities/lunascripts]]。
 
 详细架构见 [[entities/dramatizer]]。
 
@@ -128,7 +128,7 @@ MobAI 的机会：
 
 1. **Planner**：评估操作影响几集，生成即时文字反馈
 2. **Script**：基于大纲生成完整剧情长文
-3. **Executor**：转成游戏引擎可渲染的 MSS 格式
+3. **Executor**：转成游戏引擎可渲染的 LS 格式
 
 文字免费。图片 6 胶卷（≈60 Gems），视频 20 胶卷（≈200 Gems）。
 
@@ -152,7 +152,7 @@ MobAI 的机会：
 2. **DC 修正**：好的影响多的玩家在相关场景获得更有利展开
 3. **命运日记**：影响积累后合成主角视角的第一人称日记
 
-INFLUENCE 条件是最有意思的——不是标签匹配，是把所有影响描述喂给 LLM 问"是否满足这个条件"。MSS 脚本中通过 `@butterfly` 记录、`@gate type: influence` 判定。
+INFLUENCE 条件是最有意思的——不是标签匹配，是把所有影响描述喂给 LLM 问"是否满足这个条件"。LS 脚本中通过 `@butterfly` 记录、`@gate type: influence` 判定。
 
 ## 技术架构
 
@@ -160,11 +160,11 @@ INFLUENCE 条件是最有意思的——不是标签匹配，是把所有影响�
 
 | 服务 | 技术栈 | 说明 |
 |------|--------|------|
-| [[entities/moonshort-backend]] | Next.js + Prisma + PostgreSQL | 游戏后端（API、Remix 管线、成就系统） |
-| [[entities/moonshort-client]] | Cocos Creator H5 | 游戏前端 |
+| [[entities/lunaverse-backend]] | Next.js + Prisma + PostgreSQL | 游戏后端（API、Remix 管线、成就系统） |
+| [[entities/lunaverse-client]] | Cocos Creator H5 | 游戏前端 |
 | [[entities/dramatizer]] | Go 单二进制 | 剧本生产（15 阶段 LLM 管线） |
 | [[entities/agent-forge]] | Next.js + MCP | 素材生产（Agent 平台） |
-| [[entities/moonshort-script]] | Go 单二进制 | MSS 脚本解释器 |
+| [[entities/lunascripts]] | Go 单二进制 | LS 脚本解释器 |
 | [[entities/mobai-agent]] | Node.js | Master Agent 调度器 |
 
 ### 后端关键文件
@@ -192,6 +192,6 @@ INFLUENCE 条件是最有意思的——不是标签匹配，是把所有影响�
 - 整屏背景图 + 放大角色 cutout + 悬浮式文本容器
 - 5 种叙事容器：对白、旁白、内心独白、短信、选择
 - D20 检定和小游戏机制保留，嵌入阅读流
-- 脚本格式统一为 MSS（[[concepts/mss-format]]）
+- 脚本格式统一为 LS（[[concepts/ls-format]]）
 
 视觉资产管线：LoRA 训练 → 表情 Inpainting → LivePortrait idle 动画 → 背景生成 → CG 短视频。每部小说 $36-137（vs 传统 $15K-84K）。

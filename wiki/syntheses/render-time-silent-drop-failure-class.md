@@ -307,6 +307,6 @@ scene→scene / scene→hook / hook→scene 直接 `next` 边必须通过 4 项�
 ## 相关
 
 - [[concepts/unfolded-visual-novel]] — Unfolded 展示形态与素材管线
-- [[concepts/mss-format]] — MSS 脚本格式
+- [[concepts/ls-format]] — LS 脚本格式
 - [[entities/dramatizer]] — Go binary for novel-to-screenplay conversion（上游相关）
 - [[syntheses/data-silence-failure-class]] — data-silence 子家族（v4.7 是其首个实例；v4.11 是其反向对偶 authoring-intent-mis-rendered 子家族的首个实例）

@@ -12,13 +12,13 @@ updated: 2026-04-14
 
 ### Current Local Setup
 
-In the local development environment, all five Moonshort platform services run on a single machine. [[entities/mobai-agent]] connects to them through three transport mechanisms:
+In the local development environment, all five Lunaverse platform services run on a single machine. [[entities/mobai-agent]] connects to them through three transport mechanisms:
 
 1. **stdio MCP** -- The agent spawns the Dramatizer MCP server as a local subprocess using `StdioClientTransport`. The agent's process directly writes to the subprocess's stdin and reads from its stdout. This requires the `dram` binary to exist on the same machine and in the same filesystem as the agent process.
 
 2. **localhost HTTP MCP** -- The agent connects to Agent-Forge's MCP server via HTTP at `http://localhost:8001/mcp`. This works because both processes bind to the same machine's loopback interface.
 
-3. **local bash** -- The agent executes CLI tools (for Backend and Moonshort Client) via `Bun.spawn()`, which spawns processes directly on the local machine. This requires the CLI entry scripts (`cli/bin/noval.ts`, `test/play.ts`) and their dependencies to exist in the local filesystem.
+3. **local bash** -- The agent executes CLI tools (for Backend and Lunaverse Client) via `Bun.spawn()`, which spawns processes directly on the local machine. This requires the CLI entry scripts (`cli/bin/noval.ts`, `test/play.ts`) and their dependencies to exist in the local filesystem.
 
 ### What Breaks When Going Cloud
 
@@ -93,7 +93,7 @@ to:
 ```yaml
 # Cloud (HTTP)
 dramatizer:
-  url: "https://dram.moonshort.io/mcp"
+  url: "https://dram.lunaverse.io/mcp"
   transport: "http"
 ```
 
@@ -191,26 +191,26 @@ server:
 mcp:
   servers:
     agent-forge:
-      url: "${AGENT_FORGE_MCP_URL}"        # e.g., https://forge.moonshort.io/mcp
+      url: "${AGENT_FORGE_MCP_URL}"        # e.g., https://forge.lunaverse.io/mcp
       transport: "http"
     dramatizer:
-      url: "${DRAMATIZER_MCP_URL}"          # e.g., https://dram.moonshort.io/mcp
+      url: "${DRAMATIZER_MCP_URL}"          # e.g., https://dram.lunaverse.io/mcp
       transport: "http"                     # Changed from stdio to http
 
 cli:
   gateways:
     dramatizer:
-      url: "${DRAMATIZER_GW_URL}"           # e.g., https://dram.moonshort.io:9001
+      url: "${DRAMATIZER_GW_URL}"           # e.g., https://dram.lunaverse.io:9001
       apiKey: "${DRAMATIZER_CLI_KEY}"
       tools: ["dram"]
       timeout: 120000
     backend:
-      url: "${BACKEND_GW_URL}"              # e.g., https://backend.moonshort.io:9002
+      url: "${BACKEND_GW_URL}"              # e.g., https://backend.lunaverse.io:9002
       apiKey: "${BACKEND_CLI_KEY}"
       tools: ["noval"]
       timeout: 60000
     client-test:
-      url: "${CLIENT_GW_URL}"              # e.g., https://test-runner.moonshort.io:9003
+      url: "${CLIENT_GW_URL}"              # e.g., https://test-runner.lunaverse.io:9003
       apiKey: "${CLIENT_CLI_KEY}"
       tools: ["play", "test"]
       timeout: 300000
@@ -239,7 +239,7 @@ Environment variables (`${VAR_NAME}` syntax) are used for all cloud URLs and API
 
 **MCP tool definitions.** All MCP tools (14 from Dramatizer, 60+ from Agent-Forge) are defined by their respective services and served through the MCP protocol. The tool names, parameter schemas, descriptions, and behaviors are unchanged. The only thing that changes is the transport over which tool calls and results are transmitted.
 
-**Skills.** All six skill files in `skills/` (`dramatizer/pipeline.md`, `agent-forge/video-production.md`, `moonshort/game-client.md`, `general/orchestrator.md`, `general/coding.md`, `general/debugging.md`) are part of the mobai-agent codebase, deployed alongside the agent. They do not reference external service URLs or transport mechanisms. Their content remains valid regardless of deployment topology.
+**Skills.** All six skill files in `skills/` (`dramatizer/pipeline.md`, `agent-forge/video-production.md`, `lunaverse/game-client.md`, `general/orchestrator.md`, `general/coding.md`, `general/debugging.md`) are part of the mobai-agent codebase, deployed alongside the agent. They do not reference external service URLs or transport mechanisms. Their content remains valid regardless of deployment topology.
 
 **Memory system.** The MEMORY.md, SOUL.md, and USER.md files, the dream cycle, and the memory consolidation system all operate on local files within the agent's deployment. They do not interact with external services and are unaffected by the transition.
 
@@ -347,7 +347,7 @@ Environment variables (`${VAR_NAME}` syntax) are used for all cloud URLs and API
   +-----------------------------------------------------+
 
   +-----------------------------------------------------+
-  | Server E: Moonshort Client (CI/CD)                   |
+  | Server E: Lunaverse Client (CI/CD)                   |
   |                                                     |
   | Processes:                                          |
   |   cli-gateway (:9003)                               |
@@ -393,7 +393,7 @@ Environment variables (`${VAR_NAME}` syntax) are used for all cloud URLs and API
 3. Deploy with `npx tsx cli-gateway/server.ts` (or `bun run cli-gateway/server.ts`).
 4. Verify with health check and test execution.
 
-**Moonshort Client (TypeScript):**
+**Lunaverse Client (TypeScript):**
 1. Same directory structure as Backend.
 2. Configure command mapping: `"play"` maps to the headless player, `"test"` maps to the test runner.
 3. Deploy with `npx tsx cli-gateway/server.ts`.

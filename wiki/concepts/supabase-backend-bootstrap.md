@@ -6,7 +6,7 @@ created: 2026-05-30
 updated: 2026-05-30
 ---
 
-2026-05-29 [[entities/moonshort-backend]] 把生产 Postgres 切到 **Supabase**（Railway app/worker/tts/dream 服务全部指向同一个 hosted Postgres）。本页记录：（1）新建 Supabase 空库的 fresh-bootstrap 流程（必须，不能走 `prisma migrate deploy`），（2）项目历史 migration 的 **"增量补丁、不可 replay"** 既定决策与灾备方案。源 doc：[`docs/operations/production-manifest-supabase-db.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/operations/production-manifest-supabase-db.md) + [`docs/architecture/migration-policy.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/architecture/migration-policy.md)。
+2026-05-29 [[entities/lunaverse-backend]] 把生产 Postgres 切到 **Supabase**（Railway app/worker/tts/dream 服务全部指向同一个 hosted Postgres）。本页记录：（1）新建 Supabase 空库的 fresh-bootstrap 流程（必须，不能走 `prisma migrate deploy`），（2）项目历史 migration 的 **"增量补丁、不可 replay"** 既定决策与灾备方案。源 doc：[`docs/operations/production-manifest-supabase-db.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/docs/operations/production-manifest-supabase-db.md) + [`docs/architecture/migration-policy.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/docs/architecture/migration-policy.md)。
 
 ## 一句话
 
@@ -37,7 +37,7 @@ updated: 2026-05-30
 ### 走法
 
 ```bash
-cd /path/to/moonshort-backend
+cd /path/to/lunaverse-backend
 export DIRECT_URL='postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres'
 
 BOOTSTRAP_FRESH_SUPABASE_DB=yes \
@@ -62,9 +62,9 @@ BOOTSTRAP_TARGET_DB_NAME=postgres \
 本地临时 Postgres 没有 Supabase 托管扩展时，只验 app schema + production manifest contract：
 
 ```bash
-export DIRECT_URL='postgresql://postgres:postgres@127.0.0.1:5432/moonshort_test'
+export DIRECT_URL='postgresql://postgres:postgres@127.0.0.1:5432/lunaverse_test'
 BOOTSTRAP_FRESH_SUPABASE_DB=yes \
-BOOTSTRAP_TARGET_DB_NAME=moonshort_test \
+BOOTSTRAP_TARGET_DB_NAME=lunaverse_test \
 BOOTSTRAP_APPLY_PLATFORM_SQL=false \
 BOOTSTRAP_APPLY_CRON_SQL=false \
 pnpm db:bootstrap:fresh-supabase
@@ -127,7 +127,7 @@ pnpm smoke:production-release-service
 2. 跟生产 DB 协调 checksum reset
 3. 把本地校验流程换成 fresh-Postgres + migrate deploy
 
-是单独的大票，不在 cleanup-2026-04-27 plan 范围内。决策锚在 [`docs/architecture/migration-policy.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/architecture/migration-policy.md)。
+是单独的大票，不在 cleanup-2026-04-27 plan 范围内。决策锚在 [`docs/architecture/migration-policy.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/docs/architecture/migration-policy.md)。
 
 ## 决策史
 
@@ -139,4 +139,4 @@ pnpm smoke:production-release-service
 
 - [[concepts/railway-production-deploy]] — 运行时部署面（CI workflow / 鉴权 / additive-only 零删库 cutover）；本页是其 DB / migration 政策依据
 - [[concepts/production-pipeline-two-phase]] — 写库的两阶段流程，依赖本页的 DB 结构 invariant
-- [[entities/moonshort-backend]] — 服务载体；Railway 上 5 个 service 全指向同一个 Supabase
+- [[entities/lunaverse-backend]] — 服务载体；Railway 上 5 个 service 全指向同一个 Supabase

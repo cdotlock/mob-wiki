@@ -6,7 +6,7 @@ created: 2026-05-30
 updated: 2026-05-30
 ---
 
-2026-05-25 brainstorm → 2026-05-26+ 落地：dream entry-patch 从 3 个 v1 ops (`choice_add_option` / `choice_replace_option` / `replace_gate`) 全部废掉，换成单一新 op **`bonus_only`** — terminal placement + template "Continue" 选项 + LLM 写的 dream 选项文案 + 机械路由。同时改 home feed 入口：点 dream 卡直接落 dream E1，不再走一遍 source 集 + auto-pick。源 spec：[`docs/superpowers/specs/2026-05-25-dream-bonus-only-and-feed-skip-design.md`](https://github.com/cdotlock/moonshort-backend/blob/main/docs/superpowers/specs/2026-05-25-dream-bonus-only-and-feed-skip-design.md)。详见 [[concepts/dreaming-universe]]。
+2026-05-25 brainstorm → 2026-05-26+ 落地：dream entry-patch 从 3 个 v1 ops (`choice_add_option` / `choice_replace_option` / `replace_gate`) 全部废掉，换成单一新 op **`bonus_only`** — terminal placement + template "Continue" 选项 + LLM 写的 dream 选项文案 + 机械路由。同时改 home feed 入口：点 dream 卡直接落 dream E1，不再走一遍 source 集 + auto-pick。源 spec：[`docs/superpowers/specs/2026-05-25-dream-bonus-only-and-feed-skip-design.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/docs/superpowers/specs/2026-05-25-dream-bonus-only-and-feed-skip-design.md)。详见 [[concepts/dreaming-universe]]。
 
 ## 为什么换
 
@@ -61,7 +61,7 @@ planner 必须 reject 不符的 source 集，否则报：
 
 ## No-Mainline-Mutation Invariant（bonus_only 核心）
 
-`bonus_only` dream **禁止**任何主线持久 state 改动。dream MSS 源不能 emit：
+`bonus_only` dream **禁止**任何主线持久 state 改动。dream LS 源不能 emit：
 
 - `@affection <character> <delta>`
 - `@signal mark <event>` / `@signal int <name> <op> <value>`
@@ -78,7 +78,7 @@ planner 必须 reject 不符的 source 集，否则报：
 |---|---|---|
 | Writer prompt | `services/dream-agent/prompts/dream_agent__writer__system.md` — Iron Rule 明确禁止四个命令 + pre-commit checklist | — |
 | Reviewer prompt | `services/dream-agent/prompts/dream_agent__writer__reviewer__system.md` — mandatory check + violation kind | `dream_mainline_mutation_forbidden` |
-| Backend validation | `services/dream-agent/src/validation.ts` — content-walk 扫每个 dream-episode MSS step `type`，拒 `affection` / `signal` / `butterfly` / `achievement` | `dream_mainline_mutation_forbidden` (severity: `critical`) |
+| Backend validation | `services/dream-agent/src/validation.ts` — content-walk 扫每个 dream-episode LS step `type`，拒 `affection` / `signal` / `butterfly` / `achievement` | `dream_mainline_mutation_forbidden` (severity: `critical`) |
 
 ## 关闭旧 ops 的两道闸（write side）
 

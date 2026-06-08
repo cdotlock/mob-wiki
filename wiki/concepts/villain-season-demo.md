@@ -1,12 +1,12 @@
 ---
 title: Villain Season — Heart Signal Otome Demo
-tags: [demo, content, villain-season, dreaming, mss, tts, onboarding]
+tags: [demo, content, villain-season, dreaming, ls, tts, onboarding]
 sources: [raw/2026-05-30-villain-season-readme.md]
 created: 2026-05-30
 updated: 2026-05-30
 ---
 
-恶人季是 [[entities/moonshort-backend]] 2026-05 落地的 **平台 demo 兼新玩家教学**：Heart Signal 设定 NA otome 短剧，3 集 + 1 dream，端到端展示当前所有 player-facing 机制。**双重用途**：新玩家教学 + 投资人演示。源 README：[`moonscripts/villain-season/README.md`](https://github.com/cdotlock/moonshort-backend/blob/main/moonscripts/villain-season/README.md)。
+恶人季是 [[entities/lunaverse-backend]] 2026-05 落地的 **平台 demo 兼新玩家教学**：Heart Signal 设定 NA otome 短剧，3 集 + 1 dream，端到端展示当前所有 player-facing 机制。**双重用途**：新玩家教学 + 投资人演示。源 README：[`lunascripts/villain-season/README.md`](https://github.com/cdotlock/lunaverse-backend/blob/main/lunascripts/villain-season/README.md)。
 
 ## 双 novel 并行
 
@@ -49,10 +49,10 @@ pnpm seed:villain-season:zh
 ```
 
 链：
-1. `pnpm build:villain-season` —— `mss compile` 双语脚本 → `compiled/compiled.en.json` + `compiled.zh.json`；**校验**每个引用素材都在官方 `mapping.json` 里（缺一个硬失败）
+1. `pnpm build:villain-season` —— `lsc compile` 双语脚本 → `compiled/compiled.en.json` + `compiled.zh.json`；**校验**每个引用素材都在官方 `mapping.json` 里（缺一个硬失败）
 2. `pnpm seed:villain-season` —— 两本都 upload to OSS + upsert `Novel` / `Episode` / `Dream` + 角色名册 + （英文本）配音 + `NovelProductionRelease` stub
 
-依赖：`mss` binary（本地 dialect 版，支持 `@trick` + 旧 `@minigame`，默认 `/Users/Clock/.local/bin/mss`，env `MSS_BIN` 覆盖）。**上游 v2.4 HEAD 编不了这剧本**（用了本地 dialect 才有的 `@trick`）。后端 healthy + OSS 凭证在 `.env`。
+依赖：`lsc` binary（本地 dialect 版，支持 `@trick` + 旧 `@minigame`，默认 `/Users/Clock/.local/bin/lscc`，env `LS_BIN` 覆盖）。**上游 v2.4 HEAD 编不了这剧本**（用了本地 dialect 才有的 `@trick`）。后端 healthy + OSS 凭证在 `.env`。
 
 ## 素材清单
 
@@ -66,7 +66,7 @@ pnpm seed:villain-season:zh
 | sfx 音效 | 22 | `lianzong/sfx/*.mp3` |
 | minigames | 1 | `qte_challenge` |
 
-**重要**：`build:villain-season` **不再生成 mapping** —— 它是手动维护的权威文件，build 只做 "引用 ⊆ mapping" 校验。改素材名：改 `.mss.md` → rebuild → 报哪个引用缺图。
+**重要**：`build:villain-season` **不再生成 mapping** —— 它是手动维护的权威文件，build 只做 "引用 ⊆ mapping" 校验。改素材名：改 `.ls` → rebuild → 报哪个引用缺图。
 
 ### qte_challenge 小游戏
 
@@ -108,7 +108,7 @@ demo 双重用途要求"边玩边教"：**Remix + Dream 重点教**，**trick �
 
 ## 机制覆盖总览
 
-| MSS 指令 | 用了 | 说明 |
+| LS 指令 | 用了 | 说明 |
 |---|---|---|
 | `@episode <branch_key> <title> { }` | ✅ ×3 | main:01 / dream/three_years_ago:01 / mp:01 |
 | `@gate { @else: @next ... }` | ✅ ×2 | main → mp, dream → mp |
@@ -167,14 +167,14 @@ pnpm verify:villain-dream
 
 | 文件 | 用途 |
 |---|---|
-| `scripts-en/{main_01,dream_three_years_ago_01,mp_01}.mss.md` | 英文剧本 ×3（上线 / 配音） |
-| `scripts-zh/{...}.mss.md` | 中文剧本 ×3（留档 / 对照） |
+| `scripts-en/{main_01,dream_three_years_ago_01,mp_01}.ls` | 英文剧本 ×3（上线 / 配音） |
+| `scripts-zh/{...}.ls` | 中文剧本 ×3（留档 / 对照） |
 | `compiled/compiled.en.json` / `compiled.zh.json` | 各自编译产物 |
 | `compiled/mapping.json` | **官方** asset map（真 OSS URL，手动维护） |
 | `voices.json` | 8 个 Breeze 英文 voiceId（同事交付） |
 
 build / seed / verify scripts：
-- `scripts/build-villain-season.mjs` — 双语 mss compile + 引用校验（不生成 mapping）
+- `scripts/build-villain-season.mjs` — 双语 lsc compile + 引用校验（不生成 mapping）
 - `scripts/seed-villain-season.ts` — 两本 OSS upload + Novel/Episode/Dream + 名册 + （英文）配音 + release stub
 - `scripts/prerender-villain-tts.ts` — 英文本 TTS 入队 + 等渲染（电话短信→旁白嗓音）
 - `scripts/verify-villain-dream-forced.ts` — 两本端到端验证（含 runtime auto-load）
@@ -191,4 +191,4 @@ build / seed / verify scripts：
 - [[concepts/dream-bonus-only-op]] — 自动挂的 dream entry 用的 op
 - [[concepts/dreaming-universe]] — 父系统
 - [[concepts/remix-anywhere]] — demo 教学的重点机制
-- [[entities/moonshort-backend]] — 全部 service / API / seed 脚本所在地
+- [[entities/lunaverse-backend]] — 全部 service / API / seed 脚本所在地

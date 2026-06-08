@@ -10,7 +10,7 @@ status: shipped
 
 Replaces the 12-line stub at `app/services/llm_tagger.py` with a batch, offline tagger that produces (a) `ItemTag` loadings per `@choice` option on the 6-axis schema and (b) `DreamSignature` axis_position + hard_constraints + confidence per Dream.
 
-See [[concepts/dream-rec-integration-architecture]] for Component 0 wiring. See [[concepts/stable-step-id]] for why we parse compiled JSON not source MSS.
+See [[concepts/dream-rec-integration-architecture]] for Component 0 wiring. See [[concepts/stable-step-id]] for why we parse compiled JSON not source LS.
 
 ## 6-axis schema
 
@@ -32,7 +32,7 @@ Loadings ∈ [−1, +1]; strong correlation ±0.7~±1.0; neutral 0.
 - **Granularity:** Episode-level batch — one LLM call per episode, prompt contains all choices + their option texts + branch summaries.
 - **Confidence:** Self-reported by model; `confidence >= TAU_REVIEW` → `auto_accepted`, below → `pending_review` (both pass downstream — review is for audit, not blocking). Default `TAU_REVIEW=0.0` (review disabled) as of 2026-05-24 per product decision; bump above 0 to re-enable human review for low-confidence tags.
 - **Execution:** FastAPI `BackgroundTasks` + resumable tagger (skip-already-tagged via partial unique index lookup). No new outbox table.
-- **Parser:** `compiled_walker.py` walks compiled JSON (stable step ids baked in by MSS compiler), not source MSS markdown regex.
+- **Parser:** `compiled_walker.py` walks compiled JSON (stable step ids baked in by LS compiler), not source LS markdown regex.
 - **Concurrency:** `LLM_MAX_CONCURRENCY=4` semaphore across episodes within a single novel tagging job.
 - **Retry:** `LLM_RETRY_MAX=1`. On second failure → that episode's options → `pending_review` with `confidence=0`, loadings all zero, structured log.
 - **Temperature 0.0** — deterministic for reproducible reviewer audits.

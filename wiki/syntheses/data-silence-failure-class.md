@@ -216,4 +216,4 @@ Easton 家 3 人：entities.v2 里有（v2 baseline 就登了），但 registry 
 ## 相关
 
 - [[concepts/unfolded-visual-novel]] — VN 展示形态与素材管线
-- [[concepts/mss-format]] — MSS 脚本格式
+- [[concepts/ls-format]] — LS 脚本格式

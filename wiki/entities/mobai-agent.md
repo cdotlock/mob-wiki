@@ -1,12 +1,12 @@
 ---
 title: mobai-agent
-tags: [agent, orchestrator, moonshort, bun, llm, mcp]
+tags: [agent, orchestrator, lunaverse, bun, llm, mcp]
 sources: [raw/2026-04-14-mobai-agent-memory.md, raw/2026-04-14-orchestrator-skill.md, raw/2026-04-14-mobai-agent-soul.md, raw/2026-04-14-cli-gateway-server-layer-design.md]
 created: 2026-04-14
 updated: 2026-04-14
 ---
 
-Master AI agent orchestrator for the Moonshort content production platform. Drives an end-to-end pipeline that converts novels into screenplays, videos, and playable games through natural language commands. Coordinates [[entities/dramatizer]], [[entities/agent-forge]], [[entities/moonshort-backend]], and [[entities/moonshort-client]] as a unified control plane.
+Master AI agent orchestrator for the Lunaverse content production platform. Drives an end-to-end pipeline that converts novels into screenplays, videos, and playable games through natural language commands. Coordinates [[entities/dramatizer]], [[entities/agent-forge]], [[entities/lunaverse-backend]], and [[entities/lunaverse-client]] as a unified control plane.
 
 ## Architecture
 
@@ -351,7 +351,7 @@ priority: 10
 | `debugging` | `general/` | no | 0 | (debugging tasks) |
 | `agent-forge-video` | `agent-forge/` | no | 10 | agent-forge, video, episode, forge |
 | `dramatizer-pipeline` | `dramatizer/` | no | 10 | dramatizer, pipeline, screenplay, dram |
-| `moonshort-game-client` | `moonshort/` | no | 10 | moonshort, cocos, client, phase, AppCore |
+| `lunaverse-game-client` | `lunaverse/` | no | 10 | lunaverse, cocos, client, phase, AppCore |
 
 ### Trigger Matching and System Prompt Injection
 
@@ -506,7 +506,7 @@ mcp:
 | `OPENAI_API_KEY` | OpenAI API key (used when provider is "openai") |
 | `DRAMATIZER_CLI_KEY` | Bearer token for Dramatizer CLI gateway |
 | `BACKEND_CLI_KEY` | Bearer token for Backend CLI gateway |
-| `CLIENT_CLI_KEY` | Bearer token for Moonshort Client CLI gateway |
+| `CLIENT_CLI_KEY` | Bearer token for Lunaverse Client CLI gateway |
 
 ## Testing
 
@@ -554,8 +554,8 @@ mcp:
 
 - [[entities/dramatizer]] -- Novel-to-screenplay pipeline (MCP stdio connection)
 - [[entities/agent-forge]] -- Screenplay-to-video platform (MCP HTTP connection)
-- [[entities/moonshort-backend]] -- Game engine and admin dashboard (CLI gateway)
-- [[entities/moonshort-client]] -- Cocos game frontend (CLI gateway)
+- [[entities/lunaverse-backend]] -- Game engine and admin dashboard (CLI gateway)
+- [[entities/lunaverse-client]] -- Cocos game frontend (CLI gateway)
 - [[entities/cli-gateway]] -- Remote CLI execution protocol
 - [[concepts/four-layer-philosophy]] -- SKILL/CLI/MCP/API design framework
 - [[concepts/cli-gateway-protocol]] -- HTTP API specification for CLI gateways

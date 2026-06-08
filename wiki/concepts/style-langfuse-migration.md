@@ -5,9 +5,9 @@ updated: 2026-06-02
 
 # Style prompts → Langfuse migration
 
-把 NRBI 渲染管线的 **16 个 style_config 风格 family** 从「三处碎片化」迁成 **Langfuse 单一权威源**，并在 Moonshort IDE 里做成完整的 CRUD 管理面板。是 [[concepts/assetctl-skills-sync-and-staging]]（skill 正文 → Langfuse）的**风格侧同构**：skill 用 `skill_<name>`，style 用 `style_<name>`，同一个 `assets-produce` project。
+把 NRBI 渲染管线的 **16 个 style_config 风格 family** 从「三处碎片化」迁成 **Langfuse 单一权威源**，并在 Lunaverse IDE 里做成完整的 CRUD 管理面板。是 [[concepts/assetctl-skills-sync-and-staging]]（skill 正文 → Langfuse）的**风格侧同构**：skill 用 `skill_<name>`，style 用 `style_<name>`，同一个 `assets-produce` project。
 
-完整设计 + 实测修正：moonshort-ide 仓 `docs/design/2026-06-02-style-system-langfuse-migration-design.md`。
+完整设计 + 实测修正：lunaverse-ide 仓 `docs/design/2026-06-02-style-system-langfuse-migration-design.md`。
 
 ## 迁移前的碎片化
 
@@ -26,8 +26,8 @@ updated: 2026-06-02
 
 ## 实测硬约束（踩过的坑，务必记住）
 
-- **Cloudflare 1010**：`prompt.mobai-game.com` 在 CF bot 防护后，**每个请求必须带 User-Agent**（urllib 默认 UA 被 1010 拦）。既有 Go 客户端 `vendor/assetctl/internal/skills/langfuse.go` 用 `assetctl-skills/0.1`；本次 TS/Python 客户端统一用 `moonshort-ide-styles/0.1`。
-- **真凭据在 `assets-produce/.env`**（`pk-lf-338a…`）。`moonshort-backend/.env` 的 `LANGFUSE_*` 是占位假值（`pk-lf-x`，len 9）→ 401。已把真 key 拷进（gitignored）`moonshort-ide/.env`，host（`readDotEnv(root)`）和 render（`ENV_FILES`）都从这一处读。
+- **Cloudflare 1010**：`prompt.mobai-game.com` 在 CF bot 防护后，**每个请求必须带 User-Agent**（urllib 默认 UA 被 1010 拦）。既有 Go 客户端 `vendor/assetctl/internal/skills/langfuse.go` 用 `assetctl-skills/0.1`；本次 TS/Python 客户端统一用 `lunaverse-ide-styles/0.1`。
+- **真凭据在 `assets-produce/.env`**（`pk-lf-338a…`）。`lunaverse-backend/.env` 的 `LANGFUSE_*` 是占位假值（`pk-lf-x`，len 9）→ 401。已把真 key 拷进（gitignored）`lunaverse-ide/.env`，host（`readDotEnv(root)`）和 render（`ENV_FILES`）都从这一处读。
 - **命名 `style_<name>`**，对齐 `skill_<name>`；config 里放 `category/model/reference_urls/family/variant/placeholder/aspect/generated_preview_url`。render 只读 `prompt` + `config.reference_urls`，IDE 读其余 → 双消费方契约只共享这两项，防漂移。
 - **参考图先 OSS→R2 镜像**（`mirror_oss_to_r2.py`，25 张）再 seeding，config 存 R2 URL，零 OSS 泄漏。
 

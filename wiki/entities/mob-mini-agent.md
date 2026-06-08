@@ -1,12 +1,12 @@
 ---
 title: mob-mini-agent
 tags: [agent, pi, foundation, runtime, observability]
-sources: [https://github.com/cdotlock/mob-mini-agent, /Users/Clock/moonshort/mob-mini-agent/README.md, /Users/Clock/moonshort/mob-mini-agent/pi/packages/foundation/docs/agent-foundation-practices.md, /Users/Clock/moonshort/backend/services/dream-agent/LESSONS-LEARNED.md]
+sources: [https://github.com/cdotlock/mob-mini-agent, /Users/Clock/lunaverse/mob-mini-agent/README.md, /Users/Clock/lunaverse/mob-mini-agent/pi/packages/foundation/docs/agent-foundation-practices.md, /Users/Clock/lunaverse/backend/services/dream-agent/LESSONS-LEARNED.md]
 created: 2026-05-04
 updated: 2026-05-12
 ---
 
-`mob-mini-agent` 是 Mob / Moonshort 的公司级 Agent foundation。它从公开项目 fork 起步，但当前目标不是复制上游产品，也不是把某个业务 agent 服务整包搬进来；它的职责是把我们在真实生产 agent 中验证过的 runtime 升级、上下文纪律、skills 机制、观测方式和 provider 适配沉淀成可复用基础设施。
+`mob-mini-agent` 是 Mob / Lunaverse 的公司级 Agent foundation。它从公开项目 fork 起步，但当前目标不是复制上游产品，也不是把某个业务 agent 服务整包搬进来；它的职责是把我们在真实生产 agent 中验证过的 runtime 升级、上下文纪律、skills 机制、观测方式和 provider 适配沉淀成可复用基础设施。
 
 2026-05-12，`smolagent` tag 标记历史边界；之后仓库正式转向 Pi agent core。旧兼容层已经从主线删除，当前主线只保留 Pi/TypeScript 底座和公司 foundation package。
 
@@ -20,7 +20,7 @@ updated: 2026-05-12
 | `8bd3268` | Pi 迁移起点空提交。 |
 | `99b109a` | 迁入 Pi runtime baseline。 |
 | `02f1a53` | 删除 Pi 应用层包，只保留 `ai` / `agent` / foundation 工作面。 |
-| `601edd8` | 新增 `@moonshort/mob-agent-foundation`。 |
+| `601edd8` | 新增 `@lunaverse/mob-agent-foundation`。 |
 | `08b00c8` | 删除旧兼容源码、旧测试、旧 docs、旧 CI、E2B 配置和应用层脚本。 |
 | `b01ee17` | 增加通用 run observability diagnostics 和踩坑根因文档。 |
 
@@ -33,13 +33,13 @@ updated: 2026-05-12
 当前不保留：
 
 - 业务 controller / job runner / backend client。
-- Dream-specific prompts、skills、MSS、artifact schema。
+- Dream-specific prompts、skills、LS、artifact schema。
 - coding app、terminal UI、web UI 等应用层产品。
 - 旧源码、旧测试、旧多语言文档和旧 CI。
 
 ## Foundation Package
 
-路径：`/Users/Clock/moonshort/mob-mini-agent/pi/packages/foundation`
+路径：`/Users/Clock/lunaverse/mob-mini-agent/pi/packages/foundation`
 
 | 模块 | 作用 |
 | --- | --- |
@@ -152,11 +152,11 @@ updated: 2026-05-12
 ## 开发命令
 
 ```bash
-cd /Users/Clock/moonshort/mob-mini-agent/pi
+cd /Users/Clock/lunaverse/mob-mini-agent/pi
 npm ci
 npm run check
-npm test --workspace @moonshort/mob-agent-foundation
-npm run build --workspace @moonshort/mob-agent-foundation
+npm test --workspace @lunaverse/mob-agent-foundation
+npm run build --workspace @lunaverse/mob-agent-foundation
 ```
 
 ## 边界原则

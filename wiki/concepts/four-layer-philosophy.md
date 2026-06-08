@@ -26,15 +26,15 @@ The defining characteristic of the SKILL layer is that it gives direction withou
 
 There is an inverse relationship between the predictability of the tool surface and the criticality of the SKILL layer. When the CLI and MCP surfaces are stable and well-documented (as in the Dramatizer, where hand-written CLI commands have stable names and flags), the SKILL layer provides helpful context but is not strictly essential for basic operation. When the tool surface is dynamic and unpredictable (as in Agent-Forge, where CLI commands are dynamically generated from the MCP tool catalog and can change between deployments), the SKILL layer becomes the only reliable source of intent-to-tool mapping. Without it, the agent cannot reason about which tool to call because the tool names themselves are unstable.
 
-In the Moonshort platform, the SKILL layer is implemented through six skill files organized in the `skills/` directory of mobai-agent:
+In the Lunaverse platform, the SKILL layer is implemented through six skill files organized in the `skills/` directory of mobai-agent:
 
 - **`skills/dramatizer/pipeline.md`** -- Encodes knowledge of the Dramatizer's 15-stage pipeline. Contains the stage ordering, the expected artifact format at each stage, the rules for stage advancement (when to auto-advance versus when to wait for human review), and the error recovery procedures for each stage. This skill is what allows the agent to orchestrate a multi-hour dramatization job without losing track of where it is in the pipeline.
 
 - **`skills/agent-forge/video-production.md`** -- Contains the MCP tool catalog for Agent-Forge, mapping high-level intents (create a video, list available skills, check rendering status) to specific MCP tool names and their parameter schemas. Because Agent-Forge's MCP surface is large (60+ tools across multiple capability domains), this skill provides the navigational map that prevents the agent from getting lost in the tool space.
 
-- **`skills/general/orchestrator.md`** -- Defines cross-platform coordination rules: how to sequence operations that span multiple Moonshort services, how to handle partial failures (when one service succeeds but another fails), and how to maintain consistency across the platform. This skill is activated when the agent is working on tasks that touch more than one service.
+- **`skills/general/orchestrator.md`** -- Defines cross-platform coordination rules: how to sequence operations that span multiple Lunaverse services, how to handle partial failures (when one service succeeds but another fails), and how to maintain consistency across the platform. This skill is activated when the agent is working on tasks that touch more than one service.
 
-- **`skills/moonshort/game-client.md`** -- Covers the game client testing workflow, including headless browser automation patterns, visual regression testing procedures, and the relationship between test results and deployment gates.
+- **`skills/lunaverse/game-client.md`** -- Covers the game client testing workflow, including headless browser automation patterns, visual regression testing procedures, and the relationship between test results and deployment gates.
 
 - **`skills/general/coding.md`** -- General software engineering practices adapted for agent use, including code review checklists, refactoring patterns, and test-writing guidelines.
 
@@ -52,13 +52,13 @@ The CLI layer's primary strength is pipeline encapsulation: the ability to integ
 
 The CLI layer also internalizes cross-cutting concerns that would otherwise need to be re-solved by every agent on every call. These cross-cutting concerns include: authentication (the CLI handles API key management, token refresh, and credential storage), error classification (the CLI distinguishes between transient errors that should be retried and permanent errors that require human intervention), audit logging (the CLI records what was executed, when, and by whom), and input correction (the CLI can suggest corrections for common mistakes, such as misspelled subcommand names or missing required flags). These concerns are solved once in the CLI implementation and applied uniformly to all invocations, whether those invocations come from a human user, an AI agent, or an automated pipeline.
 
-In the Moonshort platform, the CLI layer includes several tools:
+In the Lunaverse platform, the CLI layer includes several tools:
 
 - **`dram run <job-id>`** -- Encapsulates the full 15-stage dramatizer pipeline. The agent issues one command; the CLI handles stage sequencing, artifact validation, error recovery, and progress reporting internally.
 
 - **`dram run <job-id> --stage <name>`** -- Runs a single specific stage of the pipeline, used when the agent needs fine-grained control over pipeline execution (for example, re-running a failed stage after fixing its input).
 
-- **`noval play <novelId> --auto`** -- Encapsulates a complete automated game session in the Moonshort client. The CLI handles session initialization, page navigation, input simulation, screenshot capture, and result extraction. Without this CLI command, the agent would need to manage headless browser state across dozens of tool calls.
+- **`noval play <novelId> --auto`** -- Encapsulates a complete automated game session in the Lunaverse client. The CLI handles session initialization, page navigation, input simulation, screenshot capture, and result extraction. Without this CLI command, the agent would need to manage headless browser state across dozens of tool calls.
 
 - **`play <testSuite>`** -- Runs a test suite against the game client, handling test fixture setup, browser launch, test execution, result collection, and cleanup.
 
@@ -70,7 +70,7 @@ The relationship between CLI and MCP is complementary, not competitive. CLI is f
 
 The MCP layer is particularly valuable for operations that the agent performs frequently within a session. Consider an agent monitoring a dramatizer pipeline job. It might need to check the status of the current stage dozens of times over the course of a multi-hour run. Using the CLI for each check would involve parsing a full command invocation and help-text-formatted output each time. Using the MCP tool `dramatizer_get_artifact { job_id, stage }` provides the same information in a single structured call with a JSON response that can be parsed programmatically.
 
-In the Moonshort platform, the MCP layer includes tools from two primary servers:
+In the Lunaverse platform, the MCP layer includes tools from two primary servers:
 
 - **Agent-Forge MCP** (HTTP transport, 60+ tools): `agent_forge_skills__list {}` for querying available skills, `agent_forge_render__start { template, params }` for initiating video renders, `agent_forge_assets__upload { path }` for uploading media assets, and many others organized across capability domains (skills, rendering, assets, projects, settings).
 
@@ -80,7 +80,7 @@ In the Moonshort platform, the MCP layer includes tools from two primary servers
 
 The API layer is the invisible foundation that powers everything above it. Every CLI command and every MCP tool ultimately resolves to one or more API calls against the underlying service. However, the API layer is deliberately invisible to the agent under normal operating conditions. The agent should never call raw APIs directly, because doing so means re-solving authentication (constructing the correct header, refreshing expired tokens), pagination (handling paginated responses across multiple requests), error recovery (distinguishing transient network failures from permanent authorization failures), and audit logging (recording what was done for compliance and debugging) -- all problems that the CLI and MCP layers have already solved.
 
-The API layer exists as a fallback of last resort, exposed through the CLI's raw API passthrough mechanism. In the Moonshort platform, this takes the form of the bash tool, which can execute arbitrary HTTP requests when all higher-level interfaces fail. For example, if the Dramatizer's MCP server is down and the CLI gateway is unreachable, the agent can fall back to `bash: curl -s http://localhost:8001/api/health` to check whether the service is running at all. This ensures the agent is never completely stuck, even when the primary interfaces are unavailable.
+The API layer exists as a fallback of last resort, exposed through the CLI's raw API passthrough mechanism. In the Lunaverse platform, this takes the form of the bash tool, which can execute arbitrary HTTP requests when all higher-level interfaces fail. For example, if the Dramatizer's MCP server is down and the CLI gateway is unreachable, the agent can fall back to `bash: curl -s http://localhost:8001/api/health` to check whether the service is running at all. This ensures the agent is never completely stuck, even when the primary interfaces are unavailable.
 
 The design principle is clear: the API layer should be invisible by default, and its direct use by the agent is a signal that something in the higher layers has failed. If the agent finds itself frequently falling back to raw API calls, that is an indicator that the CLI and MCP layers need to be improved to cover the missing use cases.
 
@@ -149,7 +149,7 @@ If an agent in any cognitive state has no appropriate entry point, the system ha
 
 ## Architecture Variants
 
-The Four-Layer Philosophy can be implemented through two primary architecture patterns, both of which are present in the Moonshort platform.
+The Four-Layer Philosophy can be implemented through two primary architecture patterns, both of which are present in the Lunaverse platform.
 
 ### Variant 1: CLI wraps API directly (Dramatizer / lark-cli)
 
@@ -187,11 +187,11 @@ This analogy captures the essential insight of the Four-Layer Philosophy. The ne
 
 The [[entities/mobai-agent]] system implements all four layers of the philosophy:
 
-**SKILL**: Six skill files in the `skills/` directory, organized by domain (`dramatizer/`, `agent-forge/`, `moonshort/`, `general/`). Skills are loaded through trigger-matching: when the agent's current conversation matches a skill's trigger patterns (keywords, tool names, or domain indicators), the skill content is injected into the system prompt. This ensures domain knowledge is available when needed without permanently consuming context window capacity.
+**SKILL**: Six skill files in the `skills/` directory, organized by domain (`dramatizer/`, `agent-forge/`, `lunaverse/`, `general/`). Skills are loaded through trigger-matching: when the agent's current conversation matches a skill's trigger patterns (keywords, tool names, or domain indicators), the skill content is injected into the system prompt. This ensures domain knowledge is available when needed without permanently consuming context window capacity.
 
 **CLI**: The three built-in tools `discover_cli`, `cli_help`, and `cli_run` implement progressive mastery with auto-recovery. The agent follows a natural progression: `discover_cli` scans for available CLI tools (both local and remote via gateways), `cli_help` retrieves help text for a specific tool or subcommand (with a 7-day cache and 8000-character truncation), and `cli_run` executes commands with smart error recovery (on failure, it automatically fetches and attaches relevant help text to the error response, enabling the agent to self-correct). This trio enables an agent to go from complete ignorance of available tools to confident, correct usage within a single conversation.
 
-**MCP**: The `mcp-client.ts` module connects to MCP servers using both HTTP (StreamableHTTP with SSE fallback) and stdio transports. In the current Moonshort deployment, this provides access to 60+ tools from Agent-Forge (HTTP transport at `http://localhost:8001/mcp`) and 14 tools from the Dramatizer (stdio transport spawning the `dram mcp` subprocess). Each MCP tool is wrapped as a standard `ToolDefinition` with automatic JSON Schema to Zod conversion, making MCP tools indistinguishable from built-in tools in the agent's tool registry.
+**MCP**: The `mcp-client.ts` module connects to MCP servers using both HTTP (StreamableHTTP with SSE fallback) and stdio transports. In the current Lunaverse deployment, this provides access to 60+ tools from Agent-Forge (HTTP transport at `http://localhost:8001/mcp`) and 14 tools from the Dramatizer (stdio transport spawning the `dram mcp` subprocess). Each MCP tool is wrapped as a standard `ToolDefinition` with automatic JSON Schema to Zod conversion, making MCP tools indistinguishable from built-in tools in the agent's tool registry.
 
 **API**: The bash tool serves as the fallback escape hatch. When MCP servers are unreachable and CLI gateways are down, the agent can still execute arbitrary shell commands, including `curl` requests against raw API endpoints. This ensures the agent is never completely stuck, consistent with the fourth layer's role as the interface of last resort.
 

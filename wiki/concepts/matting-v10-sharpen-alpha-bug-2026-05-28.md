@@ -7,7 +7,7 @@ updated: 2026-05-28
 
 ## TL;DR
 
-`generate-upscale-matting/matting.py` 的 V10 重构（2026-05-12，作者关注修 hallucination）把 legacy `_matte_array` 末尾的 **`sharpen_alpha()` 步骤丢了**。后续从这份代码 port 到 `moonshort-ide/modal-comfy/matting_v10.py` 的 Modal endpoint 一并遗漏。
+`generate-upscale-matting/matting.py` 的 V10 重构（2026-05-12，作者关注修 hallucination）把 legacy `_matte_array` 末尾的 **`sharpen_alpha()` 步骤丢了**。后续从这份代码 port 到 `lunaverse-ide/modal-comfy/matting_v10.py` 的 Modal endpoint 一并遗漏。
 
 结果：从 Modal matting endpoint 出来的 sprite alpha=255（完全实体）只占 ~2.5%，半透明带占 ~25%；本应是 ~26% 实体 + ~1% 半透明（V4 5070ti baseline）。整个角色身体处于半透明状态 → 深色 / 饱和背景合成时出现明显亮 **halo**。
 
@@ -42,7 +42,7 @@ return np.clip((alpha.astype(np.int32) - 10) * 255 // (192 - 10), 0, 255).astype
 
 V10 设计目标是修 **hallucination 类问题**（leg-gap 假洞、negative-space 误填、furniture 抢救），完全没考虑 alpha 锐化。`matte_v10` 内部只把背景设 0、把 rescue 区设 255，对 MODNet 输出的 soft body（典型值 180-250）完全不动。
 
-Modal port (`moonshort-ide/modal-comfy/matting_v10.py`) 抄的是 V10 路径，忠实地继承了这个遗漏。`SHARPEN_LO=10` / `SHARPEN_HI=192` 常量留在 modal port 里但没人用 — 这是这个 bug 的指纹。
+Modal port (`lunaverse-ide/modal-comfy/matting_v10.py`) 抄的是 V10 路径，忠实地继承了这个遗漏。`SHARPEN_LO=10` / `SHARPEN_HI=192` 常量留在 modal port 里但没人用 — 这是这个 bug 的指纹。
 
 ## 时间线 / 为什么 V4 NRBI 没事而 nrbi-rewrite 出事
 
@@ -56,7 +56,7 @@ Modal port (`moonshort-ide/modal-comfy/matting_v10.py`) 抄的是 V10 路径，�
 
 ### 长期（已部署）
 
-[`moonshort-ide/modal-comfy/matting_v10.py`](https://github.com/AugustZAD/Dramatizer-MSS) (本地 path)：
+[`lunaverse-ide/modal-comfy/matting_v10.py`](https://github.com/AugustZAD/Dramatizer-LS) (本地 path)：
 
 1. 加 `sharpen_alpha()` 函数（从 canonical 抄）
 2. 在 `matte_v10()` 末尾 `return` 前调一次
@@ -72,9 +72,9 @@ OSS bucket `mobai-file` 的 `nrbi-rewrite/*.webp`（top-level 591 张）批处�
 - 套 sharpen_alpha → 编码 WebP Q90 method=6 → 覆盖回原 key
 - ProcessPool 8 workers + done-file 跟踪，kill-safe
 
-脚本：`novels-to-moonscript/_test_runs/2026-05-28_batch-vs-single-and-halo-smoke/d-oss-sharpen-fix/sharpen_oss_sprites.py`
+脚本：`novels-to-lunascript/_test_runs/2026-05-28_batch-vs-single-and-halo-smoke/d-oss-sharpen-fix/sharpen_oss_sprites.py`
 
-OSS key 不变 → 前端 hard reload 即可，**不需要 reseed / 重编译 MSS**。
+OSS key 不变 → 前端 hard reload 即可，**不需要 reseed / 重编译 LS**。
 
 ## 留给以后的教训
 

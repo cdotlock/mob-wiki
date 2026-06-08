@@ -6,7 +6,7 @@ created: 2026-05-21
 updated: 2026-05-21
 ---
 
-Mechanical (no-LLM) replacement for the producer-side gating logic inside `evaluateInPlayTrigger` / `evaluatePostPlayTrigger` in [[entities/moonshort-backend]]. Lives under [[concepts/dreaming-universe]]; replaces the v1 single-gate of "committed_success ≥ 3 + phase dedup" with a multi-gate verdict driven by a per-(user, novel) preference vector, increment counters, and an input-sharpness self-check. Out of scope: public-pool matching, recommendation, the dream-agent itself — those are owned by a different stream and unaffected.
+Mechanical (no-LLM) replacement for the producer-side gating logic inside `evaluateInPlayTrigger` / `evaluatePostPlayTrigger` in [[entities/lunaverse-backend]]. Lives under [[concepts/dreaming-universe]]; replaces the v1 single-gate of "committed_success ≥ 3 + phase dedup" with a multi-gate verdict driven by a per-(user, novel) preference vector, increment counters, and an input-sharpness self-check. Out of scope: public-pool matching, recommendation, the dream-agent itself — those are owned by a different stream and unaffected.
 
 ## Why mechanical
 
@@ -59,7 +59,7 @@ Both embeds run outside the request transaction, so the ~300ms total never block
 |---|---|
 | Remix action | `The player intervened with a {attr} approach and {succeeded\|failed}: "{inputText}"` |
 | Choice action | `Without intervening, the player chose the {brave\|safe} option and {succeeded\|failed\|just selected}: "{optionText}"` |
-| Context (shared) | preceding 3 visible MSS steps as plain text, one per line, capped at 400 chars |
+| Context (shared) | preceding 3 visible LS steps as plain text, one per line, capped at 400 chars |
 
 Anchor context is extracted via the pure helper `app/core/anchor-context.ts:extractAnchorContext(episode, cursor, lookback)`. Walks the EpisodeJSON tree, keeps only renderable dialogue/narration/text_message steps, and truncates from the head so the most recent beats survive.
 

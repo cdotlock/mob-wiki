@@ -2,19 +2,19 @@
 title: assetctl skills sync + Block 2/3 staging（codex skill 加载链路）
 created: 2026-05-20
 updated: 2026-05-21
-tags: [assetctl, block-2, block-3, codex, langfuse, skill-loader, skill-staging, moonshort-ide]
+tags: [assetctl, block-2, block-3, codex, langfuse, skill-loader, skill-staging, lunaverse-ide]
 status: draft
 ---
 
 # assetctl skills sync + Block 2/3 staging（codex skill 加载链路）
 
-把 codex 内的 skill body **从本地 git 唯一源** 升级为 **Langfuse production label 优先 + 本地 git 兜底**。Block 2 = skill 内容/编排骨架；Block 3 = Langfuse-first loader + IDE wiring。两块在 2026-05-20 一起合 moonshort-ide main @ `266cd3c`。
+把 codex 内的 skill body **从本地 git 唯一源** 升级为 **Langfuse production label 优先 + 本地 git 兜底**。Block 2 = skill 内容/编排骨架；Block 3 = Langfuse-first loader + IDE wiring。两块在 2026-05-20 一起合 lunaverse-ide main @ `266cd3c`。
 
 > 设计 spec：
-> - `moonshort-ide/docs/design/2026-05-20-block-2-orchestration-skill-spec.md`（472 行）+ `…plan.md`（619 行）
-> - `moonshort-ide/docs/design/2026-05-20-block-3-langfuse-loader-spec.md`（372 行）+ `…plan.md`（438 行）
+> - `lunaverse-ide/docs/design/2026-05-20-block-2-orchestration-skill-spec.md`（472 行）+ `…plan.md`（619 行）
+> - `lunaverse-ide/docs/design/2026-05-20-block-3-langfuse-loader-spec.md`（372 行）+ `…plan.md`（438 行）
 >
-> 关联：[[concepts/assetctl-integration-contract]]（Block 1 原子能力契约）· [[entities/moonshort-ide]]
+> 关联：[[concepts/assetctl-integration-contract]]（Block 1 原子能力契约）· [[entities/lunaverse-ide]]
 
 ## 一句话
 
@@ -30,7 +30,7 @@ stageSkills 在 cp 本地 skill 文件夹之后**再 spawn 一次 `assetctl skil
 | 3 个 novel-to-video refs 落 `asset-renderer/references/` | ✅ 完成 | seedance-core-lessons, video-prompt-standard, videoctl-tool-reference |
 | `style-prompts/` 同步 | ✅ 设计上不同步 | codex 通过 `mcp__style-prompts__*` MCP 动态查（spec §D3 决策）；`agents/_shared/knowledge/nrbi-styles.json` 是 IDE 自维护 fork |
 | `_shared/knowledge/` cross-refs（4 个 NRBI skill body） | ✅ 完成（本次） | DOC-1 fix `3261365`：4 个 SKILL.md body 加 References 段，repo-absolute path `agents/_shared/knowledge/nrbi-{pipeline-manifest.md,styles.json}` |
-| `shot-image-from-mss` frontmatter ⊇ body 工具集 | ✅ 完成（本次） | B2-15 fix `b9a5f8f`：补全 `generate-video-happyhorse, crop-video` 两颗 fallback 工具授权 |
+| `shot-image-from-ls` frontmatter ⊇ body 工具集 | ✅ 完成（本次） | B2-15 fix `b9a5f8f`：补全 `generate-video-happyhorse, crop-video` 两颗 fallback 工具授权 |
 | `agents/asset/skills/README.md` 导航 | ✅ 完成（本次） | B2-14 `b54e229`：83 行导航 doc，kind→skill 表 + 3 controller + cross-refs + reading order；无 frontmatter、无 emoji、无 Co-Authored-By |
 | Block 2 smoke test（15 skills stage + parse） | ✅ 完成（本次） | B2-16 `4a68924`：`test/workshop-codex-home.test.mjs` 加 "Block 2 smoke" 测，15 skill 全部 stage + frontmatter 三必填断言通过 |
 | 跨 skill audit（frontmatter ⊆ legit / == body / Block-1 coupling） | ✅ 通过 | B2-15 audit：15 skills 全 GO，0 CRITICAL / 0 WARNING（fix 后）/ 3 NOTE（3 controller 无 "Atomic tools" body 段，是 controller 范式，frontmatter 唯一真相） |
@@ -49,7 +49,7 @@ stageSkills 在 cp 本地 skill 文件夹之后**再 spawn 一次 `assetctl skil
 | `internal/skills/langfuse` | B3-2 `6fedacc` | net/http client 映射 Langfuse v2 API（GET `/api/public/v2/prompts/{name}`、POST `/api/public/v2/prompts`），Basic Auth `publicKey:secretKey`，进程内 TTL 缓存（key = `(name, label)`），CallError 区分 401/403/402/429-quota（INVALID_INPUT）vs 429-rate/5xx（TRANSIENT），覆盖 91.1% |
 | `internal/skills/loader` | B3-3 `0af7e0b` | `(*Loader).Load(ctx, name, label) ([]byte, source, error)`：Langfuse 优先 → 任何失败（5xx/网络/timeout/404/auth/空体/无效 frontmatter）静默回退本地 git；落地顺序 `agents/_shared/skills/<name>/SKILL.md` → `agents/<id>/skills/<name>/SKILL.md`；本地兜底结果也被 TTL 缓存（spec §5.5 row 4），覆盖 90.7% |
 | `internal/skills/sync` | B3-4 `1fd84e3` | `Sync(opts)` push 方向 ＋ parity（`--check`）+ dry-run；最佳努力（单 skill 错误不阻塞）；只在 `--label production` lint；覆盖 90.6% |
-| CLI `skills sync` | B3-5 `e820202` | 子命令 + flag 解析 + env 读取（`LANGFUSE_HOST/PUBLIC_KEY/SECRET_KEY`）+ MOONSHORT_SKILL_LANGFUSE_TTL_MS；exit code 推导（lint fail=4、drift=6、5xx=5、auth=4）；覆盖 85% |
+| CLI `skills sync` | B3-5 `e820202` | 子命令 + flag 解析 + env 读取（`LANGFUSE_HOST/PUBLIC_KEY/SECRET_KEY`）+ LUNAVERSE_SKILL_LANGFUSE_TTL_MS；exit code 推导（lint fail=4、drift=6、5xx=5、auth=4）；覆盖 85% |
 | Vendor README | B3-6 `a14b5fb` | Block 3 段 pin spec anchor，commit `feb012f` |
 
 ### Go 层新增（本次）
@@ -86,9 +86,9 @@ stageSkills 在 cp 本地 skill 文件夹之后**再 spawn 一次 `assetctl skil
 | Slice | commit(s) | 备注 |
 |---|---|---|
 | S1 · Go `skills load` CLI | 见上 Go 层新增段 | 4 + 1 + 2 + 1 = 8 commit |
-| S2 · TS stageSkills 集成 | `14af858 feat` + `228b1e5 test` + 4 quality fix | `packages/mss-workshop/src/codex-home.ts` 两阶段流程：cp 本地文件夹 → spawn `assetctl skills load` 覆盖 SKILL.md → 解 envelope 记 `source:langfuse|local` per skill；`runCli` 重用（S2 quality fix 把 NIH `spawnAssetctlLoad` 收掉用 `runCli(binary, args, undefined, 0)`） |
+| S2 · TS stageSkills 集成 | `14af858 feat` + `228b1e5 test` + 4 quality fix | `packages/ls-workshop/src/codex-home.ts` 两阶段流程：cp 本地文件夹 → spawn `assetctl skills load` 覆盖 SKILL.md → 解 envelope 记 `source:langfuse|local` per skill；`runCli` 重用（S2 quality fix 把 NIH `spawnAssetctlLoad` 收掉用 `runCli(binary, args, undefined, 0)`） |
 | S3 · LANGFUSE_* 环境注入 | **零代码**（确认 `spawn` 默认继承 `process.env`）+ `266cd3c docs` | vendor/README 加 Block 3 env table |
-| S4 · IDE-host TTL cache | `34d960a feat` + `3c1af68 test` + 4 quality fix | 提取 `packages/mss-workshop/src/assetctl-bridge.ts`（349 行）：模块级 `Map<cacheKey, {results, expiresAt}>`，key = `repoRoot:::agentDir:::sharedDir:::label`，TTL per-call 从 env 读（默认 60_000ms）；cache 存 SKILL.md body 字节（不光 envelope metadata）以保 §D byte-identity；失败不缓存（spec §F） |
+| S4 · IDE-host TTL cache | `34d960a feat` + `3c1af68 test` + 4 quality fix | 提取 `packages/ls-workshop/src/assetctl-bridge.ts`（349 行）：模块级 `Map<cacheKey, {results, expiresAt}>`，key = `repoRoot:::agentDir:::sharedDir:::label`，TTL per-call 从 env 读（默认 60_000ms）；cache 存 SKILL.md body 字节（不光 envelope metadata）以保 §D byte-identity；失败不缓存（spec §F） |
 
 **IDE 层数据流**（post-S4）：
 
@@ -134,17 +134,17 @@ IDE 主进程（Electron main）必须在启动前/spawn 前 export 这些 env v
 | `LANGFUSE_HOST` | yes（走 Langfuse 路径必填） | e.g. `prompt.mobai-game.com` |
 | `LANGFUSE_PUBLIC_KEY` | yes | API public key |
 | `LANGFUSE_SECRET_KEY` | yes | API secret key |
-| `MOONSHORT_SKILL_LANGFUSE_LABEL` | no（默认 `"production"`） | 加载哪个 Langfuse label |
-| `MOONSHORT_SKILL_LANGFUSE_TTL_MS` | no（默认 `60000`） | IDE-host cache TTL（毫秒） |
+| `LUNAVERSE_SKILL_LANGFUSE_LABEL` | no（默认 `"production"`） | 加载哪个 Langfuse label |
+| `LUNAVERSE_SKILL_LANGFUSE_TTL_MS` | no（默认 `60000`） | IDE-host cache TTL（毫秒） |
 | `ASSETCTL_BINARY` | no（默认 `<repoRoot>/agents/asset/cli/assetctl/bin/assetctl`） | binary 路径覆盖（测试/CI 用） |
 
 任何 LANGFUSE_* 缺失 → `assetctl skills load` 静默回退本地 git body（spec §2.1 D1），envelope 返回 `source:"local"` for all skills，exit 0。
 
 ## ✅ B3-IDE-5 Langfuse 首次 bootstrap 完成（2026-05-21）
 
-23 个 SKILL.md（asset 15 + dramatizer 8）已 push 到 Langfuse 自部署实例 `prompt.mobai-game.com` / org `mobai` / project **`Moonshort-IDE`**（org/project id `cmpe3kntg00kprq07ozupgnsa`，独立于历史 `Dramatizer` project 不污染）。两个 label 各一遍：staging 23/23 created + production 23/23 created。
+23 个 SKILL.md（asset 15 + dramatizer 8）已 push 到 Langfuse 自部署实例 `prompt.mobai-game.com` / org `mobai` / project **`Lunaverse-IDE`**（org/project id `cmpe3kntg00kprq07ozupgnsa`，独立于历史 `Dramatizer` project 不污染）。两个 label 各一遍：staging 23/23 created + production 23/23 created。
 
-**Project 取名约定**：`Moonshort-IDE` 跟 moonshort-ide 仓库名对齐。以后 IDE 范畴所有 SKILL.md prompts 都装这里；dramatizer Go binary 自家的 `phase2-*`/`phase3_*`/`v2-*` prompts 仍在 `Dramatizer` project 单独维护，互不干涉。
+**Project 取名约定**：`Lunaverse-IDE` 跟 lunaverse-ide 仓库名对齐。以后 IDE 范畴所有 SKILL.md prompts 都装这里；dramatizer Go binary 自家的 `phase2-*`/`phase3_*`/`v2-*` prompts 仍在 `Dramatizer` project 单独维护，互不干涉。
 
 **Prompt 命名约定（确立）**：直接用 skill name as-is，**不加前缀**（如 `cg-render-spec`，不是 `skill_cg-render-spec`）。这跟 assetctl `skills sync` 当前实现一致；以前 assets-produce / opencode 团队 push 到 `Dramatizer` project 的旧 `skill_*` 是历史包袱。
 
@@ -160,7 +160,7 @@ IDE 主进程（Electron main）必须在启动前/spawn 前 export 这些 env v
 ```bash
 # 1. 在 IDE 主仓根目录 export 凭据
 export LANGFUSE_HOST=https://prompt.mobai-game.com     # 注意带 scheme
-export LANGFUSE_PUBLIC_KEY=pk-lf-...                   # Moonshort-IDE project 的 keypair
+export LANGFUSE_PUBLIC_KEY=pk-lf-...                   # Lunaverse-IDE project 的 keypair
 export LANGFUSE_SECRET_KEY=sk-lf-...
 
 # 2. push staging（不 lint）
@@ -207,13 +207,13 @@ production push 第一次失败：lint 卡 23/23 报 `missing frontmatter field 
 
 ## push 状态
 
-- **moonshort-ide main @ `456177b`**：本地，cdotlock/moonshort-ide 远端**未推送**（合计 86 commit 未推 = Wave 3-5 + Wave 4 doc + Block 2/3 fleet + camelCase 3 + Wave 5 10 + Block 2/3 IDE handoff 23 + lint 深修 + SKILL.md fix 2）
+- **lunaverse-ide main @ `456177b`**：本地，cdotlock/lunaverse-ide 远端**未推送**（合计 86 commit 未推 = Wave 3-5 + Wave 4 doc + Block 2/3 fleet + camelCase 3 + Wave 5 10 + Block 2/3 IDE handoff 23 + lint 深修 + SKILL.md fix 2）
 - **mob-wiki main**：本地新增本次更新，cdotlock/mob-wiki 远端**未推送**
 - 用户 2026-05-20 表态"暂不 push，先干活"
 
 ## 工作机器（沿用 Wave 1-5 + foundation 模式）
 
 1. 单 slice 设计 spec / plan（已有，本次跳过）→ 派 fresh subagent 实现 → 双段评审（spec compliance + code quality）→ atomic follow-up commit（永不 amend）→ controller TRIAGE（真问题修，超范围驳回）
-2. 跨 slice 用 worktree 隔离（`feat/block-2-3-ide-handoff` @ `/Users/august/.config/superpowers/worktrees/moonshort-ide/feat-block-2-3-handoff`，保留作回滚兜底）
+2. 跨 slice 用 worktree 隔离（`feat/block-2-3-ide-handoff` @ `/Users/august/.config/superpowers/worktrees/lunaverse-ide/feat-block-2-3-handoff`，保留作回滚兜底）
 3. 完成后 FF merge main + wiki ingest + RESUME 更新
 4. wiki + main push 都 gated，要明确同意

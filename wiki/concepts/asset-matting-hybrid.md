@@ -8,14 +8,14 @@ superseded_by: ESRGAN ×2 + MODNet + V10 服务端全链（2026-05-12 起 donor 
 # Asset Matting Hybrid (A 默认 + 检测 + B 兜底)  ⛔ SUPERSEDED
 
 > **2026-05-22 起本页冻结。** 这套 "chromakey 主路径 + MODNet 兜底" 的混合架构整体被替代：
-> donor (`moonshort-backend/generate-upscale-matting`) 自 2026-05-12 起把全量 NRBI 主流程升级到
+> donor (`lunaverse-backend/generate-upscale-matting`) 自 2026-05-12 起把全量 NRBI 主流程升级到
 > **ESRGAN ×2 → MODNet → V10 服务端后处理 (hard-bg + size-filtered CC + spill suppression + unmix
 > + edge decontam + alpha sharpen + feather)**。MODNet 不再是 "兜底"，而是主路径；HSV chromakey
 > + hole_fill + green_spill_clear 这套 V4-era 后处理已从 IDE 侧 (`asset-renderer/SKILL.md` Layer
 > 6-9) 删除。详见：
 >
-> - **donor 真相源**：`~/MobAI/moonshort-backend/generate-upscale-matting/matting.py` `V10_*` 常量 + `matte_v10()`
-> - **IDE 迁移设计**：`docs/design/2026-05-22-asset-renderer-v10-migration-design.md`（moonshort-ide repo）
+> - **donor 真相源**：`~/MobAI/lunaverse-backend/generate-upscale-matting/matting.py` `V10_*` 常量 + `matte_v10()`
+> - **IDE 迁移设计**：`docs/design/2026-05-22-asset-renderer-v10-migration-design.md`（lunaverse-ide repo）
 > - **IDE 实现**：`agents/asset/skills/asset-renderer/postprocess_v10.py`（oss-put → upscale-image → matting → HTTP GET）
 > - **modal-comfy 端**：`modal-comfy/matting_v10.py`（port of donor v10）+ `modal-comfy/app.py` `handle_matting` 端点
 >
@@ -23,9 +23,9 @@ superseded_by: ESRGAN ×2 + MODNet + V10 服务端全链（2026-05-12 起 donor 
 
 ---
 
-novels-to-moonscript / asset-renderer 的抠图流水线架构 —— 让 chromakey 主路径自动检测翻车、用 MODNet 兜底，而不是单方案替换。
+novels-to-lunascript / asset-renderer 的抠图流水线架构 —— 让 chromakey 主路径自动检测翻车、用 MODNet 兜底，而不是单方案替换。
 
-> 完整 spec：[novels-to-moonscript/docs/superpowers/specs/2026-05-06-matting-hybrid-design.md](https://github.com/cdotlock/moonshort-backend) (项目内 git，未公开)
+> 完整 spec：[novels-to-lunascript/docs/superpowers/specs/2026-05-06-matting-hybrid-design.md](https://github.com/cdotlock/lunaverse-backend) (项目内 git，未公开)
 
 ## 1. 背景：为什么不直接换模型
 
@@ -47,7 +47,7 @@ novels-to-moonscript / asset-renderer 的抠图流水线架构 —— 让 chroma
 11 张代表性 NRBI anchor PNG（绿屏原图），对比：
 
 - **Pipeline A**：`cutout.py` (HSV chromakey) + `green_spill_clear.py` —— 现状
-- **Pipeline B**：MODNet + 4 步后处理（unmix → edge_decontaminate → alpha_sharpen），来自 sister 项目 Dramatizer-MSS
+- **Pipeline B**：MODNet + 4 步后处理（unmix → edge_decontaminate → alpha_sharpen），来自 sister 项目 Dramatizer-LS
 
 | 样本 | A holes% | B holes% | 谁赢 |
 |---|---:|---:|---|
@@ -181,7 +181,7 @@ asset-img/<book-slug>/
 ## 8. 引用资源
 
 - 实验对比图：`/tmp/matting_compare/v2/compare_final_AB.png` + `~/Desktop/matting_AB/`
-- 原始 zip：`~/Downloads/generate-upscale-matting.zip`（来自 Dramatizer-MSS sister 项目）
+- 原始 zip：`~/Downloads/generate-upscale-matting.zip`（来自 Dramatizer-LS sister 项目）
 - [MODNet (ZHKKKe)](https://github.com/ZHKKKe/MODNet) - AAAI 2022, Apache 2.0, 26MB ckpt
 - [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN/releases/tag/v0.2.5.0) (本 spec scope 外)
 
