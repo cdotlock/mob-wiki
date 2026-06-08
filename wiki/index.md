@@ -13,6 +13,7 @@ Welcome to the team knowledge base.
 
 ## Concepts
 
+- [[concepts/agent-manuals-agents-md]] — 每个 Workshop agent 一份 `AGENTS.md` 手册（codex 项目规则）：身份/流程/I-O/跨 agent 交接/方法论 6 段；`loadAgentsMd` 注入 `$CODEX_HOME/AGENTS.md`；退役结构化 charter 后单一来源（2026-06-08）
 - [[concepts/asset-matting-hybrid]] — novels-to-lunascript / asset-renderer 抠图流水线：A 默认 (chromakey) + 检测 + B 兜底 (MODNet)，11 张 A/B 实验数据 + 4 个独立 CLI 架构
 - [[concepts/asset-pipeline-aspect-ratio-recovery-2026-05]] — NRBI 2026-05 asset pipeline drift root-cause + recovery playbook: mob-ai aspect-ratio non-determinism, render-without-resync footgun, cascade re-render strategy
 - [[concepts/asset-pipeline-green-spill-fix-2026-05-09]] — green-spill root cause + RGB unspill fix landed 2026-05-09 (renderer level patch, not matting workaround)
