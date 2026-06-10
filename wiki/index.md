@@ -20,6 +20,7 @@ Welcome to the team knowledge base.
 - [[concepts/assetctl-integration-contract]] — assetctl 原子能力 CLI 接口合同 v0.1.0：codex 外围编排 + 冻结信封/退出码合同 + 18 颗 ATOMIC_TOOL_IDS（本轮仅 oss-put 可跑，余 NOT_IMPLEMENTED 桩）；assets-produce@48e6eb9 行为基准，全 Go 重写吸收进 IDE，foundation 已合并 main
 - [[concepts/assetctl-skills-sync-and-staging]] — Block 2 + Block 3 codex skill 加载链路：assetctl skills load CLI + IDE stageSkills Langfuse-first overlay + IDE-host TTL cache + 静默回退本地 git；S1-S4 共 23 commit 合 main @ 266cd3c
 - [[concepts/assets-produce-ide-workspace-contract]] — assets-produce ↔ Lunaverse IDE 工作区契约：mapping.json 为唯一契约、assets/ 按 kind 分子目录、新素材自动登记、走 mapping 解析（本地/OSS）；跨机器/Notion/IDE 本体不在职责内
+- [[concepts/backend-security-hardening-2026-06]] — lunaverse-backend 2026-06-10 四轨安全加固：Postgres 限流 + CORS allowlist + boot env 断言 + gitleaks gate + secret 轮换工具链（轮换执行待用户；生产 read-tier cheats 是硬依赖的决策记录）
 - [[concepts/cg-pipeline]] — novels-to-lunascript stage 07.5 CG pipeline: three-layer flow (cg_collector → cg_render → dramatizer mapping) for `@cg show` LS directives
 - [[concepts/cli-gateway-protocol]] — Unified HTTP protocol for remote CLI command execution
 - [[concepts/codex-runtime-and-verification-layers]] — Lunaverse IDE 里 codex 怎么起、auth 怎么传（`LUNAVERSE_AGENT_API_KEY` + 本地 `codex-shim` HTTP bridge，**不**走 `~/.codex/auth.json`）；4 层验证（L0 单测 / L1a 离线 skill discovery / L1b Langfuse overlay / L2 LLM-in-the-loop）+ 每层跑法 + 代码参考表
