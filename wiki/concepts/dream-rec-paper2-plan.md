@@ -28,7 +28,7 @@ status: active
 
 - 三个点名仓库均真实：K-Dense scientific-agent-skills（27.8k★，144 skills，偏生科）、nature-skills（18.4k★，论文后段 10 skills）、Supervisor-Skills（港科广 DIAL，2.2k★，04-29 后停更）。另确认 claude-scholar（4.3k★）是 CS/ML 论文最对口全流程包。
 - **全自动科研系统不可用于正经论文**：AI Scientist 独立评估 42% 实验失败（arXiv:2502.14297）；自治科研 4 试 3 败 + 六大失败模式（arXiv:2601.03315）；"PaperQA2 超 PhD"宣传被 0-3 推翻。采用 skill 增强的人主导工作流。
-- 已从三仓精选 **19 个 skill 装入 `dream-recv2/.claude/skills/`**（出处/commit/license 见同目录 ATTRIBUTION.md；Supervisor-Skills 五个为 CC BY-NC，勿商用分发）。关键映射：benchmark-paper-template（骨架）、nature-figure（出版图）、citation-verification（防编造引用——v1 spec 事故的制度化防线）、nature-reviewer + pre-submission-reviewer（投稿前模拟审稿）、review-response（审稿回复）。
+- 已从四仓精选 **22 个 skill 装入 `dream-recv2/.claude/skills/`**（出处/commit/license 见同目录 ATTRIBUTION.md；Supervisor-Skills 五个为 CC BY-NC，勿商用分发）。关键映射：benchmark-paper-template（骨架）、nature-figure（出版图）、citation-verification（防编造引用——v1 spec 事故的制度化防线）、nature-reviewer + pre-submission-reviewer（投稿前模拟审稿）、review-response（审稿回复）；06-11 补装 K-Dense 统计三件套（statistical-analysis / statsmodels / exploratory-data-analysis）加固 C/D 实验统计段。
 
 ## 给 dream-rec 产品侧的批评（独立于论文）
 
