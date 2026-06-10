@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-09
+updated: 2026-06-10
 ---
 
 # Mob-Wiki Index
@@ -24,6 +24,7 @@ Welcome to the team knowledge base.
 - [[concepts/cli-gateway-protocol]] — Unified HTTP protocol for remote CLI command execution
 - [[concepts/codex-runtime-and-verification-layers]] — Lunaverse IDE 里 codex 怎么起、auth 怎么传（`LUNAVERSE_AGENT_API_KEY` + 本地 `codex-shim` HTTP bridge，**不**走 `~/.codex/auth.json`）；4 层验证（L0 单测 / L1a 离线 skill discovery / L1b Langfuse overlay / L2 LLM-in-the-loop）+ 每层跑法 + 代码参考表
 - [[concepts/comfyui-modal-deploy]] — ComfyUI on Modal serverless deploy for assetctl `matting` (BiRefNet_toonOut) + `upscale-image` (Real-ESRGAN-anime)；单 Modal app 双 endpoint、阿里云 OSS 直传、IDE 端零改动只改 4 个 FC_* env var；spec 落在 `docs/design/2026-05-21-comfyui-modal-deploy-spec.md`
+- [[concepts/db-connection-budget]] — lunaverse-backend DB 连接预算（2026-06-10）：运行时全走 Supavisor transaction 池 6543 + 每引擎代码内显式 connection_limit；session 池 5432 只给 CI migrate（15 client 硬上限，5-30 事故根因）；生产 probe 实测 50 client → 17 server conn
 - [[concepts/dream-bonus-only-op]] — 2026-05-26 dream entry-patch 大改：3 个 v1 ops 全废、单一 `bonus_only` op（terminal placement + template Continue + LLM 写的 ✦DREAM 文案 + 机械路由）；feed 入口直接落 dream E1；no-mainline-mutation invariant（三层 defense：writer/reviewer/backend）
 - [[concepts/dream-rec-component-1-tirt-estimator]] — dream-rec C1: Bayesian TIRT estimator. Laplace MAP + (user, story) testlet random effect + LLM-confidence-weighted ψ² uniqueness. Replaces the choice-count stub.
 - [[concepts/dream-rec-component-3-genre-projection]] — dream-rec C3: per-genre projection matrix `M_g` (K_genre × K_global). Hybrid manual-seed + PCA refinement with shadow-swap versioning and identity-on-5-core cold-start fallback.
