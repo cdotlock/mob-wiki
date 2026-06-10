@@ -6,7 +6,7 @@ sources: [dream-recv2/docs/2026-06-10-paper2-feasibility-plan.md, dream-recv2/do
 status: active
 ---
 
-# dream-rec Paper #2 方案（2026-06-10，阶段 A 完成 06-11）
+# dream-rec Paper #2 方案（2026-06-10，阶段 A+B 完成 06-11）
 
 全文：`dream-recv2/docs/2026-06-10-paper2-feasibility-plan.md`（工具链+流程映射）与 `dream-recv2/docs/2026-06-11-spec-v3.1-representation-isolation-benchmark.md`（实验 spec，超越 v3）。本页是决策摘要。
 
@@ -15,7 +15,13 @@ status: active
 1. **选题沿用 v3 spec 并升级为 v3.1**：*When Do LLM Representations Help Item Cold-Start? A Representation-Isolation Benchmark*。固定 backbone、只换表征、2D 冷启动严重度网格、4 项协议陷阱审计（新 RQ4）、产出决策规则。两个方向的结果都可发表。
 2. **旧探索实验（2026-05-30 matrix_*.json）的"TF-IDF 打败 LLM embedding"结论作废**，5 个协议缺陷：①"LLM"只是 MiniLM/bge-small 级小模型（数据显示模型越大越接近 TF-IDF，SOTA embedding 下可能翻转）；②neural 256-token 截断 vs TF-IDF 全文不公平；③n_neg=200 负采样评估（Krichene & Rendle KDD'20）；④ridge/probit 固定超参欠正则；⑤随机冷启动 split 无时序。修复=论文 motivation 的一部分（Finding 0）。
 3. **选刊**：IPM（中科院 1 区）主投或 TOIS（CCF-A，IF 9.1）冲刺，KBS/ESWA 次选；TORS 新刊无分区不满足硬约束。投稿前以最新中科院分区表核实。
-4. **时间线**：阶段 B 协议修复 2 周 → C 探针 1 周（go/no-go）→ D 全矩阵 4 周 → E 写作 4 周 → F 预审投稿 2 周，约 10–12 周（Q3 2026 投出）。
+4. **时间线**：阶段 B 协议修复（✅ 06-11 完成，远快于 2 周计划）→ C 探针 1 周（go/no-go）→ D 全矩阵 4 周 → E 写作 4 周 → F 预审投稿 2 周，约 10–12 周（Q3 2026 投出）。
+
+## 阶段 B 协议修复 harness（2026-06-11 完成）
+
+- 新仓库 `dream-recv2`：uv + `src/repbench/`，从 dream-rec-paper/sim 行为保持迁移；**出口检查**用上游缓存 + 旧配置复现旧 matrix_Video_Games.json 全部 5 个 grid cell（容差 1e-6）——迁移无损有测试背书，legacy 路径冻结为 RQ4"缺陷协议"审计 arm。
+- **五项协议修复全部落地**（TDD，每项先写单测，共 86 个测试）：①全量 cold-pool 排序 evaluator（与负采样 arm 的用户/profile 逐位对齐，审计只换 evaluator 一个杠杆）；②文本公平（encoder 默认原生上下文窗口，256-token cap 只作 RQ4 复现 arm，缓存键分离）；③per-cell 网格调参（用户级验证折，log-grid 含 legacy 固定值，kNN 引入可调 top-k 且 k=None 与旧质心余弦排序等价）；④temporal cold split（最晚到达 items 为 cold，τ 前历史做 profile；Amazon 加载器新增时间戳支持走独立缓存键）；⑤6 模型 encoder 适配层（minilm / bge_small / gte_qwen2_1p5b / qwen3_4b / voyage4 / qwen3_8b 注册表 + sdpa/trust_remote_code 工程参数 + (dataset, encoder, 截断 arm) 缓存）。
+- 下一步阶段 C 探针：VG 单数据集、固定协议、4 表征 × 3 轻 backbone，kill-switch 定论文 framing（两种结果都可发表）。
 
 ## 阶段 A 查新与出口评审（2026-06-11 完成）
 
