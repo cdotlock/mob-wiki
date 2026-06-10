@@ -1,21 +1,28 @@
 ---
 title: dream-rec Paper #2 方案 — 表征隔离基准 + 科研 skill 工具链
-updated: 2026-06-10
+updated: 2026-06-11
 tags: [dream-rec, paper, research-skills, cold-start, benchmark]
-sources: [dream-recv2/docs/2026-06-10-paper2-feasibility-plan.md]
+sources: [dream-recv2/docs/2026-06-10-paper2-feasibility-plan.md, dream-recv2/docs/2026-06-11-spec-v3.1-representation-isolation-benchmark.md]
 status: active
 ---
 
-# dream-rec Paper #2 方案（2026-06-10）
+# dream-rec Paper #2 方案（2026-06-10，阶段 A 完成 06-11）
 
-全文：`dream-recv2/docs/2026-06-10-paper2-feasibility-plan.md`（含 19 个 skill 的来源与 license、完整流程映射、风险表）。本页是决策摘要。
+全文：`dream-recv2/docs/2026-06-10-paper2-feasibility-plan.md`（工具链+流程映射）与 `dream-recv2/docs/2026-06-11-spec-v3.1-representation-isolation-benchmark.md`（实验 spec，超越 v3）。本页是决策摘要。
 
 ## 结论
 
-1. **选题沿用 v3 spec**（`dream-rec-paper/docs/design-specs/2026-05-29-llm-coldstart-representation-study-design.md`）：*When Do LLM Representations Help Item Cold-Start? A Representation-Isolation Benchmark*。固定 backbone、只换表征、按冷启动严重度分层，产出"何时值得用 LLM 表征"的决策规则。两个方向的结果都可发表。
-2. **旧探索实验（2026-05-30 matrix_*.json）的"TF-IDF 打败 LLM embedding"结论作废**，查验发现 5 个协议缺陷：①"LLM"只是 MiniLM/bge-small 级小模型（且数据显示模型越大越接近 TF-IDF，SOTA embedding 下可能翻转）；②neural 256-token 截断 vs TF-IDF 全文不公平；③n_neg=200 负采样评估（Krichene & Rendle KDD'20）；④ridge/probit 固定超参欠正则（"Bayesian 差 2×"大概率是调参问题）；⑤随机冷启动 split 无时序。修复清单已写入方案 §3，修复本身成为论文 motivation 的一部分。
-3. **选刊**：IPM（中科院 1 区）或 TOIS（2 区，IF 9.1）主投，KBS/ESWA 次选，Neurocomputing 保底；TORS 最对口但新刊无分区，不满足 SCI Q2+ 硬约束。投稿前以中科院最新分区表核实。
-4. **时间线**：协议修复 2 周 → 探针 1 周（go/no-go）→ 全矩阵 4 周 → 写作 4 周 → 预审投稿 2 周，约 10–12 周（Q3 2026 投出）。
+1. **选题沿用 v3 spec 并升级为 v3.1**：*When Do LLM Representations Help Item Cold-Start? A Representation-Isolation Benchmark*。固定 backbone、只换表征、2D 冷启动严重度网格、4 项协议陷阱审计（新 RQ4）、产出决策规则。两个方向的结果都可发表。
+2. **旧探索实验（2026-05-30 matrix_*.json）的"TF-IDF 打败 LLM embedding"结论作废**，5 个协议缺陷：①"LLM"只是 MiniLM/bge-small 级小模型（数据显示模型越大越接近 TF-IDF，SOTA embedding 下可能翻转）；②neural 256-token 截断 vs TF-IDF 全文不公平；③n_neg=200 负采样评估（Krichene & Rendle KDD'20）；④ridge/probit 固定超参欠正则；⑤随机冷启动 split 无时序。修复=论文 motivation 的一部分（Finding 0）。
+3. **选刊**：IPM（中科院 1 区）主投或 TOIS（CCF-A，IF 9.1）冲刺，KBS/ESWA 次选；TORS 新刊无分区不满足硬约束。投稿前以最新中科院分区表核实。
+4. **时间线**：阶段 B 协议修复 2 周 → C 探针 1 周（go/no-go）→ D 全矩阵 4 周 → E 写作 4 周 → F 预审投稿 2 周，约 10–12 周（Q3 2026 投出）。
+
+## 阶段 A 查新与出口评审（2026-06-11 完成）
+
+- **3 路并行查新（25+ 论文）确认 GO**：四个系统性 gap 无人占据（severity 连续轴 / 表征-架构隔离 / 协议审计捆绑 / 固定 backbone 下的 encoder 全谱对比）。
+- **近邻定位**：arXiv 2512.13001（Kusano+，training-free TEM vs LLM-reranker，未中刊）是最近邻但缺我们全部 5 个设计核心；AlphaRec（ICLR'25 Oral）projector 共训属表征-架构混淆；担心的 2602.15012 (Pep) 根本不是推荐论文（推理域偏好引导），一句话区分即可。黄金引语：SIGIR'26 复现研究 "key design choices are frequently changed together"（arXiv:2603.29845）；BLaIR 证明 MTEB 排名与推荐性能几乎无关。
+- **6 模型 embedding 实验集选定**（能力轴全覆盖，总 API 成本 ~$9）：MiniLM + bge-small（小对照）/ gte-Qwen2-1.5B + Qwen3-Embedding-4B（开源中档，MPS 本地）/ Voyage-4（API 前沿）/ Qwen3-Embedding-8B（开源前沿，Apache 2.0；NV-Embed-v2 因 CC-BY-NC 弃用）。工程坑：sentence-transformers≥2.7.0（EOS pooling）、MPS 走 sdpa+fallback。
+- **idea-evaluator 出口评审：Accept with Revisions**（Stronger 9 / Cheaper 8 双主轴；paradigm 探针 4/4 yes）。两个 MAJOR 已防御并写回 spec §4.8：①实验矩阵预收缩（重 backbone 只跑 5 锚点 cell、RQ4 只跑 VG×3 轻 backbone）；②upper-bound cell 改为 RLMRec 同协议实测 ×1 数据集。
 
 ## 科研 skill 调研结论（deep-research，3-0 对抗验证）
 
@@ -25,9 +32,10 @@ status: active
 
 ## 给 dream-rec 产品侧的批评（独立于论文）
 
-最高优先级三条：①补 recommend_log，否则上线效果永远不可度量；②LLM 自报 confidence 进 ψ² 似然但零校准（正是论文 #1 证明的"虚增精度"失败模式），至少做抽样人审校准；③θ 后验协方差被 `del` 弃用，TIRT 的不确定性卖点没有兑现（无探索策略）。完整 10 条见方案 §5。
+最高优先级三条：①补 recommend_log，否则上线效果永远不可度量；②LLM 自报 confidence 进 ψ² 似然但零校准（正是论文 #1 证明的"虚增精度"失败模式），至少做抽样人审校准；③θ 后验协方差被 `del` 弃用——**2026-06-10 排序器升级已部分响应（Thompson 采样通道，见 [[concepts/dream-rec-ranker-upgrade-2026-06]]）**。完整 10 条见方案 §5。
 
 ## Cross-links
 
 - [[concepts/dream-rec-component-1-tirt-estimator]] / [[concepts/dream-rec-component-2-llm-tagger]] / [[concepts/dream-rec-component-5-cold-start]] — 被批评条目对应的组件设计
+- [[concepts/dream-rec-ranker-upgrade-2026-06]] — θ_cov 批评的产品侧响应
 - [[concepts/dream-rec-monorepo-migration]] — 生产代码现所在
