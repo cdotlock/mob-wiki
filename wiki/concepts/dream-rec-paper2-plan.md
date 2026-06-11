@@ -27,7 +27,7 @@ status: active
 
 - **3 路并行查新（25+ 论文）确认 GO**：四个系统性 gap 无人占据（severity 连续轴 / 表征-架构隔离 / 协议审计捆绑 / 固定 backbone 下的 encoder 全谱对比）。
 - **近邻定位**：arXiv 2512.13001（Kusano+，training-free TEM vs LLM-reranker，未中刊）是最近邻但缺我们全部 5 个设计核心；AlphaRec（ICLR'25 Oral）projector 共训属表征-架构混淆；担心的 2602.15012 (Pep) 根本不是推荐论文（推理域偏好引导），一句话区分即可。黄金引语：SIGIR'26 复现研究 "key design choices are frequently changed together"（arXiv:2603.29845）；BLaIR 证明 MTEB 排名与推荐性能几乎无关。
-- **6 模型 embedding 实验集选定**（能力轴全覆盖，总 API 成本 ~$9）：MiniLM + bge-small（小对照）/ gte-Qwen2-1.5B + Qwen3-Embedding-4B（开源中档，MPS 本地）/ Voyage-4（API 前沿）/ Qwen3-Embedding-8B（开源前沿，Apache 2.0；NV-Embed-v2 因 CC-BY-NC 弃用）。工程坑：sentence-transformers≥2.7.0（EOS pooling）、MPS 走 sdpa+fallback。
+- **embedding 实验集：7 模型**（能力轴全覆盖，总 API 成本 ~$30）：MiniLM + bge-small（小对照）/ gte-Qwen2-1.5B + Qwen3-Embedding-4B（开源中档，MPS 本地）/ Voyage-4（API 前沿，从业者视角）/ **OpenAI text-embedding-3-large（06-11 补充：AlphaRec 原版表征 + RLMRec 同家族，协议审计必须对话被审计论文；探针阶段用它替换 Voyage 的位置，Voyage 移到全矩阵）** / Qwen3-Embedding-8B（开源前沿，Apache 2.0；NV-Embed-v2 因 CC-BY-NC 弃用）。社区不存在标准 encoder 集（这正是 gap G4），近邻论文分裂为 OpenAI 系与 Qwen 系两条谱系，7 模型集两边都锚定。工程坑：sentence-transformers≥2.7.0（EOS pooling）、MPS 走 sdpa+fallback。
 - **idea-evaluator 出口评审：Accept with Revisions**（Stronger 9 / Cheaper 8 双主轴；paradigm 探针 4/4 yes）。两个 MAJOR 已防御并写回 spec §4.8：①实验矩阵预收缩（重 backbone 只跑 5 锚点 cell、RQ4 只跑 VG×3 轻 backbone）；②upper-bound cell 改为 RLMRec 同协议实测 ×1 数据集。
 
 ## 科研 skill 调研结论（deep-research，3-0 对抗验证）
