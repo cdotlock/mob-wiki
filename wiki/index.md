@@ -42,6 +42,7 @@ Welcome to the team knowledge base.
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
 - [[concepts/iap-sku-pricing]] — IAP 6 档 SKU 官方定价（$1.99–$99.99）+ 首充赠送比例（+100%–+200%），唯一定价真相源
 - [[concepts/ide-invite-codes-single-use]] — IDE beta 邀请注册改 DB 单次使用码（IdeInviteCode 表，事务内原子认领、一码一用、并发回滚，授权默认 beta）；含生成/灌库/监控/作废/排障运维 + 「prod 现已有 _prisma_migrations」对 railway-production-deploy 旧描述的过期标记（2026-06-12）
+- [[concepts/ide-tool-gateway-concurrency-limit]] — IDE 工具网关两层并发闸门：每用户 ≤2 在途 + 每上游**自学习全局上限**（429/超时自动减半、健康回升不越保守默认、floored 熔断）；Postgres 多实例 advisory-lock 原子 acquire、fail-open、服务端 wait-then-429；admin 免 per-user 但仍受全局 cap + 熔断（对抗审查抓到的修复）；env 全可调、PR #15（2026-06-14）
 - [[concepts/lunaverse-ide-ai-integration]] — Lunaverse IDE 内 AI 集成架构:为什么改用 Cline 而非 VS Code 原生 chat(被 Copilot 闸住),最终两个表面 —— Tab 补全 + Lunaverse Agent
 - [[concepts/ls-format]] — Lunascripts (LS) 脚本标记语言完整规范（2026-06-04 大幅 redesign 后的快照）
 - [[concepts/ls-spec-redesign-2026-06]] — LS 2026-06-04 redesign 决策记录：删除 ~半数旧指令冗余（show/hide/look/move/at、@ending、@label/@goto、influence、@cg block、@music play/crossfade/fadeout、@sfx play、@pause for N），新增同屏一人隐式 hide 规则、operand 出现在 comparison 两侧、MAX/MIN 聚合、变量对变量比较；Go 编译器 + 测试 + testdata + skills 全量对齐，5 个 commit pushed to lunascripts@main
