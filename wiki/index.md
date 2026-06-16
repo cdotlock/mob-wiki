@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-10
+updated: 2026-06-16
 ---
 
 # Mob-Wiki Index
@@ -78,6 +78,7 @@ Welcome to the team knowledge base.
 - [[entities/lunaverse-client]] — Cocos Creator game frontend with headless testing
 - [[entities/lunaverse-ide]] — VS Code 1.119.1 fork 一层壳：LS 编辑 + `ls-lsp` + Production Workshop（6 agents，含 voice casting workbench / onboarding spotlight tour / minigame workbench / production manifest publish）+ codex agent 跑时 + Lunaverse Agent (Cline fork)；8 packages + agents/ 单一 canonical config root
 - [[entities/lunascripts]] — LS interpreter: Go binary compiling .md scripts to player-ready JSON；2026-05 trick/minigame 解耦 + trick 白名单锁死 6 类 + minigame 退化为叶子 + FastAPI wrapper + episode-scoped step ID
+- [[entities/vibe-motion]] — AI-driven Remotion motion graphics workspace producing Lunaverse promo videos (9:16 portrait); lunaverse-intro delivered, lunaverse-app-promo iterating (72s + 30s/15s cuts, villain-season real assets, Breeze TTS)
 - [[entities/video-agent-claude-wangbo]] — Claude Code video shot prompt workflow with Seedance gateway, OSS validation, and ablation-backed skill package
 
 ## Syntheses
