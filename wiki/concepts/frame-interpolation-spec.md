@@ -41,53 +41,48 @@ backend 已有解析器 `lunaverse-backend/scripts/_seed-helpers/avatar-pose.ts`
 - 不同角色之间切换
 - 角色出场（无前一帧可插）、退场、位移
 
-### 决策（已定）：纯客户端解析规范 token，一套规则统一判断
+### 决策（已定）：视觉相似度门控，不依赖命名
 
-- ✅ 纯客户端解析，**不加任何 step 字段**，不改 backend/编译器
-- ✅ 只认规范 token；不规范的老剧本**不考虑**（解析不出 = 不插帧，保持现状瞬切）
-- ✅ 一套简单规则统一判断，不做视觉相似度兜底、不做表情距离门控（保持简单）
+**为什么放弃命名解析**：实测当前 4 部小说编译产物，客户端收到的 `char_show.look`（作者短名如
+`coat_zipped_breath_visible`）和 `url`（拍平的 `selena_casual_upright-...`）**都不含 `__`**。规范
+`__` token 只存在于 recanon 中间表示/mapping key，**没下发到客户端**。而 URL 把 `__` 拍平成 `_`
+后无法可靠切分——outfit 多词（`formal_evening`/`casual_default`/`black_tee_jeans`）紧接 posture 也
+是 `_` 连接（`casual_default_seated`、`formal_evening_walking`），没有 per-novel 词表分不清边界。
+让整个功能依赖"把 token 推进 `look` 字段"的跨仓管线改动，太脆。
 
-**规则依据规范 token**（唯一可靠、可无歧义切分的形式）：
+**换个角度**：真正要判断的不是"同 outfit"，而是**"这两张图够不够像，插帧会不会鬼影"**。
+"同 outfit"只是它的代理。直接量这件事更稳——而且**插帧本来就要解码两张图**，顺手算个相似度几乎免费。
 
-```
-{char}__{outfit}__{posture}-{position}-{camera}-{expression}
-```
-
-`split('__')` → `[char, outfit, descriptor]`，三段制 = 规范；段数 ≠ 3 即判为不规范，不插帧。
+**门控：裁剪区域颜色直方图比较**（位姿无关、outfit 敏感）：
 
 ```ts
-// assets/utils/LookToken.ts
-interface LookToken { char: string; outfit: string; descriptor: string; expr: string }
-
-function parseLookToken(s: string): LookToken | null {
-  const parts = s.split('__');
-  if (parts.length !== 3) return null;            // 非规范 → null
-  const [char, outfit, descriptor] = parts;
-  if (!char || !outfit || !descriptor) return null;
-  const expr = descriptor.slice(descriptor.lastIndexOf('-') + 1);
-  return { char, outfit, descriptor, expr };
+// assets/utils/LookSimilarity.ts
+// a、b 是插帧已经解码好的两张 bitmap。判断"够像 → 可插帧"。
+function interpolationSafe(a: ImageBitmap, b: ImageBitmap): boolean {
+  const S = 48;                                   // 缩略尺寸
+  const ha = clothingHist(a, S), hb = clothingHist(b, S);
+  return histIntersection(ha, hb) >= THRESHOLD;   // 经验阈值，Phase 1 标定
 }
 
-// 唯一的判断入口
-function shouldInterpolate(prevToken: string, nextToken: string): boolean {
-  const a = parseLookToken(prevToken), b = parseLookToken(nextToken);
-  if (!a || !b) return false;                     // 任一不规范 → 不插帧
-  return a.char === b.char                        // 同角色
-      && a.outfit === b.outfit                    // 同 outfit（关键）
-      && a.descriptor !== b.descriptor;           // 确有姿态/表情变化
-}
+// 取下 2/3（服装区），对 alpha>0 像素做粗量化 RGB 直方图（如每通道 4 bins = 64 bins）
+function clothingHist(img, S) { /* 离屏 canvas 缩放 → getImageData → 下 2/3 → 量化累计 */ }
+function histIntersection(p, q) { /* Σ min(p_i,q_i) / Σ p_i，∈[0,1] */ }
 ```
 
-**为什么不解析 URL 文件名**：URL 把 `__` 拍平成 `_`，多词 posture 会产生歧义无法可靠切分。
-例 `camila_formal_social_lean_forward-...`：outfit 是 `formal_social` 还是 `formal_social_lean`?
-posture 是 `lean_forward` 还是 `forward`? 单下划线分不清。`__` 三段制无此问题。
+- **位姿无关**：直方图忽略像素位置，同 outfit 大幅度换姿势（抬手/侧身）颜色分布不变 → 仍判定可插帧。
+- **outfit 敏感**：换衣服 → 服装区颜色分布变 → 判定不安全 → 退回瞬切。
+- **表情通过**：脸是小区域，不主导直方图 → 换表情仍可插帧（正是我们要的）。
+- **命名无关**：新老小说、任何管线都适用，**零管线依赖、不加字段、纯客户端**。
+- **安全退化**：误判只会"少插一次帧"（退回瞬切），不会鬼影。
 
-> **实现依赖（实现前确认）**：`shouldInterpolate` 解析的 token 必须是带 `__` 的规范形式。
-> 实测当前 4 部小说编译产物里，`char_show.look` 和 `url` **都不含 `__`**（look 是作者短名如
-> `coat_zipped_breath_visible`，url 是拍平的 `selena_casual_...`）。规范 `__` token 目前只存在于
-> recanon 中间表示/mapping key。**需确认 recanon 后/生产管线把规范 token 写进客户端可见的字段
-> （建议复用 `look`，非新增字段）**。这正是"后面都是规范的"要落到 `look` 字段上的含义。
-> 若确认 `look` 会是规范 token，则上面规则零改动直接生效。
+**`character` 字段先做快速短路**：`kind === 'look'` 已隐含同角色（同槽同角色不同 url）；若需跨槽判断，
+先比 `character` 字段（干净 slug），不同角色直接跳过，连解码都省。
+
+> 阈值 `THRESHOLD` 在 Phase 1 用同 outfit / 换 outfit 样本对标定（NRBI 小说能从 mapping 文件名肉眼
+> 分出 outfit，拿来当 ground truth 调阈值）。Phase 1 先用全局缩略 MAE 也行，够看效果；生产用直方图更稳。
+
+> 可选未来 fast-path：若某天规范 `__` token 真的下发到 `look`，可加一层"同 char 同 outfit"名字快判，
+> 命中就免去直方图。但**不作为依赖**，视觉门控是主路径。
 
 ### 模型选择
 
@@ -140,9 +135,9 @@ class FrameInterpolator {
 - 5 帧：4 次推理（二叉递归）
 - Phase 1 先固定 3 帧（3 次推理），后续可调
 
-### 1.2 outfit 门控：新增 `LookToken.ts`
+### 1.2 视觉门控：新增 `LookSimilarity.ts`
 
-位置：`assets/utils/LookToken.ts`。职责：解析规范 token，判断两个立绘是否"同角色同 outfit"。是插帧的**唯一前置闸门**。完整实现见上文「决策（已定）」的代码块（`parseLookToken` + `shouldInterpolate`，约 15 行）。
+位置：`assets/utils/LookSimilarity.ts`。职责：对两张已解码 bitmap 做服装区直方图比较，判断插帧是否安全。是插帧的**唯一前置闸门**。完整实现见上文「决策（已定）」代码块（`interpolationSafe` + `clothingHist` + `histIntersection`，约 25 行）。命名无关、零管线依赖。
 
 ### 1.3 修改 `StoryWnd.playCharacterMotion()`
 
@@ -156,25 +151,26 @@ if (kind === 'look') {
 }
 ```
 
-改为：
+改为（注意门控在两图解码后才判，所以决策逻辑挪进 `playInterpolatedLookTransition`）：
 ```
 if (kind === 'look') {
-    const prev = this.renderedCharacterSlots[slot];   // 含 look + url
-    const next = 当前 data;                            // 含 look + url
-    // outfit 门控：只有同角色同 outfit、仅表情/姿态变化时才插帧
-    if (this.frameInterpolator && shouldInterpolate(prev, next)) {
-        this.playInterpolatedLookTransition(slot, prev.url, next.url, targetAlpha);
+    const prevUrl = this.renderedCharacterSlots[slot]?.url ?? null;
+    const nextUrl = 当前 data.url;
+    if (prevUrl && this.frameInterpolator) {
+        // 内部：解码两图 → interpolationSafe(a,b)?
+        //   安全 → 跑 RIFE 播帧序列
+        //   不安全（换装/差异大）或无前图 → 退回瞬切 setCharacterSlotOpacity
+        this.playInterpolatedLookTransition(slot, prevUrl, nextUrl, targetAlpha);
         return;
     }
-    // 其他情况（换装 / 老小说无 token / 无插帧器）→ 保持原有瞬切
     this.setCharacterSlotOpacity(slot, targetAlpha);
     return;
 }
 ```
 
-> 注意：`char_show` step 当前下发的 `look` 是作者短名，可能解析不出 token。Phase 1 用方案 B（解析不出就不插帧）。若走方案 A，则 backend 在 step 上补 `outfit`/`expression` 字段，`shouldInterpolate` 直接读字段，不再解析。
+> `kind === 'look'` 已隐含同角色（同槽不同 url）。门控只需视觉相似度——两图都得先解码，正好插帧也要解码，合一步。
 
-### 1.3 新增方法：`playInterpolatedLookTransition()`
+### 1.4 新增方法：`playInterpolatedLookTransition()`
 
 ```
 async playInterpolatedLookTransition(
@@ -184,11 +180,13 @@ async playInterpolatedLookTransition(
   targetAlpha: number
 ): void
   // 1. 获取旧图和新图的 ImageBitmap（旧图从缓存取，新图等 setSpriteUrl 加载完成）
-  // 2. 调 frameInterpolator.interpolate(oldImg, newImg, 3)
-  // 3. 得到 3 张中间帧 ImageBitmap
-  // 4. 播放帧动画：oldImg → frame1 → frame2 → frame3 → newImg
+  // 2. 视觉门控：interpolationSafe(oldImg, newImg)?
+  //      false（换装/差异大）→ 直接 setCharacterSlotOpacity 瞬切，return
+  // 3. 调 frameInterpolator.interpolate(oldImg, newImg, 3)
+  // 4. 得到 3 张中间帧 ImageBitmap
+  // 5. 播放帧动画：oldImg → frame1 → frame2 → frame3 → newImg
   //    每帧 50ms，总计 200ms
-  // 5. 帧动画结束后，sprite 显示 newUrl（正常状态）
+  // 6. 帧动画结束后，sprite 显示 newUrl（正常状态）
 ```
 
 **帧动画播放**：用 Cocos 的 `schedule` 或 `tween` + `call` 链，每 50ms 将中间帧的 ImageBitmap 写入 sprite 的 Texture2D。已有的 `VideoTexturePlayer` 里有 canvas → Texture2D 的管线可参考。
@@ -200,7 +198,7 @@ async playInterpolatedLookTransition(
 - **后续即时生效** — 模型已在内存
 - 可选：在进入剧情阅读阶段时预加载（用户此时在看内容，有空闲时间）
 
-### 1.5 输入预处理
+### 1.5 输入预处理（接 1.4）
 
 角色图特殊性：
 - 透明背景 PNG（RGBA），RIFE 期望 RGB
@@ -210,19 +208,19 @@ async playInterpolatedLookTransition(
 
 ### 1.6 测试方式
 
-**独立 demo 页面优先**（`test/interpolation-demo.html`）：手动选两张同角色同 outfit 立绘（从 `dont-pretend-with-me` 这类 NRBI 小说的 mapping.json 取同 outfit、不同 expression 的 token 对），跑插帧、并排对比"瞬切 vs 插帧"。不依赖完整游戏流程，迭代最快。这是 Phase 1 看效果的主路径。
+**独立 demo 页面优先**（`test/interpolation-demo.html`）：从 `dont-pretend-with-me` 的 mapping.json 取样本对——靠文件名肉眼分出 outfit（`camila_casual_default_*` vs `camila_evening_gown_*`），凑「同 outfit 不同 expression」正样本 + 「换 outfit」负样本。对每对：① 跑插帧并排对比瞬切 ② 打印 `interpolationSafe` 的直方图相似度。用正负样本标定 `THRESHOLD`。这是 Phase 1 主路径。
 
 集成验证（次要）：
 1. `npm run dev` 启动本地 Web 服务
 2. 进入 NRBI 小说，推进到同角色连续换表情的对话
-3. 观察 `shouldInterpolate` 命中时是否有丝滑过渡，换装时是否正确退回瞬切
-4. 控制台打印：是否命中门控、解析出的 char/outfit/expr、推理耗时、帧数
+3. 观察门控命中时是否丝滑过渡，换装时是否正确退回瞬切
+4. 控制台打印：直方图相似度、是否命中、推理耗时、帧数
 
 ### 1.7 Phase 1 产出物
 
 - `assets/utils/FrameInterpolator.ts` — ONNX 推理封装
-- `assets/utils/LookToken.ts` — token 解析 + outfit 门控
-- `StoryWnd.ts` 中 `kind === 'look'` 分支改动（加门控）
+- `assets/utils/LookSimilarity.ts` — 视觉门控（服装区直方图）
+- `StoryWnd.ts` 中 `kind === 'look'` 分支改动（接门控 + 播帧）
 - RIFE ONNX 模型文件（CDN 托管或本地 assets）
 - 独立 demo 页面（`test/interpolation-demo.html`）
 - 效果对比截图/录屏 + 门控正确性记录（同 outfit 插帧 / 换装瞬切）
@@ -297,11 +295,10 @@ Phase 1 的 Web CPU 推理会比较慢（可能 300-900ms），但目的是验�
 
 | 风险 | 影响 | 缓解 |
 |------|------|------|
-| **误把换装当换表情去插帧** | 鬼影（最严重） | outfit 门控 `shouldInterpolate`；解析不出 token 一律不插帧 |
-| `look` 字段是短名、解析不出 outfit | 漏插帧（保守，可接受） | Phase 1 保守不插帧；Phase 2 走方案 A 由 backend 下发 outfit 字段 |
-| 命名规范跨小说不统一 | 覆盖面有限 | Phase 1 只覆盖 NRBI 小说；老小说不插帧不影响现状 |
+| **误把换装当换表情去插帧** | 鬼影（最严重） | 视觉门控 `interpolationSafe`：服装区直方图不够像就退回瞬切 |
+| 阈值标偏（太松→鬼影 / 太紧→少插帧） | 效果/覆盖 | Phase 1 用正负样本对标定；偏紧（宁可少插也不鬼影） |
+| 换 outfit 但配色相近（灰休闲↔灰正装） | 偶发误判可插帧 | 同角色相近配色插帧通常仍可接受；必要时叠加边缘/结构特征 |
 | 透明背景 PNG 插帧出现边缘伪影 | 效果差 | alpha 通道单独线性插值，RGB 合成到纯色背景后推理 |
-| 表情差异太大（闭眼→大笑）产生鬼影 | 效果差 | 验证后决定是否再加表情距离门控（同 outfit 内也限制大跳变） |
 | ONNX Runtime Web 包体大 | 首屏慢 | 懒加载，不影响核心游戏功能 |
 | 低端 Android 无 Vulkan | 无法推理 | 降级到 ncnn CPU (ARM NEON) 或 fallback 瞬间换图 |
 | 模型输入要求 32 倍数 | 边缘裁切 | pad 到最近 32 倍数，输出后 crop 回原尺寸 |
@@ -310,16 +307,16 @@ Phase 1 的 Web CPU 推理会比较慢（可能 300-900ms），但目的是验�
 
 - 不做服务端预计算（成本和工程复杂度不划算）
 - 不做 dissolve 过渡（直接上神经网络插帧）
-- **不对换 outfit / 换角色 / 出场 / 退场 / 位移做插帧**（只做同角色同 outfit 的表情/姿态切换）
+- **不依赖立绘命名解析**（规范 token 没下发到客户端，URL 拍平后不可靠）
+- 不加 step 字段、不改 LS / backend（纯客户端视觉门控）
+- 不对换角色 / 出场 / 退场 / 位移做插帧
 - Phase 1 不优化性能（只验证效果）
-- Phase 1 不改 LS / backend（用客户端 token 解析；改字段是 Phase 2 方案 A）
 
 ## 已定决策
 
-- ✅ 纯客户端解析规范 `__` token，不加字段、不改 backend
-- ✅ 老剧本（解析不出 token）不考虑，直接不插帧
-- ✅ 一套规则（`shouldInterpolate`）统一判断，不加视觉相似度兜底、不加表情距离门控
+- ✅ **视觉相似度门控**（服装区直方图），不依赖命名、零管线依赖、纯客户端、不加字段
+- ✅ 直接量"两图够不够像、插帧会不会鬼影"，比解析 outfit 名更稳；新老小说通吃
+- ✅ 一套门控统一判断；不安全就退回瞬切，安全退化（最多少插一次帧，不鬼影）
+- ✅ 阈值 Phase 1 用 NRBI 样本对标定
 
-## 唯一实现前确认项
-
-**规范 token 必须出现在客户端可见字段**（建议复用 `char_show.look`）。当前编译产物 `look`/`url` 都是非规范形式，需确认 recanon 后/生产管线把规范 `char__outfit__...` token 写入 `look`。确认后规则零改动生效；若 token 在别的字段，仅改 `shouldInterpolate` 的取值来源一行。
+> 备注：之前考虑的"解析规范 `__` token"方案作废——实测 token 没下发到客户端（`look` 是作者短名、`url` 拍平了 `__`），多词 outfit/posture 无法可靠切分。视觉门控绕开整个命名问题。
