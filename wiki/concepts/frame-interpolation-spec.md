@@ -41,30 +41,53 @@ backend 已有解析器 `lunaverse-backend/scripts/_seed-helpers/avatar-pose.ts`
 - 不同角色之间切换
 - 角色出场（无前一帧可插）、退场、位移
 
-### 命名不统一的现实（影响实现）
+### 决策（已定）：纯客户端解析规范 token，一套规则统一判断
 
-token 规范**不是所有小说都用**，实测 4 部小说：
+- ✅ 纯客户端解析，**不加任何 step 字段**，不改 backend/编译器
+- ✅ 只认规范 token；不规范的老剧本**不考虑**（解析不出 = 不插帧，保持现状瞬切）
+- ✅ 一套简单规则统一判断，不做视觉相似度兜底、不做表情距离门控（保持简单）
 
-| 小说（管线） | `look` 字段 | 文件名 | outfit 编码 |
-|------|------|--------|-----------|
-| chaoreqi-idol | `warm_smile` | `waigong_warm_smile.webp` | ❌ 无 |
-| feature-parade | `hopeful` | `easton_hopeful.png` | ❌ 无 |
-| loop-7th-villainess | `neutral` | `dietrich_neutral_{ts}_{hash}.png` | ❌ 无 |
-| dont-pretend-with-me (NRBI) | `coat_zipped_breath_visible` | `selena_casual_upright-in_pockets-to_camera_{hash}.webp` | ✅ `casual` |
+**规则依据规范 token**（唯一可靠、可无歧义切分的形式）：
 
-两个坑：
-1. **编译后 `char_show.look` 字段是作者写的短名**（如 `coat_zipped_breath_visible`），**不是**规范 token。规范 token 在 mapping.json 的 key / URL 文件名里，且 URL 把 `__` 拍平成了 `_`（边界不可靠解析）。
-2. 老小说根本没有 outfit 段。
+```
+{char}__{outfit}__{posture}-{position}-{camera}-{expression}
+```
 
-**结论**：客户端**无法**仅凭现有 `look` 字段可靠判断 outfit。需要一个明确信号。三种方案见下。
+`split('__')` → `[char, outfit, descriptor]`，三段制 = 规范；段数 ≠ 3 即判为不规范，不插帧。
 
-### outfit 信号方案（实现前需定）
+```ts
+// assets/utils/LookToken.ts
+interface LookToken { char: string; outfit: string; descriptor: string; expr: string }
 
-- **方案 A（推荐，最稳）**：在 `char_show` step 上新增显式 `outfit` + `expression` 字段，由 LS 编译器/backend 从规范 token 提取后下发。客户端逻辑变成 `prev.outfit === next.outfit && prev.expression !== next.expression` → 插帧。符合"信号在已知处显式下发，不让客户端逆向文件名"的原则。需要改 backend/编译器（跨仓，较慢）。
-- **方案 B（Phase 1 验证够用）**：客户端解析规范 token。能解析（含 `__`）就按 outfit 比较；解析不出（老小说）就**不插帧**，退回瞬切。纯客户端，快，但只覆盖 NRBI 小说。
-- **方案 C（兜底）**：运行时视觉相似度门控——对两帧算个轻量感知差异（缩略图直方图 / SSIM），相似度高才插帧。不依赖命名，覆盖所有小说，但是启发式、偏重。
+function parseLookToken(s: string): LookToken | null {
+  const parts = s.split('__');
+  if (parts.length !== 3) return null;            // 非规范 → null
+  const [char, outfit, descriptor] = parts;
+  if (!char || !outfit || !descriptor) return null;
+  const expr = descriptor.slice(descriptor.lastIndexOf('-') + 1);
+  return { char, outfit, descriptor, expr };
+}
 
-**Phase 1 用方案 B**（解析 token，仅对同 char 同 outfit 插帧，老小说退回瞬切），并挑 `dont-pretend-with-me` 这类 NRBI 小说做效果验证。方案 A 作为 Phase 1.5/Phase 2 的稳健化升级。
+// 唯一的判断入口
+function shouldInterpolate(prevToken: string, nextToken: string): boolean {
+  const a = parseLookToken(prevToken), b = parseLookToken(nextToken);
+  if (!a || !b) return false;                     // 任一不规范 → 不插帧
+  return a.char === b.char                        // 同角色
+      && a.outfit === b.outfit                    // 同 outfit（关键）
+      && a.descriptor !== b.descriptor;           // 确有姿态/表情变化
+}
+```
+
+**为什么不解析 URL 文件名**：URL 把 `__` 拍平成 `_`，多词 posture 会产生歧义无法可靠切分。
+例 `camila_formal_social_lean_forward-...`：outfit 是 `formal_social` 还是 `formal_social_lean`?
+posture 是 `lean_forward` 还是 `forward`? 单下划线分不清。`__` 三段制无此问题。
+
+> **实现依赖（实现前确认）**：`shouldInterpolate` 解析的 token 必须是带 `__` 的规范形式。
+> 实测当前 4 部小说编译产物里，`char_show.look` 和 `url` **都不含 `__`**（look 是作者短名如
+> `coat_zipped_breath_visible`，url 是拍平的 `selena_casual_...`）。规范 `__` token 目前只存在于
+> recanon 中间表示/mapping key。**需确认 recanon 后/生产管线把规范 token 写进客户端可见的字段
+> （建议复用 `look`，非新增字段）**。这正是"后面都是规范的"要落到 `look` 字段上的含义。
+> 若确认 `look` 会是规范 token，则上面规则零改动直接生效。
 
 ### 模型选择
 
@@ -119,26 +142,7 @@ class FrameInterpolator {
 
 ### 1.2 outfit 门控：新增 `LookToken.ts`
 
-位置：`assets/utils/LookToken.ts`
-
-职责：解析规范 token，判断两个立绘是否"同角色同 outfit"。是插帧的**前置闸门**。
-
-```
-解析规范 token: {char}__{outfit}__{posture}-{position}-{camera}-{expr}
-（参考 backend scripts/_seed-helpers/avatar-pose.ts 的解析口径）
-
-function parseLookToken(lookOrUrl): { char, outfit, expr } | null
-  // 优先用规范 look token（含 `__`）；
-  // 退而用 mapping key；URL 文件名已把 __ 拍平为 _，不可靠，不作为主依据
-  // 解析不出（老小说短名）→ 返回 null
-
-function shouldInterpolate(prev, next): boolean
-  const a = parseLookToken(prev), b = parseLookToken(next)
-  if (!a || !b) return false           // 解析不出 → 不插帧（退回瞬切）
-  return a.char === b.char
-      && a.outfit === b.outfit          // ← 关键：同 outfit 才插帧
-      && a.expr !== b.expr              // 确实有表情/姿态变化
-```
+位置：`assets/utils/LookToken.ts`。职责：解析规范 token，判断两个立绘是否"同角色同 outfit"。是插帧的**唯一前置闸门**。完整实现见上文「决策（已定）」的代码块（`parseLookToken` + `shouldInterpolate`，约 15 行）。
 
 ### 1.3 修改 `StoryWnd.playCharacterMotion()`
 
@@ -310,8 +314,12 @@ Phase 1 的 Web CPU 推理会比较慢（可能 300-900ms），但目的是验�
 - Phase 1 不优化性能（只验证效果）
 - Phase 1 不改 LS / backend（用客户端 token 解析；改字段是 Phase 2 方案 A）
 
-## 待定决策（实现前对齐）
+## 已定决策
 
-1. **outfit 信号方案 A vs B**：Phase 1 用 B（客户端解析 token），是否要同时推动 A（backend 下发 `outfit`/`expression` 字段）作为 Phase 2 稳健化？
-2. **老小说（无 token）**：保守不插帧 ✅ 还是上方案 C 视觉相似度兜底？建议先不做，看 NRBI 小说效果再说。
-3. **同 outfit 内的大表情跳变**（闭眼→大笑）：是否需要额外的表情距离门控？验证后定。
+- ✅ 纯客户端解析规范 `__` token，不加字段、不改 backend
+- ✅ 老剧本（解析不出 token）不考虑，直接不插帧
+- ✅ 一套规则（`shouldInterpolate`）统一判断，不加视觉相似度兜底、不加表情距离门控
+
+## 唯一实现前确认项
+
+**规范 token 必须出现在客户端可见字段**（建议复用 `char_show.look`）。当前编译产物 `look`/`url` 都是非规范形式，需确认 recanon 后/生产管线把规范 `char__outfit__...` token 写入 `look`。确认后规则零改动生效；若 token 在别的字段，仅改 `shouldInterpolate` 的取值来源一行。
