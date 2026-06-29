@@ -40,6 +40,7 @@ Welcome to the team knowledge base.
 - [[concepts/dream-trigger-v2-mechanical]] — Producer-side dream trigger v2 (2026-05-21): pure-mechanical evaluator (no LLM) — UserNovelProfile vector + weighted running mean + cosine drift + sharpness gates, replaces v1 single-gate. Drops phase dedup; first-dream保送 keeps committed_success ≥ 3.
 - [[concepts/dreaming-universe]] — 玩家画像触发的共享 Dream 支线宇宙：Episode graph + assignment-gated overlay + Python dream-agent
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
+- [[concepts/frame-interpolation-spec]] — 角色表情插帧实施方案：RIFE/IFRNet 端上推理，Phase 1 Web 验证 + Phase 2 Android/iOS 推广
 - [[concepts/iap-sku-pricing]] — IAP 6 档 SKU 官方定价（$1.99–$99.99）+ 首充赠送比例（+100%–+200%），唯一定价真相源
 - [[concepts/ide-invite-codes-single-use]] — IDE beta 邀请注册改 DB 单次使用码（IdeInviteCode 表，事务内原子认领、一码一用、并发回滚，授权默认 beta）；含生成/灌库/监控/作废/排障运维 + 「prod 现已有 _prisma_migrations」对 railway-production-deploy 旧描述的过期标记（2026-06-12）
 - [[concepts/ide-tool-gateway-concurrency-limit]] — IDE 工具网关两层并发闸门：每用户 ≤2 在途 + 每上游**自学习全局上限**（429/超时自动减半、健康回升不越保守默认、floored 熔断）；Postgres 多实例 advisory-lock 原子 acquire、fail-open、服务端 wait-then-429；admin 免 per-user 但仍受全局 cap + 熔断（对抗审查抓到的修复）；env 全可调、PR #15（2026-06-14）
