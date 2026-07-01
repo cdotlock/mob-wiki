@@ -31,48 +31,46 @@ gateway (`app.moonshort.ai`). Repo: `AugustZAD/lunaria-web` (pnpm monorepo:
 - **Onboarding**: a single composer box — describe with AI, or **drag/attach a `.txt`/`.md`
   novel to adapt** (`POST /api/projects/:id/adapt` splits chapters server-side → agent
   writes ch.1). Multiple **books** (topbar project switcher + New book); last book restored
-  across sessions. (Fixed "can't start a new book": app was single-project + AI-only
-  onboarding.)
+  across sessions.
 - **Editor**: Notion-like **card view is the default** (code is a toggle) — hover **+**
   add-block menu, **dnd-kit** drag reorder of top-level blocks, delete; every edit is a
   minimal line-level source patch (round-trip safe via `ls/edit-source.ts` + `emit-block`).
 - **Canvas**: two levels — story map → double-click → per-step 分镜 graph (D20 check
   renders as a dice node). Compiled locally.
-- **Assets**: bind / **generate** (images, via live style catalog) / **upload** (any kind;
-  audio music/sfx is upload-only — no audio generation). Guests upload/bind; AI generation
-  gated behind a real login. NOTE: audio upload/bind/persist is complete but the shared
-  `stage-player` still no-ops audio playback by design.
+- **Assets**: bind / **generate** (images) / **upload** (any kind; audio music/sfx is
+  upload-only). Guests upload/bind; AI generation gated behind a real login. (Audio
+  upload/bind/persist complete; shared `stage-player` still no-ops audio playback.)
 - **Agent sidebar**: persistent script-scoped co-writer; fixed tool whitelist
-  (list/read/write/compile scene, list assets) — cannot run code or generate art. The
-  forked `.ls` authoring **skills** (`.claude/skills/*/SKILL.md`) are composed into its
-  system prompt. Sidebar cutoff + collapse fixed (grid track → 48px rail).
+  (list/read/write/compile scene, list assets). The forked `.ls` authoring **skills**
+  (`.claude/skills/*/SKILL.md`) are composed into its system prompt. Cutoff + collapse fixed.
 - **Preview**: steps the compiled episode in the real player engine; `asset://` refs
   rewritten to authed object URLs.
 - **i18n**: runtime-switchable **zh / en** (中/EN toggle), dependency-free React context;
-  product named plainly **"Lunaria"** (no otome/乙女 branding). Design language + user
-  flows documented in-repo (`DESIGN.md`).
+  product named plainly **"Lunaria"** (no otome/乙女). Design doc: `DESIGN.md`.
 
 ## Gateway findings (VERIFIED LIVE 2026-07-01, funded `vito` login)
 
 - **Text model**: the login-token gateway (`/api/ide/v1`) exposes `gpt-5.5:free` /
-  `claude-opus-4-6:free`. It does **NOT expose deepseek** — `deepseek-chat:free` and
+  `claude-opus-4-6:free`. It **does NOT expose deepseek** — `deepseek-chat:free` and
   `deepseek-v4-flash:free` both HTTP 500 on the first call (deepseek is IDE-only via direct
   `api.deepseek.com` + a key). Default `LUNARIA_MODEL=gpt-5.5:free`; full agent loop
-  (list→write→self-correct→compile→done) verified working live. Skill guidance trimmed to
-  ~1.2k chars/skill to keep the prompt lean.
-- **Style catalog**: `GET /api/ide/styles` (login token, `style:read`) works and is fetched
-  live (source "gateway", 5-min cache); builtin catalog is the offline/guest fallback.
-- **Image gen**: `POST {gateway}/api/ide/tools/generate-image-gpt` (login token; charges
-  `pointConsume` so any funded account is authorized). Async submit/poll/parse verified
-  correct against real responses; but the provider (`gpt-image2`) can **stall at
-  `progress:10 "processing"` for minutes** → the poll window (default 60×5s) is env-tunable
-  (`LUNARIA_IMAGE_POLL_ATTEMPTS`/`_INTERVAL_MS`, `LUNARIA_IMAGE_DEBUG=1` logs poll shape). A
-  rendered image couldn't be confirmed in-session due to that provider stall (external, not
-  a code bug).
+  (list→write→self-correct→compile→done) verified working live.
+- **Style catalog**: `GET /api/ide/styles` (login token, `style:read`) fetched live
+  (source "gateway", 5-min cache); builtin fallback offline/guest.
+- **Image gen — WORKS end to end (verified)**: `POST {gateway}/api/ide/tools/generate-image-gpt`
+  (login token; charges `pointConsume`). Real 1024×1024 PNG generated, downloaded, stored.
+  Two footguns fixed: (1) the provider `gpt-image2`'s **img2img (style reference-image)
+  path stalls at `progress:10` forever** — text-to-image is fine — so style reference
+  images are **OFF by default** (`LUNARIA_IMAGE_USE_STYLE_REFS=1` re-enables; the style TEXT
+  template still conveys the look); (2) the result OSS host **omits its intermediate TLS
+  cert** (undici `UNABLE_TO_GET_ISSUER_CERT`, curl works) so the image **download** falls
+  back to `node:https` with relaxed chain verification (that download only). Poll window
+  tunable (`LUNARIA_IMAGE_POLL_ATTEMPTS`/`_INTERVAL_MS`, default 60×5s; `LUNARIA_IMAGE_DEBUG=1`).
+  Submit/poll/parse protocol is byte-for-byte identical to assetctl `internal/tools/gpt`.
 
 ## Status
 
-All six requested gaps closed and browser-verified (onboarding/new-book, Notion editor,
-agent+skills, live styles, i18n+rename, audio upload). ~461 unit tests green (web 269 +
-server 192). On `main` @ `AugustZAD/lunaria-web`. Deploy notes in `DEPLOY.md`. Related:
-[[entities/lunaverse-ide]], [[concepts/ls-format]], [[concepts/four-layer-philosophy]].
+All six requested gaps closed + real image gen confirmed, browser-verified. ~461 unit tests
+green (web 269 + server 192). On `main` @ `AugustZAD/lunaria-web`. Deploy notes in
+`DEPLOY.md`. Related: [[entities/lunaverse-ide]], [[concepts/ls-format]],
+[[concepts/four-layer-philosophy]].
