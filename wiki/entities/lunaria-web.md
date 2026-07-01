@@ -57,20 +57,23 @@ gateway (`app.moonshort.ai`). Repo: `AugustZAD/lunaria-web` (pnpm monorepo:
   (list→write→self-correct→compile→done) verified working live.
 - **Style catalog**: `GET /api/ide/styles` (login token, `style:read`) fetched live
   (source "gateway", 5-min cache); builtin fallback offline/guest.
-- **Image gen — WORKS end to end (verified)**: `POST {gateway}/api/ide/tools/generate-image-gpt`
-  (login token; charges `pointConsume`). Real 1024×1024 PNG generated, downloaded, stored.
-  Two footguns fixed: (1) the provider `gpt-image2`'s **img2img (style reference-image)
-  path stalls at `progress:10` forever** — text-to-image is fine — so style reference
-  images are **OFF by default** (`LUNARIA_IMAGE_USE_STYLE_REFS=1` re-enables; the style TEXT
-  template still conveys the look); (2) the result OSS host **omits its intermediate TLS
-  cert** (undici `UNABLE_TO_GET_ISSUER_CERT`, curl works) so the image **download** falls
-  back to `node:https` with relaxed chain verification (that download only). Poll window
-  tunable (`LUNARIA_IMAGE_POLL_ATTEMPTS`/`_INTERVAL_MS`, default 60×5s; `LUNARIA_IMAGE_DEBUG=1`).
-  Submit/poll/parse protocol is byte-for-byte identical to assetctl `internal/tools/gpt`.
+- **Image gen — WORKS end to end, WITH style references (verified)**: `POST {gateway}/api/ide/
+  tools/generate-image-gpt` (login token; charges `pointConsume`). Real 1024×1024 PNG
+  generated (img2img with the style ref), downloaded, stored — verified with
+  Kyoto_Animation. Notes: (1) **img2img is NOT broken** — an earlier Arcane stall
+  (`progress:10` forever) was that style being **edited server-side** (its ref temporarily
+  unusable); a healthy style generates fine. We send a proper https ref URL and the style
+  wiring is correct. Style refs are **ON by default** (matches IDE); `LUNARIA_IMAGE_USE_STYLE_REFS=0`
+  forces text-to-image. (2) The result OSS host **omits its intermediate TLS cert** (undici
+  `UNABLE_TO_GET_ISSUER_CERT`, curl works) → the image **download** falls back to
+  `node:https` with relaxed chain verification (that download only; auth/LLM/submit/poll
+  stay verified). Poll window tunable (`LUNARIA_IMAGE_POLL_ATTEMPTS`/`_INTERVAL_MS`, 60×5s;
+  `LUNARIA_IMAGE_DEBUG=1`). Submit/poll/parse is byte-for-byte identical to assetctl
+  `internal/tools/gpt`.
 
 ## Status
 
-All six requested gaps closed + real image gen confirmed, browser-verified. ~461 unit tests
-green (web 269 + server 192). On `main` @ `AugustZAD/lunaria-web`. Deploy notes in
-`DEPLOY.md`. Related: [[entities/lunaverse-ide]], [[concepts/ls-format]],
-[[concepts/four-layer-philosophy]].
+All six requested gaps closed + real image gen (incl. style img2img) confirmed,
+browser-verified. ~461 unit tests green (web 269 + server 192). On `main` @
+`AugustZAD/lunaria-web`. Deploy notes in `DEPLOY.md`. Related: [[entities/lunaverse-ide]],
+[[concepts/ls-format]], [[concepts/four-layer-philosophy]].
