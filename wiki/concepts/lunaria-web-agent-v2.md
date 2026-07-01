@@ -1,6 +1,6 @@
 ---
 title: Lunaria Web — Agent v2（渐进式技能加载 + 双模式 + 持久化大纲 + AI 写提示词）
-description: lunaria-web 写作 Agent 重构（2026-07-01/02）：技能目录 + read_skill 按需加载、create/adapt 双模式、持久化故事大纲 + 实体表注入、回合末自评打分、AI 只帮写生图 prompt；gateway-free 审计验到占 IDE 质量 87%（过 80% 线）。
+description: lunaria-web 写作 Agent 重构（2026-07-01/02）：技能目录 + read_skill 按需加载、create/adapt 双模式、持久化故事大纲（结构化 Canonical Wardrobe 行 + @signal/CG/gate 跨集账本 + romanceStage）+ 实体表注入、回合末自评打分、AI 只帮写生图 prompt；真实 E2E 验证并首次部署到 Railway。
 updated: 2026-07-02
 ---
 
@@ -27,9 +27,19 @@ updated: 2026-07-02
 
 用**不烧网关**的多 Agent workflow 静态审计：各维度读代码+技能对照 IDE 打分，综合成「占 IDE 质量的百分比」对 80% 标尺判定；每个分数再过一道对抗式 verify（重开文件核对证据，不信claim）。不靠真跑 Agent（省网关 token、不落测试账号密码）。轨迹：首轮 **72%**（知识层强、交付层弱）→ 接线级修复后 **85%** → 加持久化大纲 + 自评后复审 **87%**（语法 96 / 技能保真 91 / 生图 85 / 机制 **78→83** / 改编 **76→84**）。两个最弱维度正是被这次改动抬起来的。
 
-## 已知遗留（scoped 未来工作）
+## 结构化第三轮（2026-07-02，已完成）
 
-- **最大的改编抬升杠杆**：`plan.json` 把 IDE 的结构化契约压成了自由文本——Canonical Wardrobe（每主角 4–7 行 id/text/when、逐字稳定、下游渲染唯一来源）塌成一个 `appearance` 字符串；`@signal 分配 / 成就 / CG / 传奇 gate` 等跨集状态账本没有 schema 字段，只能活在 `beats`/`signals[]` 的散文里。多套服装 + 跨集连续性因此仍靠模型自觉而非结构。下一步：把 wardrobe 行与 signal/gate 账本升成 `StoryPlan` 一等字段。
+owner：「改编保真度增强，结构化程度做好」。把 `plan.json` 从自由文本升成对齐 IDE 的结构化契约：
+- **Canonical Wardrobe 行**：`PlanCharacter.appearance` 现在只放**体貌**（发型/发色/瞳色/肤色/身材/五官，字节稳定的基底身份），服装拆进 `wardrobe[]` 行 `{ id, text（逐字出图，永不改写）, when }`（主角 4–7 套）——下游立绘渲染唯一来源，换装不漂移。
+- **三本跨集账本**升成 `StoryPlan` 一等字段：`signals[]`（@signal 触发/回调总账，读→写纪律）、`cgs[]`（CG 规划 environment/highlight）、`gates[]`（@gate/@ending 路由）。分集大纲加 `romanceStage`（meet/falling/crisis/reconciliation）。
+- 角色/地点 id slug 成小写 ASCII（.ls bareword 契约）；`normalizeCg` 容忍 IDE 的中文 CG 标签。两个 adapt 技能加了「persist to the story plan」映射。scene 存储 id 必须是文件名安全 slug（无 `:`/`/`），而 `@episode`/`@next` 正文里保留冒号/斜杠寻址。
+- 一次 26-agent 对抗式上线前审计跑完，取真实项修（id slug、CG 别名、romanceStage、scene-id 指引），跳过越界项（在防御归一层强制字节稳定/reader 存在/体貌与服装分离会丢有效数据、且是技能层的活）。
+
+## 上线（2026-07-02，首次生产部署）
+
+部署到 **Railway**，服务 `lunaria-webide`（与 `playlunaverse.com` 官网服务隔离，挂 50GB volume 于 `/data` 持久化项目）。公网 URL 已上线并**真实验证**：12/12 guest E2E（含真 `lsc` 编译）本地 + 对线上 URL 各跑一遍，真实浏览器编译+逐拍预览通过、0 console 报错。自定义域 `webide.playlunaverse.com` 已在 Railway 挂好，等 owner 在 Cloudflare 加一条 CNAME（本地 wrangler token 看不到该 zone）。构建踩坑：`@earendil-works/pi-ai` + `typebox` 被直接 import 但没声明，本地靠 hoist 能过、Docker 干净装 `--frozen-lockfile` 挂 —— 补成直接依赖修好（凡直接 import 必声明）。详见记忆 [[lunaria-deploy]]（如已同步）。
+
+## 已知遗留（scoped 未来工作）
 - 自审是同模型同上下文的自评，不是 IDE 那种独立评分 reviewer 门（刻意如此，分数交用户手改）。
 - 预算护栏边界：`report_quality` 若恰好落在步数上限那一步，收尾轮会被判 harness error——分数现在 error 时也会补发，用户仍看得到。
 - `read_skill` 软门只保证「读了某个技能」，不校验读的是不是最相关那个。
