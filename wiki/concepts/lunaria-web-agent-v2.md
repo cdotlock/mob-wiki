@@ -1,13 +1,13 @@
 ---
 title: Lunaria Web — Agent v2（渐进式技能加载 + 双模式 + 持久化大纲 + AI 写提示词）
-description: lunaria-web 写作 Agent 重构（2026-07-01/02）：技能目录 + read_skill 按需加载、create/adapt 双模式、持久化故事大纲（结构化 Canonical Wardrobe 行 + @signal/CG/gate 跨集账本 + romanceStage + STORY-PLAN CONTRACT/planWarnings）+ 实体表注入、回合末自评打分、AI 只帮写生图 prompt；真实 AI create+adapt 跑测已验证（本地 + 线上），部署到 Railway。
+description: lunaria-web 写作 Agent 重构（2026-07-01/02）：技能目录 + read_skill 按需加载、create/adapt 双模式、持久化故事大纲（结构化 Canonical Wardrobe 行 + @signal/CG/gate 跨集账本 + romanceStage + STORY-PLAN CONTRACT/planWarnings）+ 实体表注入、回合末自评打分、AI 只帮写生图 prompt、轮转多模型网关回退、邀请码用户注册；真实 AI create+adapt 跑测已验证（本地 + 线上），部署到 Railway。
 updated: 2026-07-02
 ---
 
 # Lunaria Web — Agent v2（渐进式技能加载 + 双模式 + 持久化大纲 + AI 写提示词）
 
 > 决策记录 2026-07-01/02。Lunaria Web（网页端 VN 剧本创作台，`AugustZAD/lunaria-web`）的写作 Agent 重构。
-> 仓库内权威源：`AGENT.md`（架构，§2.7 持久化大纲 / §2.8 自评）+ `docs/design/2026-06-30-lunaria-web-v2-design.md` §7.G/§6.4。本页是团队 KB 的决策快照 + 复用要点。
+> 仓库内权威源：`AGENT.md`（架构，§2.1 传输/回退 / §2.7 持久化大纲 / §2.8 自评）+ `docs/design/2026-06-30-lunaria-web-v2-design.md` §7.G/§6.4。本页是团队 KB 的决策快照 + 复用要点。
 
 ## 背景 / 为什么
 
@@ -37,22 +37,36 @@ owner：「改编保真度增强，结构化程度做好」。把 `plan.json` �
 
 ## 真实 AI 跑测 + 上线前第四轮硬化（2026-07-02，已完成并验证）
 
-owner 给了 `vito` 网关口令（**不落盘**），要求「进行真实测试，保证效果」。用真 token（`claude-opus-4-6:free`）驱动 `create` 与 `adapt` 两模式**真实 agentic 端到端跑通**（渐进读技能 → write_plan → write_scene → compile 通过 → report_quality ~78），本地 + **线上部署 URL 各验一遍**（线上持久化场景 API 编译 102 步 0 诊断）。真实跑测暴露 4 个真问题，全部修复并复验：
+owner 给了 `vito` 网关口令（**不落盘**），要求「进行真实测试，保证效果」。用真 token 驱动 `create` 与 `adapt` 两模式**真实 agentic 端到端跑通**（渐进读技能 → write_plan → write_scene → compile 通过 → report_quality ~78），本地 + **线上部署 URL 各验一遍**（线上持久化场景 API 编译 102 步 0 诊断）。真实跑测暴露 4 个真问题，全部修复并复验：
 
-1. **网关间歇 500**：最小请求也 ~50% 失败（纯上游抖动，与 payload 无关）；`gpt-5.5:free` 整轮跑不通（回合 500 连重试也救不回），`claude-opus-4-6:free`（网关自身默认）能跑通。→ 重试预算默认 2→**4** + 退避封顶 8s + `LUNARIA_LLM_MAX_RETRIES`/`_RETRY_BASE_MS` 环境变量（线上服务设 6）；**默认模型切到 `claude-opus-4-6:free`**。
-2. **无参工具被填充参数打挂**：模型给零参工具塞 `{"_noargs":"unused"}`，`additionalProperties:false` 校验失败、白白浪费一轮（还烧一次重试）。→ 无参工具 schema 改 `additionalProperties:true`。
+1. **网关间歇 500**：最小请求也 ~50% 失败（纯上游抖动，与 payload 无关）。→ 重试预算默认 2→**4** + 退避封顶 8s + `LUNARIA_LLM_MAX_RETRIES`/`_RETRY_BASE_MS` 环境变量。（**注：** 当时结论「gpt-5.5 整轮跑不通、默认切 opus-4-6」在第五轮被更正——见下，实为无 fallback 时的抽样噪声。）
+2. **无参工具被填充参数打挂**：模型给零参工具塞 `{"_noargs":"unused"}`，`additionalProperties:false` 校验失败、白白浪费一轮。→ 无参工具 schema 改 `additionalProperties:true`。
 3. **SSE 长静默掉线**：单轮 LLM 期间 SSE 无事件，叠加重试退避可静默数分钟 → undici body 超时 / 代理掐连接。→ `startSseHeartbeat` 每 15s 发 `: keepalive` 注释帧。
-4. **大纲被写成骨架**（最关键）：模型写出高质量 `.ls` 却把 `plan.json` 持久化成骨架（人人 `supporting`、无 wardrobe/locations/episodes/账本），schema 空有其表。→ **STORY-PLAN CONTRACT**（注入两模式系统提示，永远在上下文）+ `write_plan` 结果的非阻塞 `planWarnings[]`（逐项点名缺口）。复验：两模式都正确落 role/appearance/trope/locations/CG/gate/romanceStage，**adapt agent 看到 warnings 后二次 `write_plan` 补全**。仍偏弱的软缺口：`wardrobe[]` 行 + `signals[]` 账本登记（模型内联用了却不回登）。
+4. **大纲被写成骨架**（最关键）：模型写出高质量 `.ls` 却把 `plan.json` 持久化成骨架，schema 空有其表。→ **STORY-PLAN CONTRACT**（注入两模式系统提示）+ `write_plan` 结果的非阻塞 `planWarnings[]`。复验：两模式都正确落 role/appearance/trope/locations/CG/gate/romanceStage，adapt agent 看到 warnings 后二次 `write_plan` 补全。
 
-生图按 owner 要求本轮不测。服务端单测 server **252** / web 300 全绿；构建 + 全仓 typecheck 通过。
+## 稳定性 + 用户注册（2026-07-02，第五轮，已完成并验证）
 
-## 上线（2026-07-02，首次生产部署 + 硬化重部署）
+owner：「让整体更稳定，不管网关那边出什么问题都稳一点；还是默认用 GPT 5.5 Free，查清它为什么跑不通；加注册用户功能并部署；代码合 main。」
 
-部署到 **Railway**，服务 `lunaria-webide`（与 `playlunaverse.com` 官网服务隔离，挂 50GB volume 于 `/data`）。公网 URL 已上线并**真实验证**：12/12 guest E2E（含真 `lsc` 编译）本地 + 线上 URL 各跑一遍，真实浏览器编译+逐拍预览 0 console 报错；**并已用真 token 在线上跑通真实 AI create 一集**。自定义域 `webide.playlunaverse.com` 已在 Railway 挂好，等 owner 在 Cloudflare 加一条 CNAME。构建踩坑：`@earendil-works/pi-ai` + `typebox` 被直接 import 但没声明，Docker 干净装 `--frozen-lockfile` 挂 —— 补成直接依赖修好。
+**A. 查清 gpt-5.5 + 轮转多模型回退。** 用真 token 拿真实 tool-calling payload 复探网关两轮，得到**更正性结论**：
+- `gpt-5.5:free` 与 `claude-opus-4-6:free` **可靠性完全相同**（各 ~50% 成功；请求一旦落地**两者都完美 tool-call**）。第四轮「opus 更稳、gpt-5.5 跑不通」是**抽样噪声 + 当时没有模型回退**——不是模型问题，也不是「不好用」。
+- `gpt-5:free` 与 `claude-opus-4-8:free` **稳定死**（0/14，瞬时 ~550ms 500 = 网关未 provision；区别于慢速 ~1.5s 抖动 500）。
+- 结论：**稳定性来自模型多样性，不是选「更好的模型」**。`GatewayLlmClient` 改成接受有序 `models` 回退链，每次瞬时重试**轮转到链上下一个模型**（`chain[attempt % len]`，共享重试预算）；任一模型 500 被另一个兜住，死主模型下一跳即被救；非瞬时错（4xx/鉴权）立即抛。默认链 **`gpt-5.5:free → claude-opus-4-6:free`**（主模型回到 owner 指定的 gpt-5.5），`LUNARIA_MODELS`（整链）/ `LUNARIA_MODEL`（仅主）覆盖。**实测：默认链（gpt-5.5 主）在 ~50% 网关 500 下完整跑通 create 一集（compile ok=true 69 步 0 诊断、self-score 78）**——gpt-5.5 单模型曾「跑不通」，轮转后稳定完成，本地 + 线上各验一遍。
+
+**B. 邀请码用户注册（对齐 IDE `registerWithInvite`）。** 服务端 `GatewayAuth.register` → 网关 `POST /api/ide/register {username,password,inviteCode}` → 直接返 token（自动登录，与 login 同 token 形状）；新增**公开** `POST /api/auth/register` 路由 + `handleRegister`（三字段校验，**邀请码强制**=网关闭测门；网关逻辑失败如错误/已用邀请码、重复用户名以 HTTP 200 `code!==0` 回来 → 透传 400）。Web `client.register` + `LoginScreen` 加登录/注册模式切换（邀请码输入框、切换时清旧错误）。**线上验证**：无效邀请码 → 网关 "Invalid or already-used IDE invite code" 经代理透传（未创建账号）；部署包内含注册 UI。
+
+**C. 对抗式复审。** 一个 4 维（可靠性 / 认证安全 / IDE 保真 / Web-UX）workflow 复审改动，每条 finding 独立 verify：12 条 findings、10 条被驳、**2 条确认**（均降为 low 并已修）——(1) `gatewayMessage` 漏了网关的嵌套 `{error:{message}}` 形状（IDE 的 responseMessage 处理，403/429/上游会用）→ 补齐，login/register 同受益；(2) 模式切换未清旧错误 → 切换时清。
+
+server 单测 **264** / web **302** 全绿；构建 + 全仓 typecheck 通过。5 个原子提交合到 `origin/main`（ff），本地 `main` 同步。生图按 owner 要求不测。
+
+## 上线（2026-07-02，首次生产部署 + 两轮硬化重部署）
+
+部署到 **Railway**，服务 `lunaria-webide`（与 `playlunaverse.com` 官网服务隔离，挂 50GB volume 于 `/data`）。公网 URL 已上线并**真实验证**：guest E2E（含真 `lsc` 编译）+ 真 token 线上 AI create 跑通 + 注册路由线上透传网关邀请码错误 + 注册 UI 已随包发布。自定义域 `webide.playlunaverse.com` 已在 Railway 挂好，等 owner 在 Cloudflare 加一条 CNAME。构建踩坑：`@earendil-works/pi-ai` + `typebox` 被直接 import 但没声明，Docker 干净装 `--frozen-lockfile` 挂 —— 补成直接依赖修好。
 
 ## 已知遗留（scoped 未来工作）
 - 自审是同模型同上下文的自评，不是独立评分 reviewer 门（刻意如此，分数交用户手改）。
 - 预算护栏边界：`report_quality` 若落在步数上限那一步，收尾轮会被判 harness error——分数现在 error 时也会补发。
 - `read_skill` 软门只保证「读了某个技能」，不校验读的是不是最相关那个。
-- **大纲软缺口**：`wardrobe[]` 行 + `signals[]` 账本登记，模型内联用了却不回登（CONTRACT + warnings 已把 role/appearance/locations/CG/gate 抬起来，这两项待进一步引导，不宜强逼模型为第一集臆造整套衣橱）。
-- **网关可靠性**：免费网关间歇 500 是上游问题，靠重试预算 + 心跳缓解；若持续恶化需考虑多模型 fallback。
+- **大纲软缺口**：`wardrobe[]` 行 + `signals[]`/`locations[]` 账本登记，模型内联用了却不总回登（CONTRACT + warnings 已把 role/appearance/CG/gate 抬起来，这几项待进一步引导，不宜强逼模型为第一集臆造整套衣橱）。
+- **网关可靠性**：免费网关间歇 500 是上游问题；已由轮转多模型回退 + 重试预算 + SSE 心跳缓解（gpt-5.5 主链实测稳定跑通）。若上游持续恶化，下一步可加更多在营模型进链或直连 provider。
+- **注册限流**：`/api/auth/register` 公开无鉴权（与 login 同姿态），暂无应用层限流；开放公测前建议按 `docs/deploy-access-limits.md` 的 L0 白名单 + L1 配额收紧。
