@@ -1,6 +1,9 @@
 ---
 title: Style prompts → Langfuse 权威源迁移（2026-06-02）
 updated: 2026-06-02
+created: 2026-06-02
+tags: ["style", "langfuse", "migration"]
+sources: []
 ---
 
 # Style prompts → Langfuse migration

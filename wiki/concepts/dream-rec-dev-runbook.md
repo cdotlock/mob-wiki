@@ -3,6 +3,8 @@ title: dream-rec dev runbook
 updated: 2026-05-24
 tags: [dream-rec, runbook, dev, recommendation]
 status: shipped
+created: 2026-05-24
+sources: []
 ---
 
 # dream-rec dev runbook

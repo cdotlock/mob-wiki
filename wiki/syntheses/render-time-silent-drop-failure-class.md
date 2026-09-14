@@ -25,6 +25,8 @@ source_specs:
   - /Users/august/MobAI/norules-vn/skills/episode-writer/references/scene-continuity-gate.md
   - /Users/august/MobAI/norules-vn/skills/episode-writer/references/scene-transition-gate.md
   - /Users/august/MobAI/norules-vn/skills/episode-writer/references/fake-delta-prose-gate.md
+created: 2026-04-21
+sources: []
 ---
 
 # Render-Time Silent Drop 失败类

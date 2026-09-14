@@ -3,6 +3,7 @@ title: 团队行动计划
 tags: [plan, roadmap, status]
 created: 2026-04-15
 updated: 2026-05-14
+sources: []
 ---
 
 这是一个持续维护的计划文件。所有人都可以更新自己的进度和下一步。每次更新时修改 `updated` 日期。

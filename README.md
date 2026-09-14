@@ -11,13 +11,13 @@
 ```bash
 git clone https://github.com/cdotlock/mob-wiki.git ~/mob-wiki
 cd ~/mob-wiki
-pip install -e .
+uv sync --python 3.12 --extra dev --frozen
 ```
 
 ### 第 2 步：注册 MCP Server
 
 ```bash
-claude mcp add -s user mob-wiki -- python ~/mob-wiki/server.py
+claude mcp add -s user mob-wiki -- "$HOME/mob-wiki/.venv/bin/python" "$HOME/mob-wiki/server.py"
 ```
 
 `-s user` 将 wiki 注册为全局 MCP，在任何目录启动 Claude Code 都能使用 wiki 工具。之后每次对话 Claude 会自动启动 server，对话结束自动关闭。不需要手动挂后台进程。
@@ -70,7 +70,7 @@ WIKI_RULES
 **方式 2：本地 HTTP** — 临时启动查看器：
 
 ```bash
-cd ~/mob-wiki && python server.py
+cd ~/mob-wiki && uv run --frozen python server.py --http
 # 然后访问 http://localhost:8787
 ```
 
@@ -90,3 +90,26 @@ mob-wiki/
 ├── server.py     # MCP Server（8 个工具）+ HTTP 查看器
 └── indexer.py    # SQLite FTS5 搜索索引
 ```
+
+## 团队重新启用
+
+修复与后续优化见 [2026-09-14 审核记录](docs/audit-2026-09-14.md)。
+
+需要 Python 3.11+ 和 uv。已有成员先在自己的副本执行 `git status`，保存自己的改动后执行 `git pull --ff-only`，再运行上面的 `uv sync`。不要使用系统自带的 Python 3.9。安装是每位成员自己的本地配置；仓库更新不会自动替成员注册 MCP。
+
+MCP 默认只提供 stdio 工具，不启动网页端口。`--http` 提供独立浏览器进程；`WIKI_HTTP_PORT` 可覆盖 8787。确需同一进程同时提供两种入口时设 `WIKI_HTTP_ENABLED=1`。默认知识库根目录是 `server.py` 所在目录，从其他项目启动也会读取正确资料；自定义部署可通过 `WIKI_ROOT` 指向含 `wiki/` 和 `raw/` 的完整副本。查看器仅监听本机，不包含互联网服务的身份认证。
+
+验证：
+
+```sh
+uv run --frozen --extra dev pytest -q
+uv run --frozen python scripts/check_wiki.py
+```
+
+第二条会实际启动 MCP，验证列目录、读取、搜索和结构检查，结构错误时返回非零状态。资料新鲜度提醒需人工结合上下文判断，不阻止无关工作。CI 在提交和 PR 时执行同样的检查。
+
+团队编辑时先拉取，调用 `wiki_read` 获得正文和 `revision`，更新时将该值传入 `wiki_update_page` 的 `expected_revision`。如返回冲突，重新读取并合并双方内容。旧客户端仍可省略此参数，但无法获得过期写入保护。Git 推送被拒绝时应取回远端变化并解决冲突，禁止强推覆盖他人的贡献。
+
+搜索使用本地 SQLite FTS5 关键词匹配；中文词在 FTS 无结果时回退到子串匹配。没有向量语义搜索，也不需要模型 API key。每次搜索检测本地 Markdown 的新增、修改和删除，拉取更新后无需手工重建索引。
+
+`updated` 是资料的历史更新时间，不能视为生产系统已重新核验的证明。空 `sources` 表示来源尚未补充。重新采用某条部署或产品决策前，应核对相关仓库和实际服务；尤其留意页面中的 `superseded`、`deferred` 和待上线记录。

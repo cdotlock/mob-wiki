@@ -3,6 +3,8 @@ title: dream-rec integration architecture (Component 0)
 updated: 2026-05-24
 tags: [dream-rec, recommendation, lunaverse-backend, architecture, component-0, monorepo]
 status: shipped
+created: 2026-05-23
+sources: []
 ---
 
 # dream-rec integration architecture (Component 0)
@@ -18,7 +20,7 @@ Independent Python FastAPI recommendation service that consumes choice events fr
 
 ## Theoretical base
 
-5 main personality axes (openness, sensation, cognition, affect, attachment) + 1 agency play-style axis. Bayesian Thurstonian IRT (TIRT) with heteropolar keying and testlet structure. See [[concepts/dream-rec-theoretical-base]] (companion spec, Bayesian TIRT). Sub-specs:
+5 main personality axes (openness, sensation, cognition, affect, attachment) + 1 agency play-style axis. Bayesian Thurstonian IRT (TIRT) with heteropolar keying and testlet structure. See [[concepts/dream-rec-component-1-tirt-estimator]] (companion spec, Bayesian TIRT). Sub-specs:
 
 - **Component 1:** [[concepts/dream-rec-component-1-tirt-estimator]] — shipped 2026-05-24. Bayesian TIRT Laplace updater with `(user, story_id)` testlet and LLM-confidence-weighted ψ².
 - **Component 2:** [[concepts/dream-rec-component-2-llm-tagger]] — shipped 2026-05-24. Batch episode-level tagger producing ItemTag + DreamSignature against the mob-ai gateway.

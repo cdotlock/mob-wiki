@@ -4,6 +4,7 @@ updated: 2026-05-24
 tags: [dream-rec, dashboard, component-6, recommendation, observability]
 sources: [docs/superpowers/specs/2026-05-23-dream-rec-component-6-dashboard-design.md]
 status: deferred
+created: 2026-05-24
 ---
 
 # dream-rec Component 6 — Three-Loop A/C/B Dashboard

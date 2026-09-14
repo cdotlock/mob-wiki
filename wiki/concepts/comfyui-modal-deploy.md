@@ -2,6 +2,8 @@
 title: ComfyUI on Modal — matting + upscale-image serverless deploy
 updated: 2026-05-21
 tags: [assetctl, comfyui, modal, deploy, pattern-b, infrastructure]
+created: 2026-05-21
+sources: []
 ---
 
 # ComfyUI on Modal — `matting` + `upscale-image` serverless deploy

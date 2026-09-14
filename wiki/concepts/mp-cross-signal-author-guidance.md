@@ -2,6 +2,9 @@
 title: MP Cross-Signal Author Guidance
 description: 多人模式（MP）小说写作 Agent 设计指引 — block-on-cross-signal 运行时下的同步密度设计。Cross-signal 引用决定双人剧情哪里汇合（旧 every-choice-blocks → 新 block-on-cross-signal），revival anchor 是顺带的二级效果
 updated: 2026-06-08
+created: 2026-06-08
+tags: ["multiplayer", "writing", "signals"]
+sources: []
 ---
 
 # MP Cross-Signal Author Guidance（多人模式写作指引）

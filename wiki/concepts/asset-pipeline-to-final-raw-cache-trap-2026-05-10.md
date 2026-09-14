@@ -2,6 +2,9 @@
 title: to-final.py _raw Cache Trap
 tags: [asset-pipeline, bug, n2m, lunaverse-backend]
 date: 2026-05-10
+created: 2026-05-10
+updated: 2026-06-08
+sources: []
 ---
 
 # `to-final.py` `_raw` Cache Trap

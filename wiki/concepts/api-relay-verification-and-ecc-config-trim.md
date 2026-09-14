@@ -2,6 +2,8 @@
 title: 中转站满血验机方法 + ECC 全局配置瘦身 playbook
 updated: 2026-05-20
 tags: [api-relay, model-verification, claude-code, ecc, cost-optimization]
+created: 2026-05-20
+sources: []
 ---
 
 # 中转站满血验机 + ECC 全局配置瘦身

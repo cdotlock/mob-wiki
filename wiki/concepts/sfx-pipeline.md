@@ -2,6 +2,8 @@
 title: SFX Pipeline Design
 updated: 2026-05-12
 tags: [sfx, audio, pipeline, elevenlabs, normalizer]
+created: 2026-05-12
+sources: []
 ---
 
 # SFX Pipeline Design — `sfx-normalizer` skill + dramatizer integration

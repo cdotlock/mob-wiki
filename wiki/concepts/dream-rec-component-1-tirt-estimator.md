@@ -4,6 +4,7 @@ updated: 2026-05-24
 tags: [dream-rec, tirt-estimator, component-1, recommendation]
 sources: [docs/superpowers/specs/2026-05-23-dream-rec-component-1-tirt-estimator-design.md]
 status: shipped
+created: 2026-05-24
 ---
 
 # dream-rec Component 1 — Bayesian TIRT estimator

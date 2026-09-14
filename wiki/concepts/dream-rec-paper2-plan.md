@@ -4,6 +4,7 @@ updated: 2026-06-11
 tags: [dream-rec, paper, research-skills, cold-start, benchmark]
 sources: [dream-recv2/docs/2026-06-10-paper2-feasibility-plan.md, dream-recv2/docs/2026-06-11-spec-v3.1-representation-isolation-benchmark.md]
 status: active
+created: 2026-06-10
 ---
 
 # dream-rec Paper #2 方案（2026-06-10，阶段 A+B 完成 06-11）

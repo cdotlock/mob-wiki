@@ -3,6 +3,7 @@ title: IDE Single-Use Invite Codes
 tags: [backend, ide, invite, auth, ops]
 created: 2026-06-12
 updated: 2026-06-12
+sources: []
 ---
 
 [[entities/lunaverse-backend]] 的 IDE beta 邀请注册用 **DB 里的单次使用邀请码**。本页是设计决策 + 数据模型 + 运维知识；逐条可照抄的命令在仓库 `docs/ide-invite-codes-runbook.md`（canonical），env 类配置见 [[concepts/railway-production-deploy]] 的姊妹文档 `docs/ide-backend-env-runbook.md`。

@@ -2,6 +2,8 @@
 title: 乙女逐剧本质量评分器设计（per-script quality gate）
 updated: 2026-06-05
 tags: [evaluation, otome, llm-as-judge, quality-gate, ls]
+created: 2026-06-04
+sources: []
 ---
 
 # 乙女逐剧本质量评分器设计
@@ -72,7 +74,7 @@ L2 全篇一致性检测  (LLM, evidence-grounded, 仿 ConStory-Checker)
 
 ## L0 — 结构客观校验（确定性，无 LLM）
 
-对编译后分支图 + 变量 op 做静态分析。`@gate` 是"变量 ≥ 整数"形式（见 [[concepts/ls-gate-no-variable-comparison]]），所以可达性是可判定的。
+对编译后分支图 + 变量 op 做静态分析。旧版设计把 `@gate` 限定为“变量 ≥ 整数”。2026-06 的 [[concepts/ls-spec-redesign-2026-06]] 已支持变量间比较与聚合，因此原先基于整数阈值的可达性分析前提需要重新评估；本页评分器方案尚未据此重新验证。
 
 | 检查 | 判什么 |
 |---|---|
@@ -158,6 +160,6 @@ L2 全篇一致性检测  (LLM, evidence-grounded, 仿 ConStory-Checker)
 - [[concepts/otome-writing-benchmark-survey-2026-06]] — 全景调研 + ① 选模型那层
 - [[entities/lunascripts]] — 编译产物（L0 静态分析的输入）
 - [[concepts/signal-int-backend]] — `@signal` 变量（好感 / 门槛校验对象）
-- [[concepts/ls-gate-no-variable-comparison]] — `@gate` 整数阈值（可达性分析前提）
+- [[concepts/ls-spec-redesign-2026-06]] — 当前变量比较能力；旧整数阈值假设已过期
 - [[concepts/novel-game-config]] — 每剧本数值系统
 - [[concepts/villain-season-demo]] — 标注语料种子

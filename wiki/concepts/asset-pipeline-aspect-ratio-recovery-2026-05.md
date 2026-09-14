@@ -2,6 +2,9 @@
 title: "Asset Pipeline Aspect-Ratio Recovery (NRBI 2026-05)"
 description: "Root-cause analysis + recovery playbook for the May 2026 NRBI asset pipeline drift: mob-ai aspect-ratio non-determinism, render-without-resync footgun, and the cascade re-render strategy."
 tags: ["asset-pipeline", "render-with-style", "mob-ai", "incident", "playbook"]
+created: 2026-05-14
+updated: 2026-06-08
+sources: []
 ---
 
 # Asset Pipeline Aspect-Ratio Recovery (NRBI 2026-05)

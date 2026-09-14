@@ -1,5 +1,9 @@
 ---
 title: Moonshort IDE UI/UX Audit + Fix Log (2026-06)
+created: 2026-06-06
+updated: 2026-06-06
+tags: ["moonshort-ide", "uiux", "audit"]
+sources: []
 ---
 
 ## TL;DR

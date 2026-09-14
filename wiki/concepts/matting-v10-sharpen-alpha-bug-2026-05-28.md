@@ -1,6 +1,9 @@
 ---
 title: V10 抠图遗漏 sharpen_alpha bug + 修复（2026-05-28）
 updated: 2026-05-28
+created: 2026-05-28
+tags: ["matting", "incident"]
+sources: []
 ---
 
 # V10 抠图遗漏 sharpen_alpha 步骤 — halo 根因 + 修复

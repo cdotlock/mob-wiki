@@ -1,6 +1,9 @@
 ---
 title: Second-Chorus 素材流水线（自包含 / 云端可跑 / 可复用模板）
 updated: 2026-06-01
+created: 2026-06-01
+tags: ["assets", "pipeline"]
+sources: []
 ---
 
 # Second-Chorus 素材流水线

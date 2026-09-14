@@ -1,11 +1,21 @@
 """Wiki search indexer — SQLite FTS5 keyword search only."""
 
-import os
 import re
 import sqlite3
+import threading
+from functools import wraps
 from pathlib import Path
 
 import yaml
+
+
+def locked(method):
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return wrapped
 
 
 class WikiIndexer:
@@ -14,7 +24,10 @@ class WikiIndexer:
     def __init__(self, db_path: str | Path, wiki_root: str | Path):
         self.db_path = str(db_path)
         self.wiki_root = Path(wiki_root)
-        self._conn = sqlite3.connect(self.db_path)
+        self._lock = threading.RLock()
+        self._building = False
+        self._snapshot = None
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=30)
         self._conn.row_factory = sqlite3.Row
         self._init_schema()
 
@@ -70,8 +83,9 @@ class WikiIndexer:
             meta = yaml.safe_load(match.group(1)) or {}
         except yaml.YAMLError:
             meta = {}
-        return meta, match.group(2)
+        return meta if isinstance(meta, dict) else {}, match.group(2)
 
+    @locked
     def index_page(self, rel_path: str, content: str | None = None) -> None:
         """Add or update a single page in the index."""
         if content is None:
@@ -81,9 +95,13 @@ class WikiIndexer:
             content = full_path.read_text(encoding="utf-8")
 
         meta, body = self.parse_frontmatter(content)
-        title = meta.get("title", rel_path)
+        title = str(meta.get("title", rel_path))
         tags_raw = meta.get("tags", [])
-        tags = ",".join(str(t) for t in tags_raw) if isinstance(tags_raw, list) else str(tags_raw)
+        tags = (
+            ",".join(str(t) for t in tags_raw)
+            if isinstance(tags_raw, list)
+            else str(tags_raw)
+        )
         updated = str(meta.get("updated", ""))
 
         cur = self._conn.cursor()
@@ -92,37 +110,56 @@ class WikiIndexer:
             "INSERT INTO pages (path, title, tags, body, updated) VALUES (?, ?, ?, ?, ?)",
             (rel_path, title, tags, body, updated),
         )
-        self._conn.commit()
+        if not self._building:
+            self._conn.commit()
 
+    @locked
     def remove_page(self, rel_path: str) -> None:
         """Remove a page from the index."""
         self._conn.execute("DELETE FROM pages WHERE path = ?", (rel_path,))
         self._conn.commit()
 
+    def _files(self):
+        return sorted(
+            p
+            for root in ("wiki", "raw")
+            for p in (self.wiki_root / root).rglob("*.md")
+            if not p.is_symlink()
+            and not any(parent.is_symlink() for parent in p.parents)
+        )
+
+    def _state(self):
+        return [(str(p), p.stat().st_mtime_ns, p.stat().st_size) for p in self._files()]
+
+    @locked
     def build_index(self) -> dict:
         """Rebuild the entire index from wiki/ and raw/ directories."""
-        self._conn.execute("DELETE FROM pages")
-        self._conn.commit()
+        state = self._state()
+        files = self._files()
+        self._building = True
+        try:
+            with self._conn:
+                self._conn.execute("DELETE FROM pages")
+                for md_file in files:
+                    self.index_page(
+                        str(md_file.relative_to(self.wiki_root)),
+                        md_file.read_text(encoding="utf-8"),
+                    )
+            self._snapshot = state
+        finally:
+            self._building = False
+        return {"pages_indexed": len(files)}
 
-        count = 0
-        for subdir in ("wiki", "raw"):
-            base = self.wiki_root / subdir
-            if not base.exists():
-                continue
-            for md_file in base.rglob("*.md"):
-                rel_path = str(md_file.relative_to(self.wiki_root))
-                content = md_file.read_text(encoding="utf-8")
-                self.index_page(rel_path, content)
-                count += 1
-
-        return {"pages_indexed": count}
-
+    @locked
     def search(self, query: str, limit: int = 10) -> list[dict]:
         """BM25 full-text search."""
-        sanitized = re.sub(r'["\'\*\(\)\-\+\^:]', " ", query).strip()
-        if not sanitized:
+        if self._snapshot != self._state():
+            self.build_index()
+        tokens = re.findall(r"\w+", query, re.UNICODE)
+        if not tokens:
             return []
-        fts_query = " OR ".join(sanitized.split())
+        limit = max(1, min(limit, 100))
+        fts_query = " OR ".join('"' + token + '"' for token in tokens)
 
         try:
             rows = self._conn.execute(
@@ -139,6 +176,17 @@ class WikiIndexer:
         except sqlite3.OperationalError:
             return []
 
+        # FTS5's unicode tokenizer keeps Chinese sentences together. Substring
+        # fallback makes ordinary Chinese words discoverable without an API key.
+        if not rows and any(re.search(r"[\u3400-\u9fff]", token) for token in tokens):
+            clauses = " OR ".join(
+                "(instr(title, ?) > 0 OR instr(body, ?) > 0)" for _ in tokens
+            )
+            args = [value for token in tokens for value in (token, token)]
+            rows = self._conn.execute(
+                f"SELECT path, title, body, 0.0 AS score FROM pages WHERE {clauses} ORDER BY path LIMIT ?",
+                [*args, limit],
+            ).fetchall()
         return [
             {
                 "path": row["path"],
@@ -149,5 +197,6 @@ class WikiIndexer:
             for row in rows
         ]
 
+    @locked
     def close(self) -> None:
         self._conn.close()

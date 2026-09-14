@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-07-01
+updated: 2026-09-14
 ---
 
 # Mob-Wiki Index
@@ -14,10 +14,12 @@ Welcome to the team knowledge base.
 ## Concepts
 
 - [[concepts/agent-manuals-agents-md]] — 每个 Workshop agent 一份 `AGENTS.md` 手册（codex 项目规则）：身份/流程/I-O/跨 agent 交接/方法论 6 段；`loadAgentsMd` 注入 `$CODEX_HOME/AGENTS.md`；退役结构化 charter 后单一来源（2026-06-08）
+- [[concepts/api-relay-verification-and-ecc-config-trim]] — 中转站满血验机方法 + ECC 全局配置瘦身 playbook
 - [[concepts/asset-matting-hybrid]] — novels-to-lunascript / asset-renderer 抠图流水线：A 默认 (chromakey) + 检测 + B 兜底 (MODNet)，11 张 A/B 实验数据 + 4 个独立 CLI 架构
 - [[concepts/asset-pipeline-aspect-ratio-recovery-2026-05]] — NRBI 2026-05 asset pipeline drift root-cause + recovery playbook: mob-ai aspect-ratio non-determinism, render-without-resync footgun, cascade re-render strategy
 - [[concepts/asset-pipeline-green-spill-fix-2026-05-09]] — green-spill root cause + RGB unspill fix landed 2026-05-09 (renderer level patch, not matting workaround)
 - [[concepts/asset-pipeline-green-spill-runbook]] — green-spill follow-up runbook: recipes for re-render / verify / batch passes referencing the 05-09 fix
+- [[concepts/asset-pipeline-to-final-raw-cache-trap-2026-05-10]] — to-final.py _raw Cache Trap
 - [[concepts/assetctl-integration-contract]] — assetctl 原子能力 CLI 接口合同 v0.1.0：codex 外围编排 + 冻结信封/退出码合同 + 18 颗 ATOMIC_TOOL_IDS（本轮仅 oss-put 可跑，余 NOT_IMPLEMENTED 桩）；assets-produce@48e6eb9 行为基准，全 Go 重写吸收进 IDE，foundation 已合并 main
 - [[concepts/assetctl-skills-sync-and-staging]] — Block 2 + Block 3 codex skill 加载链路：assetctl skills load CLI + IDE stageSkills Langfuse-first overlay + IDE-host TTL cache + 静默回退本地 git；S1-S4 共 23 commit 合 main @ 266cd3c
 - [[concepts/assets-produce-ide-workspace-contract]] — assets-produce ↔ Lunaverse IDE 工作区契约：mapping.json 为唯一契约、assets/ 按 kind 分子目录、新素材自动登记、走 mapping 解析（本地/OSS）；跨机器/Notion/IDE 本体不在职责内
@@ -29,25 +31,32 @@ Welcome to the team knowledge base.
 - [[concepts/db-connection-budget]] — lunaverse-backend DB 连接预算（2026-06-10）：运行时全走 Supavisor transaction 池 6543 + 每引擎代码内显式 connection_limit；session 池 5432 只给 CI migrate（15 client 硬上限，5-30 事故根因）；生产 probe 实测 50 client → 17 server conn
 - [[concepts/dream-bonus-only-op]] — 2026-05-26 dream entry-patch 大改：3 个 v1 ops 全废、单一 `bonus_only` op（terminal placement + template Continue + LLM 写的 ✦DREAM 文案 + 机械路由）；feed 入口直接落 dream E1；no-mainline-mutation invariant（三层 defense：writer/reviewer/backend）
 - [[concepts/dream-rec-component-1-tirt-estimator]] — dream-rec C1: Bayesian TIRT estimator. Laplace MAP + (user, story) testlet random effect + LLM-confidence-weighted ψ² uniqueness. Replaces the choice-count stub.
+- [[concepts/dream-rec-component-2-llm-tagger]] — dream-rec Component 2 — LLM-as-annotator tagger
 - [[concepts/dream-rec-component-3-genre-projection]] — dream-rec C3: per-genre projection matrix `M_g` (K_genre × K_global). Hybrid manual-seed + PCA refinement with shadow-swap versioning and identity-on-5-core cold-start fallback.
 - [[concepts/dream-rec-component-4-dream-ranker]] — dream-rec C4: axis_match × engagement × freshness additive ranker with continuous sharpness blending. Resolves Component 0 O5; adds `used_cold_start_matrix` to /recommend response.
 - [[concepts/dream-rec-component-5-cold-start]] — dream-rec C5: 5-item forced-choice onboarding questionnaire writing informative `(μ₀, Σ₀)` via the same TIRT likelihood. Independent `cold_start_response` table, no `ChoiceEvent` pollution.
 - [[concepts/dream-rec-component-6-dashboard]] — dream-rec C6 (deferred): Streamlit dashboard for Loop A/C/B observability. Design locked, implementation awaits `recommend_log` + lunaverse funnel API.
+- [[concepts/dream-rec-dev-runbook]] — dream-rec dev runbook
+- [[concepts/dream-rec-integration-architecture]] — dream-rec integration architecture (Component 0)
 - [[concepts/dream-rec-monorepo-migration]] — dream-rec 2026-05-24 monorepo migration: subtree merged into `cdotlock/lunaverse-backend → services/dream-rec/` with full history preserved; Dockerfile + dev compose + env keys landed; PR [#4](https://github.com/cdotlock/lunaverse-backend/pull/4) open, Railway service provisioning still pending ops.
 - [[concepts/dream-rec-paper2-plan]] — Paper #2 方案（06-10 立项，06-11 阶段 A 完成）：表征隔离基准 spec v3.1（severity 网格 + RQ4 协议审计 + scope 预收缩）、查新 25+ 篇 GO（近邻 2512.13001/AlphaRec 已定位）、6 模型 embedding 集（~$9）、idea-evaluator 评审 Accept-with-Revisions 已防御、旧 matrix 实验 5 缺陷作废、IPM/TOIS 选刊、22 个科研 skill 装入 dream-recv2（含 K-Dense 统计三件套）、产品侧 10 条批评
 - [[concepts/dream-rec-ranker-upgrade-2026-06]] — 排序器可选通道升级（2026-06-10）：Thompson 采样（冷启动第一屏人人不同，θ_cov 终于被用上）+ MMR/阻尼/UCB/协同融合，全部默认关字节一致；质量先验经实证驳回未搬；分支 `feat/dream-rec-recsys-upgrade` 本地待 push；协同通道等 v2 affinity 端点。
 - [[concepts/dream-rec-trigger-v2-coexistence]] — Scope split between dream-rec (content-ranking) and dream trigger v2 (dream-timing): asset-by-asset decision matrix, three integration commits in `/tmp/msb-dream-rec` (not pushed), deferred items (event weight surface, cross-service vector read).
 - [[concepts/dream-trigger-v2-mechanical]] — Producer-side dream trigger v2 (2026-05-21): pure-mechanical evaluator (no LLM) — UserNovelProfile vector + weighted running mean + cosine drift + sharpness gates, replaces v1 single-gate. Drops phase dedup; first-dream保送 keeps committed_success ≥ 3.
 - [[concepts/dreaming-universe]] — 玩家画像触发的共享 Dream 支线宇宙：Episode graph + assignment-gated overlay + Python dream-agent
+- [[concepts/episode-writer-music-strategy]] — Episode Writer · BGM 策略 & music-normalizer 流程
 - [[concepts/four-layer-philosophy]] — SKILL / CLI / MCP / API design framework for agent-operated platforms
 - [[concepts/frame-interpolation-spec]] — 角色表情插帧实施方案：RIFE/IFRNet 端上推理，Phase 1 Web 验证 + Phase 2 Android/iOS 推广
+- [[concepts/gateway-bypass-and-origin-lockdown-2026-06-10]] — Gateway-bypass + Origin lockdown cutover 2026-06-10
 - [[concepts/iap-sku-pricing]] — IAP 6 档 SKU 官方定价（$1.99–$99.99）+ 首充赠送比例（+100%–+200%），唯一定价真相源
 - [[concepts/ide-invite-codes-single-use]] — IDE beta 邀请注册改 DB 单次使用码（IdeInviteCode 表，事务内原子认领、一码一用、并发回滚，授权默认 beta）；含生成/灌库/监控/作废/排障运维 + 「prod 现已有 _prisma_migrations」对 railway-production-deploy 旧描述的过期标记（2026-06-12）
 - [[concepts/ide-tool-gateway-concurrency-limit]] — IDE 工具网关两层并发闸门：每用户 ≤2 在途 + 每上游**自学习全局上限**（429/超时自动减半、健康回升不越保守默认、floored 熔断）；Postgres 多实例 advisory-lock 原子 acquire、fail-open、服务端 wait-then-429；admin 免 per-user 但仍受全局 cap + 熔断（对抗审查抓到的修复）；env 全可调、PR #15（2026-06-14）
-- [[concepts/lunaria-web-agent-v2]] — Lunaria Web 写作 Agent 重构（2026-07-01）：技能目录 + `read_skill` 渐进按需加载、create/adapt 双模式、AI 只帮写生图 prompt（用户确认后才生成）；gateway-free 多 Agent 审计验到占 IDE 质量 85%（过 80% 线）。对齐 [[concepts/four-layer-philosophy]] 的 SKILL 层
-- [[concepts/lunaverse-ide-ai-integration]] — Lunaverse IDE 内 AI 集成架构:为什么改用 Cline 而非 VS Code 原生 chat(被 Copilot 闸住),最终两个表面 —— Tab 补全 + Lunaverse Agent
 - [[concepts/ls-format]] — Lunascripts (LS) 脚本标记语言完整规范（2026-06-04 大幅 redesign 后的快照）
 - [[concepts/ls-spec-redesign-2026-06]] — LS 2026-06-04 redesign 决策记录：删除 ~半数旧指令冗余（show/hide/look/move/at、@ending、@label/@goto、influence、@cg block、@music play/crossfade/fadeout、@sfx play、@pause for N），新增同屏一人隐式 hide 规则、operand 出现在 comparison 两侧、MAX/MIN 聚合、变量对变量比较；Go 编译器 + 测试 + testdata + skills 全量对齐，5 个 commit pushed to lunascripts@main
+- [[concepts/lunaria-web-agent-v2]] — Lunaria Web 写作 Agent 重构（2026-07-01）：技能目录 + `read_skill` 渐进按需加载、create/adapt 双模式、AI 只帮写生图 prompt（用户确认后才生成）；gateway-free 多 Agent 审计验到占 IDE 质量 85%（过 80% 线）。对齐 [[concepts/four-layer-philosophy]] 的 SKILL 层
+- [[concepts/lunaverse-ide-ai-integration]] — Lunaverse IDE 内 AI 集成架构:为什么改用 Cline 而非 VS Code 原生 chat(被 Copilot 闸住),最终两个表面 —— Tab 补全 + Lunaverse Agent
+- [[concepts/matting-v10-sharpen-alpha-bug-2026-05-28]] — V10 抠图遗漏 sharpen_alpha bug + 修复（2026-05-28）
+- [[concepts/moonshort-ide-uiux-audit-2026-06]] — Moonshort IDE UI/UX Audit + Fix Log (2026-06)
 - [[concepts/mp-cross-signal-author-guidance]] — 多人模式（MP）小说写作 Agent 设计指引：**block-on-cross-signal 运行时**下的同步密度设计（旧 every-choice-blocks → 新 only-cross-referenced-blocks，解决"玩一下就卡"）；3 类该 cross-reference + 4 类不该 + 节奏建议（每幕 1-2 个 sync point）+ 模板 + 5 类常见错误；revival anchor 是 manifest 顺带的二级效果。锚定 2026-06-08 lunaverse-backend MP redesign spec §7 与 lunascripts PR #1 §4.7
 - [[concepts/novel-dream-artifact]] — `NovelDreamArtifact` 1:1 sidecar of Novel holds `characterArcs` (renamed from `characterBible`) + `assetMapping` + audit meta; 2026-05-24 抽表 to separate admin authoritative data from dream-pipeline regenerable derived data
 - [[concepts/novel-game-config]] — 每部剧本可配置的属性系统（SAN-slot + 4 检定变量 + 平台级数值整理）
@@ -56,6 +65,7 @@ Welcome to the team knowledge base.
 - [[concepts/production-pipeline-two-phase]] — lunaverse-backend 2026-05 Plan A + C1 重构：IDE submit → admin activate；`Novel.activeReleaseId` 唯一真相；L1/L2/L3 分层；删 `NovelDraftAsset` / `Novel.status` / `NovelCharacter.voiceId` / `characterBible`；release 状态机 `pending` / `live` / `superseded` / `failed`
 - [[concepts/railway-production-deploy]] — lunaverse-backend 怎么上 Railway 生产：service 拓扑 + `railway-production-deploy.yml` workflow（confirm/skip_migrations/force_* inputs）+ account-token 鉴权（2026-06-05 CLI 回归 `railway up` 拒 project token 的复盘）+ 为何 skip in-CI migrate（prod 无 `_prisma_migrations` → P3005 + pooler 15-client 上限）+ **additive-only 零删库 cutover playbook**（merged-schema `migrate diff` 证 prod 已是 HEAD 超集 → 不 apply drop）+ 单本免 redeploy re-seed + TTS warmth 行级寻址；2026-06-06 LS realignment 上线为 worked example
 - [[concepts/remix-anywhere]] — 玩家长按对白 → D20+DC → LLM 生成 InsertPatch 插入剧情；Drama Remix 2026-05-05 整体摘除；forward planner 2026-05-24 改单 plan + 2-stage pick→write 跨非 dream 全分支
+- [[concepts/second-chorus-asset-pipeline]] — Second-Chorus 素材流水线（自包含 / 云端可跑 / 可复用模板）
 - [[concepts/server-layer]] — mobai-agent HTTP/WebSocket server for remote access
 - [[concepts/sfx-pipeline]] — SFX pipeline design: `sfx-normalizer` skill + dramatizer integration for AI-generated sound effects via ElevenLabs
 - [[concepts/signal-int-backend]] — Backend 如何加载、持久化、求值、管理 LS 的 `@signal int` 作者变量
@@ -72,21 +82,27 @@ Welcome to the team knowledge base.
 - [[entities/cli-gateway]] — Lightweight HTTP microservice for remote CLI execution (deployed per-service)
 - [[entities/dramatizer]] — Go binary for novel-to-screenplay conversion (15-stage LLM pipeline)
 - [[entities/dramatizer-ls]] — Novels-to-Lunascript skill workflow（**2026-05-19 起 upstream authoring 10 skills 整体迁到 assets-produce**；本仓只剩 downstream asset / cg / wardrobe pipeline + NRBI 真实生产工程文件夹）
+- [[entities/lunaria-web]] — lunaria-web
+- [[entities/lunascripts]] — LS interpreter: Go binary compiling .md scripts to player-ready JSON；2026-05 trick/minigame 解耦 + trick 白名单锁死 6 类 + minigame 退化为叶子 + FastAPI wrapper + episode-scoped step ID
+- [[entities/lunaverse-backend]] — Next.js game engine, admin dashboard, 85+ API routes
+- [[entities/lunaverse-client]] — Cocos Creator game frontend with headless testing
+- [[entities/lunaverse-ide]] — VS Code 1.119.1 fork 一层壳：LS 编辑 + `ls-lsp` + Production Workshop（6 agents，含 voice casting workbench / onboarding spotlight tour / minigame workbench / production manifest publish）+ codex agent 跑时 + Lunaverse Agent (Cline fork)；8 packages + agents/ 单一 canonical config root
 - [[entities/mob-ai-router]] — Public OpenAI-compatible LLM router (`https://ai.mob-ai.cn/api`) fronting Claude, DeepSeek, GPT, Jina embeddings/rerank, and image/video providers behind a single virtual-key surface
 - [[entities/mob-mini-agent]] — Pi-based company Agent foundation with Moonshot runtime practices, observability, and compaction safety
 - [[entities/mob-sandbox-ops]] — Self-hosted Daytona/OpenHands/Claude Code sandbox platform and operator runbook
 - [[entities/mobai-agent]] — Master AI agent orchestrator for the Lunaverse platform
-- [[entities/lunaverse-backend]] — Next.js game engine, admin dashboard, 85+ API routes
-- [[entities/lunaverse-client]] — Cocos Creator game frontend with headless testing
-- [[entities/lunaverse-ide]] — VS Code 1.119.1 fork 一层壳：LS 编辑 + `ls-lsp` + Production Workshop（6 agents，含 voice casting workbench / onboarding spotlight tour / minigame workbench / production manifest publish）+ codex agent 跑时 + Lunaverse Agent (Cline fork)；8 packages + agents/ 单一 canonical config root
-- [[entities/lunascripts]] — LS interpreter: Go binary compiling .md scripts to player-ready JSON；2026-05 trick/minigame 解耦 + trick 白名单锁死 6 类 + minigame 退化为叶子 + FastAPI wrapper + episode-scoped step ID
 - [[entities/vibe-motion]] — AI-driven Remotion motion graphics workspace producing Lunaverse promo videos (9:16 portrait); lunaverse-intro delivered, lunaverse-app-promo iterating (72s + 30s/15s cuts, villain-season real assets, Breeze TTS)
 - [[entities/video-agent-claude-wangbo]] — Claude Code video shot prompt workflow with Seedance gateway, OSS validation, and ablation-backed skill package
 
 ## Syntheses
 
 - [[syntheses/cloud-deployment-architecture]] — How Lunaverse transitions from local to distributed cloud deployment
+- [[syntheses/data-silence-failure-class]] — Data-Silence 失败类（VN Pipeline · 作者漏 render 家族）
 - [[syntheses/lunaverse-rename-migration]] — lunaverse→Lunaverse / LS→Lunascripts / .ls→.ls 全量改名方案：9 仓 ~1万处 + ~575 文件物理改名；扩展名三套并存现状、七桶分类、6 个待拍板决策、带兼容垫片的 7 阶段切换、静默失败清单
 - [[syntheses/platform-onboarding-guide]] — MobAI 平台全景指南（游戏设计、数值系统、技术架构）
 - [[syntheses/product-strategy-decisions]] — 产品战略决策记录（为什么这样做而不是那样做）
 - [[syntheses/render-time-silent-drop-failure-class]] — VN Pipeline v4.1-v4.5 同构族（branch-architect + episode-writer 的"schema 正确 + render 丢规则"反复 bug 及四件套沉淀模式，含 v4.4/v4.5 结构对偶：first-contact vs last-contact agency）
+
+## Tools
+
+- [[tools/publish-report]] — publish-report CLI

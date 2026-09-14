@@ -3,6 +3,8 @@ title: dream-rec monorepo migration (2026-05-24)
 updated: 2026-05-24
 tags: [dream-rec, monorepo, deployment, migration, lunaverse-backend]
 status: pr-open-railway-pending
+created: 2026-05-24
+sources: []
 ---
 
 # dream-rec monorepo migration

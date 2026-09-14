@@ -11,6 +11,8 @@ tags:
 source_specs:
   - /Users/august/MobAI/norules-vn/docs/superpowers/specs/2026-04-22-character-first-appearance-intro-design.md
 sibling_family: syntheses/render-time-silent-drop-failure-class
+created: 2026-04-22
+sources: []
 ---
 
 # Data-Silence 失败类

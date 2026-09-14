@@ -4,6 +4,7 @@ created: 2026-05-20
 updated: 2026-05-21
 tags: [assetctl, block-2, block-3, codex, langfuse, skill-loader, skill-staging, lunaverse-ide]
 status: draft
+sources: []
 ---
 
 # assetctl skills sync + Block 2/3 staging（codex skill 加载链路）

@@ -1,6 +1,9 @@
 ---
 title: Gateway-bypass + Origin lockdown cutover 2026-06-10
 updated: 2026-06-10
+created: 2026-06-10
+tags: ["gateway", "security", "deployment"]
+sources: []
 ---
 
 > lunaverse-backend 2026-06-10：nginx gateway 从服务路径退场 + Origin lockdown 激活。一次窗口内完成代码合并、Railway custom-domain swap、Cloudflare Transform Rules、DNS CNAME 重指，全程 API 操作。

@@ -4,6 +4,7 @@ updated: 2026-05-24
 tags: [dream-rec, genre-projection, component-3, recommendation]
 sources: [docs/superpowers/specs/2026-05-23-dream-rec-component-3-genre-projection-design.md]
 status: shipped
+created: 2026-05-24
 ---
 
 # dream-rec Component 3 — Genre projection

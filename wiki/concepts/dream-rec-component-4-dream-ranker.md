@@ -4,6 +4,7 @@ updated: 2026-05-24
 tags: [dream-rec, dream-ranker, component-4, recommendation]
 sources: [docs/superpowers/specs/2026-05-23-dream-rec-component-4-dream-ranker-design.md]
 status: shipped
+created: 2026-05-24
 ---
 
 # dream-rec Component 4 — Dream ranker

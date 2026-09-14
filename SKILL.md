@@ -50,6 +50,7 @@ When asked a question about the project:
 2. Call `wiki_list` to see the table of contents
 3. Call `wiki_search` with a semantic query
 4. Call `wiki_read` for the top relevant pages
+   Keep the returned `revision` and pass it as `expected_revision` on any later update; reread and merge if a conflict is returned.
 5. Answer the question, citing wiki page paths
 6. If your answer contains new insight worth keeping:
    - Offer to create a synthesis page

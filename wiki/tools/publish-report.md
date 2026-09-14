@@ -3,6 +3,7 @@ title: publish-report CLI
 tags: [tool, deployment, mob-sandbox, static-site, html]
 created: 2026-05-14
 updated: 2026-05-14
+sources: []
 ---
 
 `publish-report` is a one-shot CLI for deploying a local HTML/MD/static file or

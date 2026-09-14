@@ -3,6 +3,9 @@ title: Asset Matting Hybrid (A 默认 + 检测 + B 兜底)
 updated: 2026-05-22
 status: superseded
 superseded_by: ESRGAN ×2 + MODNet + V10 服务端全链（2026-05-12 起 donor 上线，2026-05-22 IDE 侧迁移完成）
+created: 2026-05-06
+tags: ["assets", "matting", "historical"]
+sources: []
 ---
 
 # Asset Matting Hybrid (A 默认 + 检测 + B 兜底)  ⛔ SUPERSEDED

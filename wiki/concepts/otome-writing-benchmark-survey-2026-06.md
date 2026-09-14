@@ -2,6 +2,8 @@
 title: 乙女小说写作 Benchmark 调研 + 自建指标草案（2026-06-04）
 updated: 2026-06-04
 tags: [benchmark, evaluation, otome, llm-as-judge, model-selection]
+created: 2026-06-04
+sources: []
 ---
 
 # 乙女小说写作 Benchmark 调研 + 自建指标草案

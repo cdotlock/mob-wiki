@@ -4,6 +4,7 @@ created: 2026-05-20
 updated: 2026-05-22 (Wave 15)
 tags: [assetctl, assets-produce, lunaverse-ide, atomic-capability, interface-contract, codex, oss-put, generate-image-nanobanana, generate-video-seedance, generate-sfx-elevenlabs]
 status: draft
+sources: []
 ---
 
 # assetctl — 原子能力 CLI 接口合同 v0.1.0

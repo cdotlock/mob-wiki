@@ -2,6 +2,9 @@
 title: CG Pipeline (07.5 step)
 tags: [novels-to-lunascript, asset-pipeline, cg, ls]
 last_verified: 2026-05-13
+created: 2026-05-14
+updated: 2026-06-08
+sources: []
 ---
 
 # CG Pipeline (07.5 step)

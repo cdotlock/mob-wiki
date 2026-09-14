@@ -4,6 +4,7 @@ created: 2026-05-21
 updated: 2026-05-22
 tags: [lunaverse-ide, codex, agent-adapter, auth, verification, codex-shim]
 status: draft
+sources: []
 ---
 
 # codex 运行时（IDE 内） — auth 模型 + 验证层级

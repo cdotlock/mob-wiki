@@ -4,6 +4,9 @@ updated: 2026-05-09
 related:
   - concepts/asset-pipeline-green-spill-fix-2026-05-09
   - concepts/asset-matting-hybrid
+created: 2026-05-09
+tags: ["assets", "matting", "runbook"]
+sources: []
 ---
 
 # Green-Spill Runbook

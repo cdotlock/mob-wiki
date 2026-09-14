@@ -6,6 +6,7 @@ sources:
   - /Users/Clock/lunaverse/lunascripts/docs/JSON-OUTPUT.md
   - /Users/Clock/lunaverse/lunascripts/docs/ENGINE-INTEGRATION.md
 created: 2026-06-04
+updated: 2026-06-08
 ---
 
 # LS Spec Redesign (2026-06-04)

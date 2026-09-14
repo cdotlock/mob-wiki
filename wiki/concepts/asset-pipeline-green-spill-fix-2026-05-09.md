@@ -4,6 +4,9 @@ updated: 2026-05-09
 related:
   - concepts/asset-matting-hybrid
   - entities/dramatizer-ls
+created: 2026-05-09
+tags: ["assets", "matting", "incident"]
+sources: []
 ---
 
 # Green-Spill Root Cause + RGB Unspill Fix

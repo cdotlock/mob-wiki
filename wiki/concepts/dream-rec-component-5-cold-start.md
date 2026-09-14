@@ -4,6 +4,7 @@ updated: 2026-05-24
 tags: [dream-rec, cold-start, component-5, recommendation]
 sources: [docs/superpowers/specs/2026-05-23-dream-rec-component-5-cold-start-design.md]
 status: shipped
+created: 2026-05-24
 ---
 
 # dream-rec Component 5 — Cold-start questionnaire

@@ -2,6 +2,8 @@
 title: Episode Writer · BGM 策略 & music-normalizer 流程
 updated: 2026-05-07
 tags: [novels-to-lunascript, dramatizer, music, normalization, ls]
+created: 2026-05-07
+sources: []
 ---
 
 # Episode Writer · BGM 策略 & music-normalizer 流程

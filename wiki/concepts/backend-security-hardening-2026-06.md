@@ -3,6 +3,8 @@ title: lunaverse-backend 生产安全加固（2026-06-10）
 updated: 2026-06-10
 sources:
   - raw/2026-06-10-lunaverse-backend-security-hardening.md
+created: 2026-06-10
+tags: ["backend", "security"]
 ---
 
 # lunaverse-backend 生产安全加固（2026-06-10）

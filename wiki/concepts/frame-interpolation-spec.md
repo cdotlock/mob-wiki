@@ -3,6 +3,7 @@ title: 角色表情插帧实施方案
 tags: [rife, interpolation, animation, cocos, client, spec]
 created: 2026-06-29
 updated: 2026-06-30
+sources: []
 ---
 
 角色 look 切换（编译为 `char_show`）原本是瞬间换图，没有过渡。本方案用神经网络插帧（RIFE）生成中间帧，让"同角色同服装、动作小"的换表情/微动作丝滑过渡；其余一律保持瞬间切换。**Phase 1 已真正接进 Web 端**（生产代码，非 demo），核心运行时已在真实浏览器 E2E 验证；Phase 2 推广到 Android/iOS（同模型转 ncnn）。

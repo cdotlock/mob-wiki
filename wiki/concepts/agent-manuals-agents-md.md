@@ -1,6 +1,9 @@
 ---
 title: Agent 手册机制 — per-agent AGENTS.md（codex 项目规则）
 updated: 2026-06-08
+created: 2026-06-08
+tags: ["agents", "lunaverse-ide", "configuration"]
+sources: []
 ---
 
 # Agent 手册机制：per-agent `AGENTS.md`
@@ -38,4 +41,4 @@ agent 之前在对话指令里只有一句 `You are the X agent` —— 没有�
 - **改手册**：直接编辑 `agents/<id>/AGENTS.md`（纯 markdown）。host 端无需重建（每轮从 agentDir 重新 staged）；热补到已装 .app 时拷 `…/extensions/moonshort-mss-workshop/agents/<id>/AGENTS.md`。
 - **加新 agent**：在 `agents/<id>/` 放 `agent.json` + `skills/` + 一份 `AGENTS.md`，`loadAgentsMd` 会自动捡起；没写则退回极简版（不报错）。
 
-相关：[[entities/moonshort-ide]] · [[concepts/assetctl-skills-sync-and-staging]]（skill 进 `CODEX_HOME` 的同一条 staging 链）· [[concepts/codex-runtime-and-verification-layers]]（codex 怎么起 + auth 怎么传）
+相关：[[entities/lunaverse-ide]] · [[concepts/assetctl-skills-sync-and-staging]]（skill 进 `CODEX_HOME` 的同一条 staging 链）· [[concepts/codex-runtime-and-verification-layers]]（codex 怎么起 + auth 怎么传）

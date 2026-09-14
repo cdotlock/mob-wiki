@@ -3,6 +3,7 @@ title: IDE Tool Gateway Concurrency Limits
 tags: [backend, ide, concurrency, rate-limit, upstream, ops]
 created: 2026-06-14
 updated: 2026-06-14
+sources: []
 ---
 
 [[entities/lunaverse-backend]] 的 IDE 工具网关（`/api/ide/tools/[toolId]`，所有用户的出图/视频/抠图等上游调用都过这道关）有**两层并发闸门**，保护上游提供商不被多用户聚合并发打爆。代码与上线状态见 PR [#15](https://github.com/cdotlock/lunaverse-backend/pull/15)（分支 `feat/ide-concurrency-limiter`，3 个 commit）。

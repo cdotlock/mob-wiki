@@ -4,6 +4,7 @@ updated: 2026-05-24
 tags: [dream-rec, llm-tagger, component-2, recommendation]
 sources: [docs/superpowers/specs/2026-05-23-dream-rec-component-2-llm-tagger-design.md]
 status: shipped
+created: 2026-05-23
 ---
 
 # dream-rec Component 2 — LLM-as-annotator tagger

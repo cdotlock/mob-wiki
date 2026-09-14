@@ -2,6 +2,9 @@
 title: Lunaria Web — Agent v2（渐进式技能加载 + 双模式 + 持久化大纲 + AI 写提示词）
 description: lunaria-web 写作 Agent 重构（2026-07-01/02）：技能目录 + read_skill 按需加载、create/adapt 双模式、持久化故事大纲（结构化 Canonical Wardrobe 行 + @signal/CG/gate 跨集账本 + romanceStage + STORY-PLAN CONTRACT/planWarnings）+ 实体表注入、回合末自评打分、AI 只帮写生图 prompt、轮转多模型网关回退、邀请码用户注册；真实 AI create+adapt 跑测已验证（本地 + 线上），部署到 Railway。
 updated: 2026-07-02
+created: 2026-07-01
+tags: ["lunaria-web", "agents", "writing"]
+sources: []
 ---
 
 # Lunaria Web — Agent v2（渐进式技能加载 + 双模式 + 持久化大纲 + AI 写提示词）
